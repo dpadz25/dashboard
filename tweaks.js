@@ -1,0 +1,475 @@
+/* ═══════════════════════════════════════════════════════════════
+   TWEAKS PANEL — theme + fonts + modules + backgrounds (v3)
+   ═══════════════════════════════════════════════════════════════ */
+(function () {
+'use strict';
+const $ = window.dashUtil.$;
+const compressImage = window.dashImg ? window.dashImg.compressImage : null;
+
+const DEFAULTS = /*EDITMODE-BEGIN*/{
+  "theme": "amber",
+  "fontPreset": "modern",
+  "showQuicklinks": true,
+  "showLife": true,
+  "showCurrently": true,
+  "showGoals": true,
+  "showHealth": true,
+  "showPeople": true,
+  "density": "comfy",
+  "name": "Delan",
+  "pageBgOverlay": 55,
+  "pageBgZoom": 100,
+  "pageBgPosX": 50,
+  "pageBgPosY": 50,
+  "headerBgIntensity": 70,
+  "railBgIntensity": 55
+}/*EDITMODE-END*/;
+
+let state = { ...DEFAULTS, ...(window.dashUtil.load('tweaksState', {})) };
+let pageBg = window.dashUtil.load('pageBg', null);
+
+// ── one-time migration: move legacy headerBg into the per-card system ──
+(function migrateHeaderBg() {
+  const legacy = window.dashUtil.load('headerBg', null);
+  if (!legacy) return;
+  const existing = window.dashUtil.load('cardBg::header', null);
+  if (!existing) {
+    window.dashUtil.save('cardBg::header', {
+      img: legacy,
+      intensity: state.headerBgIntensity ?? 70,
+      posX: 50, posY: 50, zoom: 100,
+    });
+  }
+  localStorage.removeItem('headerBg');
+})();
+
+let panelOpen = false;
+
+// ─── FONT PRESETS ────────────────────────────────────────────
+// Each preset overrides --font-d (display), --font-b (body), --font-s (serif accents)
+const FONT_PRESETS = {
+  modern: {
+    name: 'Modern',
+    note: 'Bricolage + Inter (default)',
+    d: `'Bricolage Grotesque', -apple-system, sans-serif`,
+    b: `'Inter', -apple-system, sans-serif`,
+    s: `'Instrument Serif', Georgia, serif`,
+    google: 'Bricolage+Grotesque:opsz,wght@12..96,300;12..96,400;12..96,700;12..96,800&family=Inter:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1',
+  },
+  editorial: {
+    name: 'Editorial',
+    note: 'Playfair + Source Serif',
+    d: `'Playfair Display', Georgia, serif`,
+    b: `'Source Serif Pro', 'Source Serif 4', Georgia, serif`,
+    s: `'Playfair Display', Georgia, serif`,
+    google: 'Playfair+Display:ital,wght@0,500;0,700;0,800;1,500&family=Source+Serif+Pro:ital,wght@0,300;0,400;0,600;1,400',
+  },
+  georgia: {
+    name: 'Georgia',
+    note: 'Classic on-device serif',
+    d: `Georgia, 'Times New Roman', serif`,
+    b: `Georgia, 'Times New Roman', serif`,
+    s: `Georgia, 'Times New Roman', serif`,
+    google: '',
+  },
+  times: {
+    name: 'Times',
+    note: 'Times New Roman everywhere',
+    d: `'Times New Roman', Times, serif`,
+    b: `'Times New Roman', Times, serif`,
+    s: `'Times New Roman', Times, serif`,
+    google: '',
+  },
+  garamond: {
+    name: 'Garamond',
+    note: 'EB Garamond — bookish & warm',
+    d: `'EB Garamond', Garamond, Georgia, serif`,
+    b: `'EB Garamond', Garamond, Georgia, serif`,
+    s: `'EB Garamond', Garamond, Georgia, serif`,
+    google: 'EB+Garamond:ital,wght@0,400;0,500;0,700;1,400',
+  },
+  mono: {
+    name: 'Mono',
+    note: 'IBM Plex Mono — terminal vibes',
+    d: `'IBM Plex Mono', ui-monospace, monospace`,
+    b: `'IBM Plex Mono', ui-monospace, monospace`,
+    s: `'IBM Plex Mono', ui-monospace, monospace`,
+    google: 'IBM+Plex+Mono:ital,wght@0,300;0,400;0,500;0,600;1,400',
+  },
+  sans: {
+    name: 'Clean Sans',
+    note: 'System sans only — fast & crisp',
+    d: `-apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif`,
+    b: `-apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif`,
+    s: `Georgia, 'Times New Roman', serif`,
+    google: '',
+  },
+};
+
+const loadedFontKeys = new Set(['modern']);
+function ensureFontLoaded(presetKey) {
+  if (loadedFontKeys.has(presetKey)) return;
+  const preset = FONT_PRESETS[presetKey];
+  if (!preset || !preset.google) { loadedFontKeys.add(presetKey); return; }
+  const linkId = 'tweak-font-' + presetKey;
+  if (document.getElementById(linkId)) { loadedFontKeys.add(presetKey); return; }
+  const link = document.createElement('link');
+  link.id = linkId;
+  link.rel = 'stylesheet';
+  link.href = `https://fonts.googleapis.com/css2?family=${preset.google}&display=swap`;
+  document.head.appendChild(link);
+  loadedFontKeys.add(presetKey);
+}
+
+function applyFontPreset() {
+  const key = FONT_PRESETS[state.fontPreset] ? state.fontPreset : 'modern';
+  ensureFontLoaded(key);
+  const p = FONT_PRESETS[key];
+  document.documentElement.style.setProperty('--font-d', p.d);
+  document.documentElement.style.setProperty('--font-b', p.b);
+  document.documentElement.style.setProperty('--font-s', p.s);
+  document.documentElement.setAttribute('data-font', key);
+}
+
+function applyState() {
+  document.documentElement.setAttribute('data-theme', state.theme);
+  applyFontPreset();
+  toggleSection('quicklinks', state.showQuicklinks);
+  document.body.classList.toggle('no-rail', !state.showQuicklinks);
+  const fab = $('qlinksFab');
+  if (fab) fab.style.display = state.showQuicklinks ? '' : 'none';
+  toggleSection('life', state.showLife);
+  toggleSection('currently', state.showCurrently);
+  toggleSection('goals', state.showGoals);
+  toggleSection('health', state.showHealth);
+  toggleSection('people', state.showPeople);
+
+  if (state.density === 'compact') {
+    document.documentElement.style.setProperty('--r', '10px');
+    document.body.style.fontSize = '13px';
+  } else {
+    document.documentElement.style.removeProperty('--r');
+    document.body.style.fontSize = '14px';
+  }
+
+  if (window.dash && window.dash.initHeader) window.dash.initHeader();
+  if (window.dash && window.dash.renderQlinks) window.dash.renderQlinks();
+
+  applyBackgrounds();
+}
+
+function applyBackgrounds() {
+  const body = document.body;
+  if (pageBg) {
+    body.style.setProperty('--user-bg', `url("${pageBg}")`);
+    body.style.setProperty('--bg-overlay', (1 - (state.pageBgOverlay / 100)).toFixed(2));
+    body.style.setProperty('--bg-zoom', ((state.pageBgZoom ?? 100) / 100).toFixed(3));
+    body.style.setProperty('--bg-pos-x', (state.pageBgPosX ?? 50) + '%');
+    body.style.setProperty('--bg-pos-y', (state.pageBgPosY ?? 50) + '%');
+    body.setAttribute('data-has-bg', '1');
+  } else {
+    body.style.removeProperty('--user-bg');
+    body.style.removeProperty('--bg-overlay');
+    body.style.removeProperty('--bg-zoom');
+    body.style.removeProperty('--bg-pos-x');
+    body.style.removeProperty('--bg-pos-y');
+    body.removeAttribute('data-has-bg');
+  }
+
+  // Side rail intensity
+  const rail = $('sideRail');
+  if (rail) {
+    rail.style.setProperty('--rail-bg-intensity', (state.railBgIntensity / 100).toFixed(2));
+  }
+}
+
+function toggleSection(id, show) {
+  document.querySelectorAll(`[data-section="${id}"]`).forEach(el => {
+    el.style.display = show ? '' : 'none';
+  });
+}
+
+function persist() {
+  window.dashUtil.save('tweaksState', state);
+  applyState();
+  renderPanel();
+}
+
+function setKey(key, value) {
+  state[key] = value;
+  persist();
+  try {
+    window.parent.postMessage({ type: '__edit_mode_set_keys', edits: { [key]: value } }, '*');
+  } catch (e) {}
+}
+
+// Lightweight live update for sliders — applies visual change & persists,
+// but skips the full panel re-render so the slider thumb keeps tracking.
+// Also updates the value label next to the slider.
+function setLive(key, value) {
+  state[key] = value;
+  window.dashUtil.save('tweaksState', state);
+  applyBackgrounds();
+  // Update the inline value label, if present.
+  const panel = $('tweaksPanel');
+  if (!panel) return;
+  const labels = panel.querySelectorAll('.tweak-row');
+  labels.forEach(row => {
+    const next = row.nextElementSibling;
+    if (next && next.tagName === 'INPUT' && next.getAttribute('oninput')?.includes(`'${key}'`)) {
+      const valEl = row.querySelector('.tweak-slider-value');
+      if (valEl) valEl.textContent = value + '%';
+    }
+  });
+}
+
+function uploadPageBg() {
+  if (!compressImage) return;
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  input.onchange = e => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    // Generous size so the background stays sharp at full-bleed
+    // — and even sharper when the user zooms in via the resize controls.
+    compressImage(file, 5200, dataUrl => {
+      pageBg = dataUrl;
+      window.dashUtil.save('pageBg', dataUrl);
+      applyBackgrounds();
+      renderPanel();
+    });
+  };
+  input.click();
+}
+
+function uploadHeaderBg() { /* deprecated — use per-card system */ }
+function clearHeaderBg()  { /* deprecated — use per-card system */ }
+
+function clearPageBg() {
+  pageBg = null;
+  localStorage.removeItem('pageBg');
+  applyBackgrounds();
+  renderPanel();
+}
+
+function resetPageBgPosition() {
+  state.pageBgZoom = 100;
+  state.pageBgPosX = 50;
+  state.pageBgPosY = 50;
+  persist();
+}
+
+function clearHeaderBg2() { /* removed */ }
+
+function uploadRailBg() {
+  if (window.dash && window.dash.pickSideRailBg) window.dash.pickSideRailBg();
+}
+function clearRailBg() {
+  if (window.dash && window.dash.clearSideRailBg) window.dash.clearSideRailBg();
+  renderPanel();
+}
+
+function renderPanel() {
+  const panel = $('tweaksPanel');
+  if (!panel) return;
+
+  const themes = [
+    { id:'amber', name:'Warm Amber',   colors:['#0d0b09','#1e1a15','#d4a252','#7caa6a'] },
+    { id:'paper', name:'Paper Journal',colors:['#efe7d6','#faf3e3','#b8501e','#4f7a3a'] },
+    { id:'dusk',  name:'Dusk Sage',    colors:['#0d1411','#1d2722','#94c08e','#6cb8b0'] },
+  ];
+
+  const railBg = window.dashUtil.load('sideRailBg', null);
+
+  panel.innerHTML = `
+    <div class="tweaks-head" id="tweaksHead">
+      <div class="tweaks-title">Tweaks</div>
+      <button class="modal-close" onclick="window.tweaks.close()">${window.ICONS.x}</button>
+    </div>
+    <div class="tweaks-body">
+
+      <div class="tweak-section">
+        <div class="tweak-section-title">Theme</div>
+        <div class="theme-grid">
+          ${themes.map(t => `
+            <button class="theme-swatch ${state.theme === t.id ? 'active' : ''}" onclick="window.tweaks.set('theme','${t.id}')">
+              <div class="theme-swatch-preview">${t.colors.map(c=>`<span style="background:${c}"></span>`).join('')}</div>
+              <div class="theme-swatch-name">${t.name}</div>
+            </button>
+          `).join('')}
+        </div>
+      </div>
+
+      <div class="tweak-section">
+        <div class="tweak-section-title">Typeface</div>
+        <div class="font-grid">
+          ${Object.entries(FONT_PRESETS).map(([key, p]) => `
+            <button class="font-swatch ${state.fontPreset === key ? 'active' : ''}" onclick="window.tweaks.set('fontPreset','${key}')" style="font-family:${p.b}">
+              <div class="font-swatch-sample">Aa</div>
+              <div class="font-swatch-info">
+                <div class="font-swatch-name">${p.name}</div>
+                <div class="font-swatch-note">${p.note}</div>
+              </div>
+            </button>
+          `).join('')}
+        </div>
+      </div>
+
+      <div class="tweak-section">
+        <div class="tweak-section-title">Page Background</div>
+        <div class="tweak-bg-preview ${pageBg?'has-image':''}" style="${pageBg?`background-image:url('${pageBg}')`:''}">
+          ${!pageBg ? 'No image' : ''}
+          <button class="clear" onclick="window.tweaks.clearPageBg()" title="Remove">×</button>
+        </div>
+        <div class="tweak-bg-row">
+          <button class="tweak-upload-btn" onclick="window.tweaks.uploadPageBg()">${pageBg?'Replace':'Upload'} image</button>
+        </div>
+        ${pageBg ? `
+          <div style="margin-top:0.5rem">
+            <div class="tweak-row"><span class="tweak-label">Overlay opacity</span><span class="tweak-slider-value">${state.pageBgOverlay}%</span></div>
+            <input class="tweak-slider" type="range" min="0" max="95" value="${state.pageBgOverlay}"
+                   oninput="window.tweaks.setLive('pageBgOverlay',+this.value)"
+                   onchange="window.tweaks.set('pageBgOverlay',+this.value)"/>
+            <div class="tweak-row" style="margin-top:0.55rem"><span class="tweak-label">Zoom</span><span class="tweak-slider-value">${state.pageBgZoom ?? 100}%</span></div>
+            <input class="tweak-slider" type="range" min="100" max="400" step="5" value="${state.pageBgZoom ?? 100}"
+                   oninput="window.tweaks.setLive('pageBgZoom',+this.value)"
+                   onchange="window.tweaks.set('pageBgZoom',+this.value)"/>
+            <div class="tweak-row" style="margin-top:0.55rem"><span class="tweak-label">Position X</span><span class="tweak-slider-value">${state.pageBgPosX ?? 50}%</span></div>
+            <input class="tweak-slider" type="range" min="0" max="100" value="${state.pageBgPosX ?? 50}"
+                   oninput="window.tweaks.setLive('pageBgPosX',+this.value)"
+                   onchange="window.tweaks.set('pageBgPosX',+this.value)"/>
+            <div class="tweak-row" style="margin-top:0.55rem"><span class="tweak-label">Position Y</span><span class="tweak-slider-value">${state.pageBgPosY ?? 50}%</span></div>
+            <input class="tweak-slider" type="range" min="0" max="100" value="${state.pageBgPosY ?? 50}"
+                   oninput="window.tweaks.setLive('pageBgPosY',+this.value)"
+                   onchange="window.tweaks.set('pageBgPosY',+this.value)"/>
+            <button class="tweak-upload-btn" style="margin-top:0.55rem" onclick="window.tweaks.resetPageBgPosition()">Reset zoom & position</button>
+          </div>
+        ` : ''}
+        <div class="tweak-note">Tip: every card has its own image button (top-right) so you can customize backgrounds per module.</div>
+      </div>
+
+      <div class="tweak-section">
+        <div class="tweak-section-title">Side Rail Background</div>
+        <div class="tweak-bg-preview ${railBg?'has-image':''}" style="${railBg?`background-image:url('${railBg}')`:''}">
+          ${!railBg ? 'No image' : ''}
+          <button class="clear" onclick="window.tweaks.clearRailBg()" title="Remove">×</button>
+        </div>
+        <div class="tweak-bg-row">
+          <button class="tweak-upload-btn" onclick="window.tweaks.uploadRailBg()">${railBg?'Replace':'Upload'} image</button>
+        </div>
+        ${railBg ? `
+          <div style="margin-top:0.5rem">
+            <div class="tweak-row"><span class="tweak-label">Image strength</span><span class="tweak-slider-value">${state.railBgIntensity}%</span></div>
+            <input class="tweak-slider" type="range" min="10" max="100" value="${state.railBgIntensity}"
+                   oninput="window.tweaks.set('railBgIntensity',+this.value)"/>
+          </div>
+        ` : ''}
+      </div>
+
+      <div class="tweak-section">
+        <div class="tweak-section-title">Density</div>
+        <div class="tweak-row">
+          <span class="tweak-label">Spacing</span>
+          <div class="tweak-radio-row">
+            <button class="tweak-radio ${state.density==='comfy'?'active':''}" onclick="window.tweaks.set('density','comfy')">Comfy</button>
+            <button class="tweak-radio ${state.density==='compact'?'active':''}" onclick="window.tweaks.set('density','compact')">Compact</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="tweak-section">
+        <div class="tweak-section-title">Modules</div>
+        ${[
+          ['showQuicklinks','Side rail (Quick Links)'],
+          ['showLife','Life Checklist'],
+          ['showCurrently','Currently Reading/Watching/Playing'],
+          ['showGoals','Goals'],
+          ['showHealth','Apple Health'],
+          ['showPeople','People I love'],
+        ].map(([key,label]) => `
+          <div class="tweak-row">
+            <span class="tweak-label">${label}</span>
+            <button class="tweak-toggle ${state[key]?'on':''}" onclick="window.tweaks.set('${key}',${!state[key]})"></button>
+          </div>
+        `).join('')}
+      </div>
+
+      <div class="tweak-section">
+        <div class="tweak-section-title">Personal</div>
+        <div class="tweak-row">
+          <span class="tweak-label">Name</span>
+          <input class="t-input" style="max-width:140px;font-size:0.75rem;padding:0.3rem 0.5rem" value="${state.name||''}"
+                 onchange="window.tweaks.set('name',this.value)"/>
+        </div>
+      </div>
+
+      <div class="tweak-section">
+        <button class="btn-ghost" style="width:100%" onclick="window.tweaks.resetData()">Reset all data…</button>
+      </div>
+    </div>
+  `;
+  makeDraggable($('tweaksHead'), panel);
+}
+
+function makeDraggable(handle, target) {
+  if (!handle) return;
+  let startX=0, startY=0, origLeft=0, origTop=0, dragging=false;
+  handle.addEventListener('mousedown', e => {
+    if (e.target.closest('button')) return;
+    dragging = true;
+    const r = target.getBoundingClientRect();
+    startX = e.clientX; startY = e.clientY;
+    origLeft = r.left; origTop = r.top;
+    target.style.right = 'auto'; target.style.bottom = 'auto';
+    target.style.left = origLeft + 'px'; target.style.top = origTop + 'px';
+    document.body.style.userSelect = 'none';
+  });
+  document.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    target.style.left = Math.max(0, origLeft + e.clientX - startX) + 'px';
+    target.style.top = Math.max(0, origTop + e.clientY - startY) + 'px';
+  });
+  document.addEventListener('mouseup', () => {
+    dragging = false;
+    document.body.style.userSelect = '';
+  });
+}
+
+function open() {
+  panelOpen = true;
+  $('tweaksPanel').classList.add('open');
+  $('tweakFab').classList.add('hidden');
+  renderPanel();
+}
+
+function close() {
+  panelOpen = false;
+  $('tweaksPanel').classList.remove('open');
+  $('tweakFab').classList.remove('hidden');
+  try { window.parent.postMessage({ type: '__edit_mode_dismissed' }, '*'); } catch(e){}
+}
+
+function resetData() {
+  if (!confirm('This will erase ALL dashboard data (habits, tasks, classes, dates, currently, health, people, backgrounds, etc.). Continue?')) return;
+  const keys = ['habitsConfig','habitHistory','plannerTasks','schoolClasses','importantDates','agendaEvents','health','healthHistory','healthLastSync','goals','currently','currentlyArchive','lifeItems','people','qlinks','tweaksState','weatherCache','pageBg','headerBg','sideRailBg','customIcons'];
+  keys.forEach(k => localStorage.removeItem(k));
+  // also remove all card backgrounds
+  Object.keys(localStorage).filter(k => k.startsWith('cardBg::')).forEach(k => localStorage.removeItem(k));
+  location.reload();
+}
+
+window.addEventListener('message', e => {
+  const d = e.data || {};
+  if (d.type === '__activate_edit_mode') open();
+  if (d.type === '__deactivate_edit_mode') close();
+});
+
+window.tweaks = { open, close, set: setKey, setLive, resetData, uploadPageBg, uploadHeaderBg, clearPageBg, clearHeaderBg, uploadRailBg, clearRailBg, resetPageBgPosition };
+
+window.addEventListener('load', () => {
+  applyState();
+  renderPanel();
+  try { window.parent.postMessage({ type: '__edit_mode_available' }, '*'); } catch(e){}
+});
+})();

@@ -1,0 +1,438 @@
+/* ──────────────────────────────────────────────────────────────
+   BLOCKS LAYOUT — Notion-style draggable, resizable widgets
+   ────────────────────────────────────────────────────────────── */
+
+/* Tone the drag handles to match the soft cream aesthetic.
+   Defaults map to the warm-amber theme; the paper theme below
+   overrides to a true muted terracotta. */
+:root {
+  --bh-color: color-mix(in srgb, var(--accent) 55%, var(--muted) 45%);
+  --bh-color-strong: var(--accent);
+  --bh-bg-soft: color-mix(in srgb, var(--accent) 10%, transparent);
+  --bh-drop: #4b86d4;
+  --bh-drop-soft: rgba(75, 134, 212, 0.18);
+}
+
+[data-theme="paper"] {
+  --bh-color: #b07458;             /* muted terracotta */
+  --bh-color-strong: #a44a1f;      /* fully saturated */
+  --bh-bg-soft: rgba(184, 80, 30, 0.07);
+  --bh-drop: #3c6db6;
+  --bh-drop-soft: rgba(60, 109, 182, 0.18);
+}
+
+[data-theme="forest"] {
+  --bh-color: #92a18a;
+  --bh-color-strong: #6f9d68;
+  --bh-bg-soft: rgba(148,192,142,0.10);
+}
+
+/* The dashboard container becomes a single grid cell holding .blocks */
+.dash { display: block !important; gap: 0 !important; }
+
+/* ── NOTION-STYLE COLUMN GRID ──────────────────────────────────
+   .blocks = a vertical stack of rows.
+   .brow   = a horizontal set of columns (never overlap — flexbox).
+   .bcol   = a vertical STACK of widgets, width = --col-frac of the row.
+   .block  = a widget; fills its column's width, height = --bh if fixed.
+   This is what lets widgets sit flush above/beneath each other in the
+   same column. */
+.blocks {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  position: relative;
+  width: 100%;
+}
+
+.brow {
+  display: flex;
+  flex-direction: row;
+  gap: 1rem;
+  align-items: flex-start;
+  width: 100%;
+}
+
+.bcol {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  /* Gap-aware width: at frac=1 → 100%, at frac=0.5 → calc(50% - 0.5rem),
+     so two halves + gap = 100%. Generalises cleanly to any fraction. */
+  flex: 1 1 calc((100% + 1rem) * var(--col-frac, 1) - 1rem);
+  min-width: 120px;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.block {
+  position: relative;
+  width: 100%;
+  box-sizing: border-box;
+  overflow: visible !important;   /* allow handles to peek outside corners */
+  transition: opacity 0.18s ease, transform 0.18s var(--ease, ease);
+}
+
+/* Explicit-height widgets: clip content so they can be made compact
+   (down to ~40px) and tuck the handles inside so clipping never hides
+   the drag/resize affordances. */
+.block.block--fixed {
+  height: var(--bh);
+  overflow: hidden !important;
+}
+.block.block--fixed > .block-handle      { left: 6px; top: 6px; background: color-mix(in srgb, var(--card) 72%, transparent); backdrop-filter: blur(4px); }
+.block.block--fixed > .block-edge-resize  { right: 0; }
+.block.block--fixed > .block-edge-resize-bottom { bottom: 0; }
+.block.block--fixed > .block-resize-grip  { right: 4px; bottom: 4px; }
+.block.block--fixed > .block-insert       { display: none; }
+
+/* Genuinely compact widgets: trim the padding so the box can shrink to
+   ~40px (the card's own padding otherwise sets the floor). */
+.block.block--compact { padding-top: 0.6rem; padding-bottom: 0.5rem; }
+.block.block--compact > .block-handle { top: 4px; }
+
+@media (max-width: 880px) {
+  .brow { flex-direction: column; }
+  .bcol { flex-basis: auto !important; width: 100%; }
+  .block.block--fixed { height: auto !important; overflow: visible !important; }
+}
+
+/* ── DRAG HANDLE (top-left, six dots) ─────────────────────────── */
+.block-handle {
+  position: absolute;
+  top: 6px;
+  left: -22px;
+  width: 18px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border-radius: 5px;
+  border: none;
+  background: transparent;
+  color: var(--bh-color);
+  cursor: grab;
+  opacity: 0;
+  transition: opacity 0.16s ease, background 0.16s ease, color 0.16s ease;
+  z-index: 5;
+  padding: 0;
+}
+
+.block-handle svg { width: 10px; height: 16px; display: block; }
+
+.block:hover > .block-handle,
+.block.is-dragging > .block-handle {
+  opacity: 0.85;
+}
+
+.block-handle:hover {
+  opacity: 1 !important;
+  background: var(--bh-bg-soft);
+  color: var(--bh-color-strong);
+}
+
+.block-handle:active { cursor: grabbing; }
+
+/* On narrow viewports we don't have margin for outside handles → tuck in */
+@media (max-width: 1240px) {
+  .block-handle { left: 6px; top: 6px; background: color-mix(in srgb, var(--card) 70%, transparent); backdrop-filter: blur(4px); }
+}
+
+/* ── BOTTOM-RIGHT RESIZE GRIP (corner) ────────────────────────── */
+.block-resize-grip {
+  position: absolute;
+  right: 5px;
+  bottom: 5px;
+  width: 14px;
+  height: 14px;
+  color: var(--bh-color);
+  cursor: nwse-resize;
+  opacity: 0;
+  transition: opacity 0.16s ease, color 0.16s ease;
+  z-index: 5;
+  pointer-events: auto;
+}
+
+.block-resize-grip svg { width: 100%; height: 100%; display: block; }
+
+.block:hover > .block-resize-grip,
+.block.is-resizing > .block-resize-grip { opacity: 0.65; }
+.block-resize-grip:hover { opacity: 1; color: var(--bh-color-strong); }
+
+/* ── RIGHT-EDGE RESIZE STRIP (drag to change width) ──────────── */
+.block-edge-resize {
+  position: absolute;
+  top: 18px;
+  right: -6px;
+  bottom: 18px;
+  width: 14px;
+  cursor: col-resize;
+  z-index: 4;
+  opacity: 0;
+  transition: opacity 0.16s ease;
+}
+.block-edge-resize::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 3px;
+  height: 32px;
+  border-radius: 2px;
+  background: var(--bh-color);
+  transition: background 0.16s ease, height 0.16s ease;
+}
+.block:hover > .block-edge-resize { opacity: 0.45; }
+.block-edge-resize:hover { opacity: 1; }
+.block-edge-resize:hover::before { background: var(--bh-color-strong); height: 48px; }
+.block.is-resizing > .block-edge-resize { opacity: 1; }
+
+@media (max-width: 880px) {
+  .block-edge-resize { display: none; }
+}
+
+/* ── BOTTOM-EDGE RESIZE STRIP (drag to change height) ───────── */
+.block-edge-resize-bottom {
+  position: absolute;
+  left: 18px;
+  right: 18px;
+  bottom: -6px;
+  height: 14px;
+  cursor: row-resize;
+  z-index: 4;
+  opacity: 0;
+  transition: opacity 0.16s ease;
+}
+.block-edge-resize-bottom::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 32px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--bh-color);
+  transition: background 0.16s ease, width 0.16s ease;
+}
+.block:hover > .block-edge-resize-bottom { opacity: 0.45; }
+.block-edge-resize-bottom:hover { opacity: 1; }
+.block-edge-resize-bottom:hover::before { background: var(--bh-color-strong); width: 48px; }
+.block.is-resizing > .block-edge-resize-bottom { opacity: 1; }
+
+@media (max-width: 880px) {
+  .block-edge-resize-bottom { display: none; }
+}
+
+/* ── INSERT (+) BUTTON (bottom edge, between cards) ──────────── */
+.block-insert {
+  position: absolute;
+  left: 50%;
+  bottom: -19px;
+  transform: translateX(-50%);
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px solid var(--bh-color);
+  background: var(--card);
+  color: var(--bh-color);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.16s ease, background 0.16s ease, color 0.16s ease, transform 0.16s ease;
+  z-index: 6;
+  padding: 0;
+}
+
+.block-insert svg { width: 10px; height: 10px; stroke: currentColor; stroke-width: 2.4; fill: none; stroke-linecap: round; }
+
+.block:hover > .block-insert { opacity: 0.85; }
+.block-insert:hover {
+  opacity: 1 !important;
+  background: var(--bh-color-strong);
+  color: var(--card);
+  transform: translateX(-50%) scale(1.12);
+}
+
+/* ── DRAGGING STATE ──────────────────────────────────────────── */
+.block.is-dragging {
+  opacity: 0.32;
+  transition: none;
+}
+
+body.blocks-dragging {
+  user-select: none;
+  -webkit-user-select: none;
+}
+body.blocks-dragging .block-insert,
+body.blocks-dragging .block-resize-grip,
+body.blocks-dragging .block-edge-resize,
+body.blocks-dragging .block-edge-resize-bottom { opacity: 0 !important; pointer-events: none; }
+
+body.blocks-dragging,
+body.blocks-dragging * { cursor: grabbing !important; }
+
+body.blocks-resizing,
+body.blocks-resizing * { cursor: col-resize !important; }
+
+/* ── GRID GUIDES (faint dashed boundary lines shown during a drag) ── */
+.block-grid-guides {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 90;
+}
+.grid-guide {
+  position: absolute;
+  pointer-events: none;
+}
+.grid-guide.v {
+  width: 0;
+  border-left: 1px dashed var(--bh-drop);
+  opacity: 0.28;
+}
+.grid-guide.h {
+  height: 0;
+  border-top: 1px dashed var(--bh-drop);
+  opacity: 0.2;
+}
+
+/* ── DROP LINE (blue) ────────────────────────────────────────── */
+.block-drop-line {
+  position: absolute;
+  height: 3px;
+  background: var(--bh-drop);
+  border-radius: 2px;
+  pointer-events: none;
+  z-index: 100;
+  box-shadow: 0 0 0 1px var(--bh-drop-soft), 0 3px 10px var(--bh-drop-soft);
+  transition: top 0.10s ease, left 0.10s ease, width 0.10s ease;
+}
+.block-drop-line::before,
+.block-drop-line::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--bh-drop);
+  transform: translateY(-50%);
+}
+.block-drop-line::before { left: -5px; }
+.block-drop-line::after { right: -5px; }
+
+/* Vertical variant — line down the side of a row, between columns */
+.block-drop-line.vertical {
+  width: 3px;
+  height: 100px;          /* overwritten inline */
+  box-shadow: 0 0 0 1px var(--bh-drop-soft), 3px 0 10px var(--bh-drop-soft);
+}
+.block-drop-line.vertical::before,
+.block-drop-line.vertical::after {
+  left: 50%;
+  top: auto;
+  right: auto;
+  transform: translateX(-50%);
+}
+.block-drop-line.vertical::before { top: -5px; }
+.block-drop-line.vertical::after  { bottom: -5px; }
+
+/* ── RESIZE GUIDE (blue line — vertical for width, horizontal for height) ── */
+.block-resize-guide {
+  position: absolute;
+  width: 2px;
+  background: var(--bh-drop);
+  pointer-events: none;
+  z-index: 100;
+  box-shadow: 0 0 0 1px var(--bh-drop-soft);
+  border-radius: 2px;
+}
+.block-resize-guide.horizontal {
+  width: auto;
+  height: 2px;
+}
+
+/* When corner-resizing, override the global col-resize cursor. */
+body.blocks-resizing-corner,
+body.blocks-resizing-corner * { cursor: nwse-resize !important; }
+
+.block-resize-badge {
+  position: fixed;
+  background: var(--bh-drop);
+  color: white;
+  font-family: var(--font-b, system-ui), system-ui;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 0.28rem 0.55rem;
+  border-radius: 5px;
+  pointer-events: none;
+  z-index: 1000;
+  transform: translate(12px, -50%);
+  box-shadow: 0 4px 14px rgba(0,0,0,0.18);
+  white-space: nowrap;
+}
+
+/* ── GHOST (drag preview) ────────────────────────────────────── */
+.block-ghost {
+  position: fixed;
+  pointer-events: none;
+  z-index: 999;
+  opacity: 0.88;
+  border-radius: var(--r, 14px);
+  box-shadow: 0 18px 44px rgba(0,0,0,0.22);
+  transform-origin: top left;
+  transition: none;
+  overflow: hidden;
+}
+
+.block-ghost > * { pointer-events: none; }
+
+/* ── NOTE BLOCKS (created via + insert) ──────────────────────── */
+.block-note .note-body {
+  font-family: var(--font-s, ui-serif), serif;
+  font-size: 1rem;
+  line-height: 1.55;
+  color: var(--text);
+  outline: none;
+  min-height: 1.5em;
+  padding: 0.25rem 0;
+}
+.block-note .note-body:empty::before {
+  content: attr(data-placeholder);
+  color: var(--muted2);
+  font-style: italic;
+}
+.block-note .note-head {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.4rem;
+  font-family: var(--font-b, system-ui);
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--bh-color);
+}
+.block-note .note-head svg { width: 12px; height: 12px; }
+.block-note .note-del {
+  margin-left: auto;
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  opacity: 0;
+  transition: opacity 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  padding: 0;
+}
+.block-note .note-del svg { width: 10px; height: 10px; stroke: currentColor; stroke-width: 2.2; fill: none; stroke-linecap: round; }
+.block-note:hover .note-del { opacity: 0.7; }
+.block-note .note-del:hover { opacity: 1; color: var(--red, #b8501e); border-color: var(--red, #b8501e); }

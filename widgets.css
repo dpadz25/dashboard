@@ -1,0 +1,241 @@
+/* ──────────────────────────────────────────────────────────────
+   WIDGETS — Clock + Pomodoro (matches the dashboard's card system)
+   Uses only existing design tokens. Theme-aware via var() fallbacks.
+   ────────────────────────────────────────────────────────────── */
+
+/* ── CLOCK ──────────────────────────────────────────────────── */
+.clock-face {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.5rem 0 0.25rem;
+}
+
+.clock-time {
+  font-family: var(--font-d);
+  font-weight: 800;
+  font-size: clamp(2.6rem, 7vw, 3.6rem);
+  letter-spacing: -0.04em;
+  line-height: 0.95;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  display: flex;
+  align-items: baseline;
+  gap: 0.18em;
+}
+
+.clock-colon { animation: clockBlink 1s steps(1) infinite; }
+@keyframes clockBlink { 50% { opacity: 0.28; } }
+
+.clock-secs {
+  font-size: 0.34em;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 0.02em;
+  align-self: flex-start;
+  margin-top: 0.35em;
+  font-variant-numeric: tabular-nums;
+}
+
+.clock-ampm {
+  font-family: var(--font-b);
+  font-size: 0.26em;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+  text-transform: uppercase;
+  align-self: flex-end;
+  margin-bottom: 0.55em;
+}
+
+.clock-date {
+  font-family: var(--font-s);
+  font-style: italic;
+  font-size: 0.95rem;
+  color: var(--muted);
+  letter-spacing: 0.01em;
+}
+
+.clock-format-btn {
+  font-family: var(--font-b);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 0.28rem 0.55rem;
+  border-radius: var(--r-xs);
+  border: 1px solid var(--border2);
+  background: var(--surface2);
+  color: var(--muted);
+  cursor: pointer;
+  transition: color var(--t-fast), border-color var(--t-fast);
+  white-space: nowrap;
+}
+.clock-format-btn:hover { color: var(--text-s); border-color: var(--accent); }
+
+/* ── POMODORO ───────────────────────────────────────────────── */
+.pomo-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.pomo-ring-wrap {
+  position: relative;
+  width: 152px;
+  height: 152px;
+  flex-shrink: 0;
+}
+
+.pomo-ring-wrap svg { transform: rotate(-90deg); display: block; }
+
+.pomo-ring-bg { fill: none; stroke: var(--surface3); stroke-width: 8; }
+
+.pomo-ring-fg {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 8;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.4s linear, stroke 0.3s var(--ease);
+}
+
+.pomo-readout {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+}
+
+.pomo-time {
+  font-family: var(--font-d);
+  font-weight: 800;
+  font-size: 2.1rem;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.pomo-mode-lbl {
+  font-family: var(--font-b);
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+  transition: color 0.3s var(--ease);
+}
+
+/* mode accents — drive both ring + label via the card data-attr */
+.pomo-card[data-mode="short"] .pomo-ring-fg { stroke: var(--green); }
+.pomo-card[data-mode="short"] .pomo-mode-lbl { color: var(--green); }
+.pomo-card[data-mode="long"]  .pomo-ring-fg { stroke: var(--blue); }
+.pomo-card[data-mode="long"]  .pomo-mode-lbl { color: var(--blue); }
+
+.pomo-card.running .pomo-time { animation: pomoPulse 2s var(--ease) infinite; }
+@keyframes pomoPulse { 50% { opacity: 0.72; } }
+
+.pomo-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.pomo-btn-main {
+  font-family: var(--font-d);
+  font-weight: 800;
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 0.6rem 1.6rem;
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  background: var(--accent);
+  color: var(--on-accent);
+  transition: background var(--t-fast), transform 0.1s;
+  min-width: 116px;
+}
+.pomo-btn-main:hover { background: var(--accent-s); }
+.pomo-btn-main:active { transform: scale(0.97); }
+
+.pomo-card[data-mode="short"] .pomo-btn-main { background: var(--green); }
+.pomo-card[data-mode="short"] .pomo-btn-main:hover { background: var(--green-s); }
+.pomo-card[data-mode="long"]  .pomo-btn-main { background: var(--blue); }
+.pomo-card[data-mode="long"]  .pomo-btn-main:hover { filter: brightness(0.92); }
+
+.pomo-sessions {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 18px;
+}
+
+.pomo-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border2);
+  background: transparent;
+  transition: all var(--t-fast);
+}
+.pomo-dot.filled { background: var(--accent); border-color: var(--accent); }
+
+.pomo-sessions-count {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-left: 0.25rem;
+}
+
+/* durations editor */
+.pomo-edit {
+  display: none;
+  width: 100%;
+  gap: 0.5rem;
+  padding-top: 0.9rem;
+  margin-top: 0.1rem;
+  border-top: 1px solid var(--border);
+}
+.pomo-edit.open { display: flex; }
+
+.pomo-edit-field {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.pomo-edit-field label {
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  text-align: center;
+}
+
+.pomo-edit-field input {
+  font-family: var(--font-d);
+  font-weight: 800;
+  font-size: 0.95rem;
+  text-align: center;
+  padding: 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: var(--r-xs);
+  background: var(--surface2);
+  color: var(--text);
+  outline: none;
+  transition: border-color var(--t-fast);
+  -moz-appearance: textfield;
+}
+.pomo-edit-field input:focus { border-color: var(--accent); }
+.pomo-edit-field input::-webkit-outer-spin-button,
+.pomo-edit-field input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }

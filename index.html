@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="amber">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Delan's Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300;12..96,400;12..96,700;12..96,800&family=Inter:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="blocks.css">
+  <link rel="stylesheet" href="widgets.css">
+
+  <!-- Firebase SDK (cloud sync) -->
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+
+  <!-- Sync button styles -->
+  <style>
+    .sync-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.25rem 0.6rem;
+      border-radius: 999px;
+      background: var(--surface2, rgba(255,255,255,0.06));
+      border: 1px solid var(--border, rgba(255,255,255,0.08));
+      color: var(--muted, #888);
+      font-size: 0.6rem;
+      font-family: var(--font-b, sans-serif);
+      letter-spacing: 0.02em;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .sync-pill:hover {
+      background: var(--surface3, rgba(255,255,255,0.1));
+      color: var(--text-s, #ccc);
+    }
+    .sync-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #4ade80;
+      flex-shrink: 0;
+    }
+    .sync-dot.offline {
+      background: var(--muted, #666);
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══ LEFT SIDE RAIL (Quick Links) ════════════════════════ -->
+<aside class="side-rail" id="sideRail" data-section="quicklinks">
+  <div class="side-rail-inner" id="sideRailInner"></div>
+</aside>
+
+<!-- Mobile-only floating quick links button -->
+<button class="qlinks-fab" id="qlinksFab" onclick="dash.toggleMobileLinks()" aria-label="Quick links">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+</button>
+
+<div class="dash">
+<div class="blocks" id="blocks">
+
+  <!-- ═══ HEADER ════════════════════════════════════════════ -->
+  <section class="header-card block fade-in s1" id="headerCard" data-card-id="header" data-screen-label="01 Header" data-default-span="2">
+    <div class="header-card-content">
+      <div>
+        <div class="greeting" id="greeting">Good morning, <em>Delan</em>.</div>
+        <div class="date-line" id="dateLine"></div>
+      </div>
+      <div class="header-right">
+        <div class="weather-pill" id="weatherPill">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+          <span id="wText">Loading…</span>
+        </div>
+        <button class="sync-pill" id="syncBtn">Sign in to sync</button>
+        <div class="quote-line" id="quoteLine">small steps, every day.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ PLANNER ═══════════════════════════════════════════ -->
+    <!-- PLANNER -->
+    <div class="card block fade-in s2" data-card-id="planner" data-screen-label="02 Planner" data-default-span="2">
+      <div class="sec-label-row">
+        <div>
+          <div class="sec-label teal" style="margin-bottom:0.5rem">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+            School Planner
+          </div>
+          <div class="tabs" id="plannerTabs">
+            <button class="tab planner-tab active" onclick="dash.switchTab('all',this)">All</button>
+            <!-- class tabs injected here -->
+            <button class="tab planner-tab" onclick="dash.switchTab('priority',this)">Priority</button>
+          </div>
+        </div>
+        <button class="icon-btn" onclick="dash.openClassesModal()" title="Manage classes">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </button>
+      </div>
+
+      <div class="task-add-form" style="margin-top:0.5rem">
+        <input class="t-input" id="taskName" placeholder="Task name…" onkeydown="if(event.key==='Enter')dash.addTask()"/>
+        <input class="t-input" id="taskDue" type="date"/>
+        <select class="t-select" id="taskClass"><option value="">No class</option></select>
+        <select class="t-select" id="taskType">
+          <optgroup label="School">
+            <option value="assignment">Assignment</option>
+            <option value="essay">Essay</option>
+            <option value="quiz">Quiz</option>
+            <option value="exam">Exam</option>
+            <option value="project">Project</option>
+            <option value="reading">Reading</option>
+            <option value="study">Study</option>
+            <option value="discussion">Discussion</option>
+            <option value="test">Test</option>
+            <option value="presentation">Presentation</option>
+          </optgroup>
+          <option value="priority">Priority</option>
+        </select>
+        <button class="btn-add" onclick="dash.addTask()">Add</button>
+      </div>
+
+      <div class="task-list" id="plannerList"></div>
+    </div>
+
+      <div class="card block fade-in s2" data-card-id="dates" data-screen-label="02b Important Dates" data-default-span="1">
+        <div class="sec-label accent">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          Important Dates
+        </div>
+        <div class="date-add-row">
+          <input class="t-input" id="dateLabel" placeholder="Event name…"/>
+          <div class="row2">
+            <input class="t-input" id="dateDate" type="date"/>
+            <button class="btn-add" onclick="dash.addDate()" style="font-size:1rem;padding:0.4rem 0.7rem;line-height:1">+</button>
+          </div>
+        </div>
+        <div class="dates-list" id="datesList"></div>
+      </div>
+
+      <div class="card block fade-in s2" data-section="goals" data-card-id="goals" data-screen-label="02c Goals" data-default-span="1">
+        <div class="sec-label-row">
+          <div class="sec-label purple" style="margin-bottom:0">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+            Goals
+          </div>
+          <div class="tabs">
+            <button class="tab goals-tab active" onclick="dash.switchGoalScope('year',this)">Year</button>
+            <button class="tab goals-tab" onclick="dash.switchGoalScope('quarter',this)">Qtr</button>
+            <button class="tab goals-tab" onclick="dash.switchGoalScope('week',this)">Wk</button>
+          </div>
+        </div>
+        <div style="display:flex;gap:0.375rem;margin-bottom:0.75rem">
+          <input class="t-input" id="goalInput" placeholder="A goal…" style="flex:1" onkeydown="if(event.key==='Enter')dash.addGoal()"/>
+          <button class="btn-add" onclick="dash.addGoal()">Add</button>
+        </div>
+        <div class="goals-list" id="goalsList"></div>
+      </div>
+
+  <!-- ═══ AGENDA ════════════════════════════════════════════ -->
+  <section class="card block fade-in s3" data-card-id="agenda" data-screen-label="03 Agenda" data-default-span="2">
+    <div class="sec-label-row">
+      <div class="sec-label teal">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+        Agenda
+      </div>
+      <div class="agenda-tabs">
+        <button class="agenda-tab active" onclick="dash.switchAgendaView('week',this)">This Week</button>
+        <button class="agenda-tab" onclick="dash.switchAgendaView('tomorrow',this)">Tomorrow</button>
+        <button class="agenda-tab" onclick="dash.switchAgendaView('schedule',this)">Schedule</button>
+        <button class="agenda-tab" onclick="dash.switchAgendaView('month',this)">Month</button>
+        <button class="agenda-tab" onclick="dash.switchAgendaView('events',this)">Events</button>
+        <button class="agenda-tab" onclick="dash.switchAgendaView('habits',this)">Habits</button>
+      </div>
+    </div>
+
+    <div class="agenda-body">
+      <div id="agenda-week"><div class="week-strip" id="weekStrip"></div></div>
+      <div id="agenda-tomorrow" style="display:none"><div class="tomorrow-body" id="tomorrowBody"></div></div>
+      <div id="agenda-schedule" style="display:none"><div class="schedule-body" id="scheduleBody"></div></div>
+      <div id="agenda-month" style="display:none">
+        <div class="month-nav" style="margin-bottom:0.75rem">
+          <button class="icon-btn" onclick="dash.calNavMonth(-1)">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+          </button>
+          <div class="month-title" id="monthTitle"></div>
+          <button class="icon-btn" onclick="dash.calNavMonth(1)">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+          </button>
+        </div>
+        <div class="cal-grid-header">
+          <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+        </div>
+        <div class="cal-grid" id="calGrid"></div>
+      </div>
+      <div id="agenda-events" style="display:none"><div class="dates-list" id="eventsBody"></div></div>
+      <div id="agenda-habits" style="display:none"><div class="habit-heat" id="habitsBody"></div></div>
+    </div>
+  </section>
+
+  <!-- ═══ NON-NEGOTIABLES (Habits) ═════════════════════════ -->
+  <section class="card block fade-in s4" data-card-id="habits" data-screen-label="04 Non-Negotiables" data-default-span="2">
+    <div class="sec-label-row">
+      <div class="habits-header-left">
+        <div class="sec-label green" style="margin-bottom:0">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4 12 14.01l-3-3"/></svg>
+          Non-Negotiables
+        </div>
+        <div class="ring-wrap">
+          <svg width="44" height="44" viewBox="0 0 44 44">
+            <circle cx="22" cy="22" r="17" fill="none" stroke="var(--border)" stroke-width="3"/>
+            <circle cx="22" cy="22" r="17" fill="none" stroke="var(--green)" stroke-width="3"
+              stroke-dasharray="106.81" stroke-dashoffset="106.81"
+              stroke-linecap="round" id="habitRing" style="transition:stroke-dashoffset 0.6s var(--ease)"/>
+          </svg>
+          <div class="ring-pct" id="habitPct">0%</div>
+        </div>
+      </div>
+      <button class="icon-btn" id="editHabitBtn" onclick="dash.toggleHabitEdit()" title="Edit habits">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+      </button>
+    </div>
+    <div class="habits-grid" id="habitsGrid"></div>
+    <div class="habits-edit-panel" id="habitEditPanel">
+      <div id="habitEditRows"></div>
+      <div style="display:flex;gap:0.5rem;margin-top:0.75rem">
+        <input class="t-input" id="newHabitLabel" placeholder="New habit name…" style="flex:1" onkeydown="if(event.key==='Enter')dash.addHabit()"/>
+        <button class="btn-add" onclick="dash.addHabit()">Add</button>
+      </div>
+    </div>
+  </section>
+
+    <!-- LIFE CHECKLIST -->
+    <div class="card block fade-in s5" data-section="life" data-card-id="life" data-screen-label="05 Life" data-default-span="1">
+      <div class="sec-label-row">
+        <div class="sec-label green">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/></svg>
+          Life
+        </div>
+        <button class="icon-btn" onclick="dash.clearDoneLife()" title="Clear completed">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+        </button>
+      </div>
+      <div style="display:flex;gap:0.375rem;margin-bottom:0.75rem">
+        <input class="t-input" id="lifeInput" placeholder="something to do…" style="flex:1" onkeydown="if(event.key==='Enter')dash.addLife()"/>
+        <button class="btn-add" onclick="dash.addLife()">Add</button>
+      </div>
+      <div class="life-list" id="lifeList"></div>
+    </div>
+
+    <!-- CURRENTLY CAROUSEL -->
+    <div class="card block fade-in s5" data-section="currently" data-card-id="currently" data-screen-label="05b Currently" data-default-span="1">
+      <div class="sec-label-row">
+        <div class="sec-label accent">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          Currently
+        </div>
+        <div class="tabs" id="currentlyTabs">
+          <button class="tab cur-tab active" onclick="dash.switchCurKind('reading',this)">📖 Reading</button>
+          <button class="tab cur-tab" onclick="dash.switchCurKind('watching',this)">🎬 Watching</button>
+          <button class="tab cur-tab" onclick="dash.switchCurKind('playing',this)">🎮 Playing</button>
+        </div>
+      </div>
+
+      <div class="carousel" id="currentlyCarousel"></div>
+
+      <div class="carousel-controls">
+        <button class="carousel-nav" id="curPrev" onclick="dash.curPrev()" aria-label="Previous">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+        </button>
+        <div class="carousel-dots" id="curDots"></div>
+        <button class="carousel-nav" id="curNext" onclick="dash.curNext()" aria-label="Next">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+        </button>
+        <button class="btn-ghost" onclick="dash.curAdd()" style="margin-left:auto;font-size:0.7rem;padding:0.3rem 0.6rem">+ Add</button>
+      </div>
+    </div>
+
+  <!-- ═══ APPLE HEALTH ═════════════════════════════════════ -->
+  <section class="card block fade-in s6" data-section="health" data-card-id="health" data-screen-label="06 Apple Health" id="healthCard" data-default-span="2">
+    <div class="sec-label-row">
+      <button class="sec-label red health-collapse-toggle" id="healthToggle" onclick="dash.toggleHealth()" aria-expanded="true">
+        <svg class="health-caret" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+        <span>Apple Health</span>
+      </button>
+      <div style="display:flex;gap:0.4rem;align-items:center">
+        <span class="health-status" id="healthStatus">Not synced</span>
+        <button class="btn-ghost" onclick="dash.openHealthModal()" style="font-size:0.7rem;padding:0.3rem 0.6rem">Sync</button>
+      </div>
+    </div>
+
+    <div class="health-body" id="healthBody">
+      <div class="health-grid" id="healthGrid"></div>
+    </div>
+  </section>
+
+  <!-- ═══ PEOPLE ═══════════════════════════════════════════ -->
+  <section class="card block fade-in s7" data-section="people" data-card-id="people" data-screen-label="07 People" data-default-span="2">
+    <div class="sec-label-row">
+      <div class="sec-label green">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        People I love
+      </div>
+      <span style="font-size:0.65rem;color:var(--muted2);letter-spacing:0.05em">tap ✓ when you've seen them</span>
+    </div>
+    <div style="display:flex;gap:0.375rem;margin-bottom:0.75rem">
+      <input class="t-input" id="personName" placeholder="add someone (mom, jo, friend…)" style="flex:1" onkeydown="if(event.key==='Enter')dash.addPerson()"/>
+      <button class="btn-add" onclick="dash.addPerson()">Add</button>
+    </div>
+    <div class="people-list" id="peopleList"></div>
+  </section>
+
+  <!-- ═══ CLOCK ════════════════════════════════════════════ -->
+  <section class="card block fade-in" data-section="clock" data-card-id="clock" data-screen-label="08 Clock" data-default-span="1">
+    <div class="sec-label-row">
+      <div class="sec-label blue">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+        Local Time
+      </div>
+      <button class="clock-format-btn" id="clockFormatBtn" onclick="window.widgets.toggleClockFormat()" title="Toggle 12 / 24 hour">12h</button>
+    </div>
+    <div class="clock-face">
+      <div class="clock-time" id="clockTime">--:--</div>
+      <div class="clock-date" id="clockDate"></div>
+    </div>
+  </section>
+
+  <!-- ═══ POMODORO ═════════════════════════════════════════ -->
+  <section class="card block fade-in pomo-card" id="pomoCard" data-mode="focus" data-section="pomodoro" data-card-id="pomodoro" data-screen-label="09 Pomodoro" data-default-span="1">
+    <div class="sec-label-row">
+      <div class="sec-label accent">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="10" y1="2" x2="14" y2="2"/><circle cx="12" cy="14" r="8"/><line x1="12" y1="14" x2="15" y2="11"/></svg>
+        Focus Timer
+      </div>
+      <div class="tabs" id="pomoTabs">
+        <button class="tab pomo-tab active" data-mode="focus" onclick="window.widgets.setPomoMode('focus')">Focus</button>
+        <button class="tab pomo-tab" data-mode="short" onclick="window.widgets.setPomoMode('short')">Break</button>
+        <button class="tab pomo-tab" data-mode="long" onclick="window.widgets.setPomoMode('long')">Long</button>
+      </div>
+    </div>
+
+    <div class="pomo-body">
+      <div class="pomo-ring-wrap">
+        <svg width="152" height="152" viewBox="0 0 152 152">
+          <circle class="pomo-ring-bg" cx="76" cy="76" r="70"/>
+          <circle class="pomo-ring-fg" id="pomoRing" cx="76" cy="76" r="70" stroke-dasharray="439.8" stroke-dashoffset="0"/>
+        </svg>
+        <div class="pomo-readout">
+          <div class="pomo-time" id="pomoTime">25:00</div>
+          <div class="pomo-mode-lbl" id="pomoModeLbl">Focus</div>
+        </div>
+      </div>
+
+      <div class="pomo-controls">
+        <button class="pomo-btn-main" id="pomoStart" onclick="window.widgets.pomoToggle()">Start</button>
+        <button class="icon-btn" onclick="window.widgets.pomoReset()" title="Reset">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9 9 0 0 0-6.36 2.64L3 8"/><path d="M3 3v5h5"/></svg>
+        </button>
+        <button class="icon-btn" id="pomoEditBtn" onclick="window.widgets.pomoToggleEdit()" title="Set durations">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </button>
+      </div>
+
+      <div class="pomo-sessions" id="pomoSessions"></div>
+
+      <div class="pomo-edit" id="pomoEdit">
+        <div class="pomo-edit-field">
+          <label>Focus</label>
+          <input type="number" id="pomoDurFocus" min="1" max="180" onchange="window.widgets.updatePomoDur('focus',this.value)"/>
+        </div>
+        <div class="pomo-edit-field">
+          <label>Break</label>
+          <input type="number" id="pomoDurShort" min="1" max="180" onchange="window.widgets.updatePomoDur('short',this.value)"/>
+        </div>
+        <div class="pomo-edit-field">
+          <label>Long</label>
+          <input type="number" id="pomoDurLong" min="1" max="180" onchange="window.widgets.updatePomoDur('long',this.value)"/>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+</div>
+
+<!-- ═══ TWEAKS PANEL + FAB ═══════════════════════════════════ -->
+<button class="tweak-fab" id="tweakFab" onclick="tweaks.open()" title="Tweaks">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
+</button>
+<div class="tweaks-panel" id="tweaksPanel"></div>
+
+<!-- ═══ MODALS ═══════════════════════════════════════════════ -->
+
+<!-- Add Quick Link -->
+<div class="modal-overlay" id="qlinkModal" onclick="if(event.target===this)dash.closeQlinkModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Add a Quick Link</div>
+      <button class="modal-close" onclick="dash.closeQlinkModal()"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:0.5rem">
+      <input class="t-input" id="qlmLabel" placeholder="Label (e.g. Obsidian)"/>
+      <input class="t-input" id="qlmUrl"   placeholder="URL (e.g. https://… or obsidian://open)"/>
+      <input class="t-input" id="qlmIcon"  placeholder="Icon style (obsidian / notion / spotify / gmail / gcal / github / youtube / figma) — optional"/>
+      <input class="t-input" id="qlmKbd"   placeholder="Hotkey letter (⌥ + key) — optional" maxlength="1"/>
+      <div style="display:flex;gap:0.5rem;margin-top:0.5rem;justify-content:flex-end">
+        <button class="btn-ghost" onclick="dash.closeQlinkModal()">Cancel</button>
+        <button class="btn-add" onclick="dash.submitQlink()">Add link</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Manage School Classes -->
+<div class="modal-overlay" id="classesModal" onclick="if(event.target===this)dash.closeClassesModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">School Classes</div>
+      <button class="modal-close" onclick="dash.closeClassesModal()"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    </div>
+    <p style="font-size:0.8rem;color:var(--muted);margin-bottom:1rem;line-height:1.5">Add the classes you're taking this term — they'll show up as filter tabs in your planner and as colored badges on each task.</p>
+    <div id="classesEditList" style="display:flex;flex-direction:column;gap:0.4rem;margin-bottom:0.75rem"></div>
+    <div style="display:flex;gap:0.375rem">
+      <input class="t-input" id="classNewName" placeholder="e.g. MATH 121 — Calculus" style="flex:1" onkeydown="if(event.key==='Enter')dash.addClass()"/>
+      <input class="t-input" id="classNewColor" type="color" value="#5a9e96" style="width:42px;padding:2px;cursor:pointer"/>
+      <button class="btn-add" onclick="dash.addClass()">Add</button>
+    </div>
+  </div>
+</div>
+
+<!-- Apple Health Sync -->
+<div class="modal-overlay" id="healthModal" onclick="if(event.target===this)dash.closeHealthModal()">
+  <div class="modal" style="max-width:580px">
+    <div class="modal-header">
+      <div class="modal-title">Sync from Apple Health</div>
+      <button class="modal-close" onclick="dash.closeHealthModal()"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    </div>
+
+    <div style="background:var(--accent-dim);border:1px solid var(--accent-s);border-radius:var(--r-sm);padding:0.75rem 1rem;margin-bottom:1rem;font-size:0.8rem;color:var(--text-s);line-height:1.55">
+      <strong style="color:var(--accent);font-family:var(--font-d);letter-spacing:-0.01em">Heads up:</strong> browsers can't talk to Apple Health directly. Build a 30-second iOS Shortcut that reads from Health and copies a JSON line — then paste it below. The dashboard will update.
+    </div>
+
+    <details style="margin-bottom:1rem;font-size:0.8rem;color:var(--text-s)">
+      <summary style="cursor:pointer;color:var(--accent);font-weight:600;padding:0.3rem 0">How to make the Shortcut →</summary>
+      <ol style="margin:0.6rem 0 0 1.2rem;line-height:1.7;color:var(--muted)">
+        <li>Open Shortcuts → New → name it "Sync Dashboard"</li>
+        <li>Add <em>Get Health Sample</em> for Sleep Analysis (Today), Steps (Today), and Active Energy (Today)</li>
+        <li>Add <em>Text</em> action with JSON like <code style="background:var(--surface3);padding:1px 5px;border-radius:3px">{"sleep":7.5,"steps":8431,"energy":420}</code> using each value</li>
+        <li>Add <em>Copy to Clipboard</em></li>
+        <li>Run it daily, then paste here. Or pin it to your Lock Screen for one-tap sync.</li>
+      </ol>
+    </details>
+
+    <label style="font-size:0.7rem;color:var(--muted);letter-spacing:0.06em;text-transform:uppercase;font-weight:700">Paste JSON</label>
+    <textarea class="t-input" id="healthJson" rows="4" placeholder='{"sleep": 7.5, "steps": 8431, "energy": 420, "heart": 64}' style="margin-top:0.4rem;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:0.75rem;line-height:1.5"></textarea>
+
+    <div style="display:flex;gap:0.5rem;margin-top:0.75rem;justify-content:space-between;align-items:center;flex-wrap:wrap">
+      <button class="btn-ghost" onclick="dash.openManualHealth()">Or log manually →</button>
+      <div style="display:flex;gap:0.5rem">
+        <button class="btn-ghost" onclick="dash.closeHealthModal()">Cancel</button>
+        <button class="btn-add" onclick="dash.syncHealth()">Sync now</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Manual health log -->
+<div class="modal-overlay" id="healthManualModal" onclick="if(event.target===this)dash.closeManualHealth()">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Manual Health Log</div>
+      <button class="modal-close" onclick="dash.closeManualHealth()"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem">
+      <label style="display:flex;flex-direction:column;gap:0.25rem;font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;font-weight:700">
+        Sleep (h) <input class="t-input" type="number" step="0.1" id="hm_sleep"/>
+      </label>
+      <label style="display:flex;flex-direction:column;gap:0.25rem;font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;font-weight:700">
+        Steps <input class="t-input" type="number" id="hm_steps"/>
+      </label>
+      <label style="display:flex;flex-direction:column;gap:0.25rem;font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;font-weight:700">
+        Active Energy (kcal) <input class="t-input" type="number" id="hm_energy"/>
+      </label>
+      <label style="display:flex;flex-direction:column;gap:0.25rem;font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;font-weight:700">
+        Resting HR (bpm) <input class="t-input" type="number" id="hm_heart"/>
+      </label>
+    </div>
+    <div style="display:flex;gap:0.5rem;margin-top:1rem;justify-content:flex-end">
+      <button class="btn-ghost" onclick="dash.closeManualHealth()">Cancel</button>
+      <button class="btn-add" onclick="dash.saveManualHealth()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SCRIPTS ════════════════════════════════════════════════
+     firebase-sync.js loads FIRST so it can intercept localStorage
+     before any other script reads/writes data.
+     ═══════════════════════════════════════════════════════════ -->
+<script src="firebase-sync.js"></script>
+<script src="icons.js"></script>
+<script src="dashboard.js"></script>
+<script src="tweaks.js"></script>
+<script src="blocks.js"></script>
+<script src="widgets.js"></script>
+<script>window.dash.boot(); window.blocks.boot(); window.widgets.boot();</script>
+
+</body>
+</html>
