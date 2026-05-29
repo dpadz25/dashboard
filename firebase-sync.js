@@ -15,12 +15,12 @@
      See the README for setup instructions.
      ─────────────────────────────────────────────────────────── */
   const FIREBASE_CONFIG = {
-    apiKey:            'PASTE_YOUR_API_KEY',
-    authDomain:        'PASTE_YOUR_PROJECT.firebaseapp.com',
-    projectId:         'PASTE_YOUR_PROJECT_ID',
-    storageBucket:     'PASTE_YOUR_PROJECT.firebasestorage.app',
-    messagingSenderId: 'PASTE_YOUR_SENDER_ID',
-    appId:             'PASTE_YOUR_APP_ID'
+    apiKey:            'AIzaSyBxjP3IEqGSBu6xWQ7QPhKOEUCiurqsa2s',
+    authDomain:        'delan-dashboard.firebaseapp.com',
+    projectId:         'delan-dashboard',
+    storageBucket:     'delan-dashboard.firebasestorage.app',
+    messagingSenderId: '516820390811',
+    appId:             '1:516820390811:web:90b58f1fee4088c991473e'
   };
 
   /* ── Which localStorage keys get synced ──────────────────────
