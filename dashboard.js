@@ -16,6 +16,132 @@ function save(k, v)  { try { localStorage.setItem(k, JSON.stringify(v)); } catch
 function todayStr()  { return new Date().toISOString().slice(0,10); }
 window.dashUtil = { $, $$, uid, esc, load, save, todayStr };
 
+/* ─── IMAGE STORE (IndexedDB) ──────────────────────────────────
+   Big background photos are far too large for localStorage's ~5 MB
+   quota — once a couple of high-res images are saved, every further
+   save silently fails (that's why "some images don't upload").
+   IndexedDB gives us hundreds of MB, so photos save reliably and can
+   be much higher resolution. We keep a synchronous in-memory cache so
+   the existing render code stays simple: preload everything at boot,
+   then read with getCached() and write with set()/del() (async, but
+   the cache updates immediately). Small metadata stays in localStorage. */
+const dashStore = (function () {
+  const DB = 'dashUserImages', STORE = 'img', VER = 1;
+  const cache = new Map();
+  let dbp = null;
+  function openDB() {
+    if (dbp) return dbp;
+    dbp = new Promise((res, rej) => {
+      let r;
+      try { r = indexedDB.open(DB, VER); }
+      catch (e) { return rej(e); }
+      r.onupgradeneeded = () => {
+        const db = r.result;
+        if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE);
+      };
+      r.onsuccess = () => res(r.result);
+      r.onerror = () => rej(r.error);
+    });
+    return dbp;
+  }
+  function rawSet(key, val) {
+    return openDB().then(db => new Promise((res, rej) => {
+      const tx = db.transaction(STORE, 'readwrite');
+      tx.objectStore(STORE).put(val, key);
+      tx.oncomplete = () => res();
+      tx.onerror = () => rej(tx.error);
+    }));
+  }
+  function rawDel(key) {
+    return openDB().then(db => new Promise((res, rej) => {
+      const tx = db.transaction(STORE, 'readwrite');
+      tx.objectStore(STORE).delete(key);
+      tx.oncomplete = () => res();
+      tx.onerror = () => rej(tx.error);
+    }));
+  }
+  function rawGetAll() {
+    return openDB().then(db => new Promise((res, rej) => {
+      const tx = db.transaction(STORE, 'readonly');
+      const os = tx.objectStore(STORE);
+      const keysReq = os.getAllKeys();
+      const valsReq = os.getAll();
+      tx.oncomplete = () => {
+        const ks = keysReq.result || [], vs = valsReq.result || [];
+        const m = new Map();
+        ks.forEach((k, i) => m.set(k, vs[i]));
+        res(m);
+      };
+      tx.onerror = () => rej(tx.error);
+    }));
+  }
+  function getCached(key) { return cache.has(key) ? cache.get(key) : null; }
+  async function set(key, val) {
+    cache.set(key, val);
+    // Nudge other same-origin frames (e.g. the phone preview) to reload,
+    // since IndexedDB writes don't fire 'storage' events the way localStorage does.
+    try { localStorage.setItem('imgRev', String(Date.now())); } catch (e) {}
+    try { await rawSet(key, val); } catch (e) { console.warn('image store set failed', e); }
+  }
+  async function del(key) {
+    cache.delete(key);
+    try { localStorage.setItem('imgRev', String(Date.now())); } catch (e) {}
+    try { await rawDel(key); } catch (e) { /* ignore */ }
+  }
+  async function clearAll() {
+    cache.clear();
+    try {
+      const db = await openDB();
+      await new Promise((res, rej) => {
+        const tx = db.transaction(STORE, 'readwrite');
+        tx.objectStore(STORE).clear();
+        tx.oncomplete = () => res();
+        tx.onerror = () => rej(tx.error);
+      });
+    } catch (e) { /* ignore */ }
+  }
+  async function migrateLegacy() {
+    if (localStorage.getItem('imgMigrated_v2')) return;
+    const readLS = k => { try { const v = JSON.parse(localStorage.getItem(k)); return (typeof v === 'string' && v.startsWith('data:')) ? v : null; } catch { return null; } };
+    // page + rail backgrounds
+    for (const k of ['pageBg', 'sideRailBg']) {
+      const v = readLS(k);
+      if (v) { await set(k, v); localStorage.removeItem(k); }
+    }
+    // legacy single headerBg → per-card system
+    const legacyHeader = readLS('headerBg');
+    if (legacyHeader && !cache.has('cardimg:cardBg::header') && !localStorage.getItem('cardBg::header')) {
+      await set('cardimg:cardBg::header', legacyHeader);
+      save('cardBg::header', { hasImg: true, intensity: 70, posX: 50, posY: 50, zoom: 100 });
+      localStorage.removeItem('headerBg');
+    }
+    // per-card backgrounds: pull embedded .img out into IndexedDB
+    Object.keys(localStorage).filter(k => k.startsWith('cardBg::')).forEach(k => {
+      let cfg; try { cfg = JSON.parse(localStorage.getItem(k)); } catch { return; }
+      if (cfg && cfg.img) {
+        const img = cfg.img;
+        delete cfg.img;
+        cfg.hasImg = true;
+        // queue (sync localStorage now; IDB set below)
+        save(k, cfg);
+        cache.set('cardimg:' + k, img);
+        rawSet('cardimg:' + k, img).catch(() => {});
+      }
+    });
+    localStorage.setItem('imgMigrated_v2', '1');
+  }
+  const ready = (async () => {
+    if (!('indexedDB' in window)) return;
+    try {
+      const m = await rawGetAll();
+      m.forEach((v, k) => cache.set(k, v));
+    } catch (e) { console.warn('image store load failed', e); }
+    try { await migrateLegacy(); } catch (e) { console.warn('image migration failed', e); }
+  })();
+  return { ready, getCached, set, del, clearAll };
+})();
+window.dashStore = dashStore;
+
 // ─── Custom icons (uploaded data URLs) ──────────────────────
 function getCustomIcons() { return load('customIcons', {}); }
 function saveCustomIcons(c) { save('customIcons', c); }
@@ -56,6 +182,31 @@ function initHeader() {
     `<span>${MONTHS[now.getMonth()]} ${now.getDate()}, ${now.getFullYear()}</span>`;
   const seed = Math.floor((+now - new Date(now.getFullYear(),0,1)) / 86400000);
   $('quoteLine').textContent = QUOTES[seed % QUOTES.length];
+
+  const wb = $('weekNum');
+  if (wb) wb.textContent = 'Week ' + isoWeekNum(now);
+}
+
+// ISO-8601 week number (weeks start Monday; week 1 contains the year's first Thursday)
+function isoWeekNum(d) {
+  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const day = (date.getUTCDay() + 6) % 7;      // Mon=0 … Sun=6
+  date.setUTCDate(date.getUTCDate() - day + 3); // nearest Thursday
+  const firstThu = new Date(Date.UTC(date.getUTCFullYear(), 0, 4));
+  const firstDay = (firstThu.getUTCDay() + 6) % 7;
+  firstThu.setUTCDate(firstThu.getUTCDate() - firstDay + 3);
+  return 1 + Math.round((date - firstThu) / (7 * 86400000));
+}
+
+// Header "Week N" button → jump to the agenda's This Week view
+function jumpToWeek() {
+  const tab = document.querySelector('.agenda-tab');
+  if (tab) switchAgendaView('week', tab);
+  const agenda = document.querySelector('[data-card-id="agenda"]');
+  if (agenda) {
+    const y = agenda.getBoundingClientRect().top + window.pageYOffset - 12;
+    window.scrollTo({ top: y, behavior: 'smooth' });
+  }
 }
 
 // ─── WEATHER ──────────────────────────────────────────────────
@@ -208,25 +359,26 @@ function toggleMobileLinks() {
   $('sideRail').classList.toggle('mobile-open');
 }
 
-function pickSideRailBg() {
+function pickSideRailBg(done) {
   const input = document.createElement('input');
-  input.type = 'file'; input.accept = 'image/*';
+  input.type = 'file'; input.accept = 'image/*,.heic,.heif,.avif';
   input.onchange = e => {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
     // Side rail spans full viewport height — needs a high-res source so
-    // it doesn't soften when scaled to cover the 220px-wide column.
-    compressImage(file, 3200, dataUrl => {
-      save('sideRailBg', dataUrl);
+    // it stays sharp when scaled to cover the column and zoomed in.
+    compressImage(file, 4200, dataUrl => {
+      window.dashStore.set('sideRailBg', dataUrl);
       applySideRailBg();
+      if (typeof done === 'function') done();
     });
   };
   input.click();
 }
-function clearSideRailBg() { localStorage.removeItem('sideRailBg'); applySideRailBg(); }
+function clearSideRailBg() { window.dashStore.del('sideRailBg'); applySideRailBg(); }
 function applySideRailBg() {
   const rail = $('sideRail'); if (!rail) return;
-  const url = load('sideRailBg', null);
+  const url = window.dashStore.getCached('sideRailBg');
   if (url) { rail.style.setProperty('--rail-bg', `url("${url}")`); rail.setAttribute('data-has-bg','1'); }
   else { rail.style.removeProperty('--rail-bg'); rail.removeAttribute('data-has-bg'); }
 }
@@ -582,21 +734,91 @@ function renderPlanner() {
     const cat  = getCategory(t.type);
     const pill = getDaysPill(t.dueDate);
     const cls  = t.classId ? getClass(t.classId) : null;
+    const st   = taskStatus(t);
+    const done = st === 'done';
     const div  = document.createElement('div');
-    div.className = `task-item${t.done ? ' done' : ''}`;
+    div.className = `task-item st-${st}${done ? ' completed' : ''}`;
     div.dataset.id = t.id;
     const classBadge = cls
       ? `<span class="class-badge" style="background:${cls.color}22;color:${cls.color};border:1px solid ${cls.color}44">${esc(cls.name.split(' ')[0])}</span>`
       : '';
+    const meta = STATUS_META[st];
     div.innerHTML = `
-      <div class="tcheck${t.done ? ' checked' : ''}" onclick="window.dash.toggleTask('${t.id}')"></div>
+      <div class="tcheck${done ? ' checked' : ''}" onclick="window.dash.toggleTask('${t.id}')" title="${done ? 'Tap to clear from list' : 'Tap to mark complete'}"></div>
       <span class="task-txt" onclick="window.dash.toggleTask('${t.id}')">${esc(t.text)}</span>
+      <button class="status-pill st-${st}" onclick="window.dash.openStatusMenu('${t.id}',event)" title="Change status">
+        <span class="status-dot"></span>
+        <span class="status-lbl">${meta.label}</span>
+        <svg class="status-caret" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+      </button>
       ${classBadge}
       ${t.type ? `<span class="type-badge ${cat}">${esc(t.type)}</span>` : ''}
       ${pill ? `<span class="days-pill ${pill.cls}">${pill.label}</span>` : ''}
       <button class="del-btn" onclick="window.dash.delTask('${t.id}')">×</button>`;
     el.appendChild(div);
   });
+}
+
+// ── Task status: not started → in progress → completed ──────────
+const STATUS_META = {
+  todo:  { label: 'Not started' },
+  doing: { label: 'In progress' },
+  done:  { label: 'Completed' },
+};
+function taskStatus(t) { return t.status || (t.done ? 'done' : 'todo'); }
+
+function openStatusMenu(id, ev) {
+  if (ev) { ev.stopPropagation(); }
+  const tasks = getTasks();
+  const t = tasks.find(x => x.id === id);
+  if (!t) return;
+  const cur = taskStatus(t);
+  closeStatusMenu();
+  const menu = document.createElement('div');
+  menu.className = 'status-menu';
+  menu.id = 'statusMenu';
+  const opts = [
+    ['todo',  'Not started'],
+    ['doing', 'In progress'],
+    ['done',  'Completed'],
+  ];
+  menu.innerHTML = opts.map(([val, lbl]) =>
+    `<button class="status-opt st-${val}${val === cur ? ' active' : ''}" onclick="window.dash.setTaskStatus('${id}','${val}')">
+       <span class="status-dot"></span><span>${lbl}</span>
+       ${val === cur ? '<svg class="status-check" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>' : ''}
+     </button>`).join('');
+  document.body.appendChild(menu);
+
+  // Anchor below the pill that was clicked
+  const pill = ev && ev.currentTarget ? ev.currentTarget
+    : document.querySelector(`#plannerList .task-item[data-id="${id}"] .status-pill`);
+  const r = pill.getBoundingClientRect();
+  const mw = menu.offsetWidth, mh = menu.offsetHeight;
+  let left = r.left;
+  if (left + mw > window.innerWidth - 8) left = window.innerWidth - mw - 8;
+  let top = r.bottom + 6;
+  if (top + mh > window.innerHeight - 8) top = r.top - mh - 6; // flip up if no room
+  menu.style.left = Math.max(8, left) + 'px';
+  menu.style.top  = Math.max(8, top) + 'px';
+  requestAnimationFrame(() => menu.classList.add('open'));
+
+  setTimeout(() => document.addEventListener('click', closeStatusMenu, { once: true }), 0);
+}
+
+function closeStatusMenu() {
+  const m = document.getElementById('statusMenu');
+  if (m) m.remove();
+}
+
+function setTaskStatus(id, status) {
+  closeStatusMenu();
+  const tasks = getTasks();
+  const t = tasks.find(x => x.id === id);
+  if (!t) return;
+  t.status = status;
+  t.done = (status === 'done');
+  saveTasks(tasks);
+  renderPlanner(); renderAgenda();
 }
 
 function addTask() {
@@ -613,6 +835,7 @@ function addTask() {
     type: $('taskType').value,
     classId,
     done: false,
+    status: 'todo',
     createdAt: Date.now()
   });
   saveTasks(tasks);
@@ -624,21 +847,26 @@ function toggleTask(id) {
   const tasks = getTasks();
   const t = tasks.find(t => t.id === id);
   if (!t) return;
-  if (!t.done) {
-    // Mark done, animate out, then delete
+  if (taskStatus(t) !== 'done') {
+    // First tap: mark complete. It stays in the list, highlighted green.
+    t.status = 'done';
     t.done = true;
     saveTasks(tasks);
-    renderPlanner();
+    renderPlanner(); renderAgenda();
+  } else {
+    // Already completed: this tap clears it from the list.
+    saveTasks(tasks);
     const node = document.querySelector(`#plannerList .task-item[data-id="${id}"]`);
-    if (node) node.classList.add('finishing');
-    setTimeout(() => {
+    if (node) {
+      node.classList.add('finishing');
+      setTimeout(() => {
+        saveTasks(getTasks().filter(x => x.id !== id));
+        renderPlanner(); renderAgenda();
+      }, 480);
+    } else {
       saveTasks(getTasks().filter(x => x.id !== id));
       renderPlanner(); renderAgenda();
-    }, 520);
-  } else {
-    // Was already done (rare path) — just remove
-    saveTasks(tasks.filter(x => x.id !== id));
-    renderPlanner(); renderAgenda();
+    }
   }
 }
 
@@ -740,8 +968,86 @@ function switchAgendaView(view, el) {
   agendaView = view;
   $$('.agenda-tab').forEach(t => t.classList.remove('active'));
   el.classList.add('active');
+  centerTab(el);
   renderAgenda();
   refreshTabbedBg('agenda');
+}
+
+// Smoothly bring a tab into view within its scrollable strip
+function centerTab(el) {
+  const strip = el && el.closest('.agenda-tabs');
+  if (!strip) return;
+  const target = el.offsetLeft - (strip.clientWidth - el.offsetWidth) / 2;
+  const max = strip.scrollWidth - strip.clientWidth;
+  strip.scrollTo({ left: Math.max(0, Math.min(max, target)), behavior: 'smooth' });
+}
+
+// ─── DRAGGABLE TAB CAROUSEL ───────────────────────────────────
+// Lets the agenda (and other) tab strips be scrubbed left↔right by
+// dragging with a mouse/finger, with soft fade hints at the edges
+// to signal there's more to scan. Touch already scrolls natively;
+// this adds pointer-drag for the desktop phone-preview.
+function initTabCarousel() {
+  document.querySelectorAll('.agenda-tabs, .tabs, #currentlyTabs').forEach(setupDragScroll);
+}
+
+function setupDragScroll(el) {
+  if (!el || el.__dragInit) return;
+  el.__dragInit = true;
+
+  const updateEdges = () => {
+    const max = el.scrollWidth - el.clientWidth;
+    el.classList.toggle('can-left',  el.scrollLeft > 2);
+    el.classList.toggle('can-right', el.scrollLeft < max - 2);
+  };
+
+  let down = false, startX = 0, startScroll = 0, moved = false, captured = false, pid = null;
+
+  el.addEventListener('pointerdown', (e) => {
+    // ignore non-primary buttons
+    if (e.button && e.button !== 0) return;
+    // Touch (and pen) scroll the strip natively via overflow-x — leave them
+    // alone so a tap reliably reaches the tab button underneath. Only mouse
+    // gets the click-drag-to-scroll affordance.
+    if (e.pointerType && e.pointerType !== 'mouse') return;
+    down = true; moved = false; captured = false; pid = e.pointerId;
+    startX = e.clientX; startScroll = el.scrollLeft;
+  });
+
+  el.addEventListener('pointermove', (e) => {
+    if (!down) return;
+    const dx = e.clientX - startX;
+    // Only start an actual drag (and capture the pointer) once the cursor
+    // has moved past a small threshold — a stationary press stays a click.
+    if (!moved && Math.abs(dx) > 4) {
+      moved = true;
+      el.classList.add('dragging');
+      try { el.setPointerCapture(pid); captured = true; } catch (_) {}
+    }
+    if (moved) {
+      el.scrollLeft = startScroll - dx;
+      updateEdges();
+    }
+  });
+
+  const end = (e) => {
+    if (!down) return;
+    down = false;
+    el.classList.remove('dragging');
+    if (captured) { try { el.releasePointerCapture(pid); } catch (_) {} }
+    captured = false;
+  };
+  el.addEventListener('pointerup', end);
+  el.addEventListener('pointercancel', end);
+
+  // Swallow the click that ends a drag so we don't accidentally switch tabs.
+  el.addEventListener('click', (e) => {
+    if (moved) { e.preventDefault(); e.stopPropagation(); moved = false; }
+  }, true);
+
+  el.addEventListener('scroll', updateEdges, { passive: true });
+  window.addEventListener('resize', updateEdges);
+  updateEdges();
 }
 
 function renderAgenda() {
@@ -1440,10 +1746,10 @@ function finishCur() {
 function pickCurImage() {
   const input = document.createElement('input');
   input.type = 'file';
-  input.accept = 'image/*';
+  input.accept = 'image/*,.heic,.heif,.avif';
   input.onchange = e => {
     const file = e.target.files && e.target.files[0];
-    if (file) compressImage(file, 800, dataUrl => {
+    if (file) compressImage(file, 1400, dataUrl => {
       const all = getCurrentlyAll();
       if (!all[curKind] || !all[curKind][curIdx]) return;
       all[curKind][curIdx].img = dataUrl;
@@ -1456,6 +1762,7 @@ function pickCurImage() {
 
 // ─── IMAGE UTILITIES ──────────────────────────────────────────
 function compressImage(file, maxDim, cb) {
+  // Animated GIFs (and anything we can't redraw) pass through untouched.
   if (file.type === 'image/gif') {
     const r = new FileReader();
     r.onload = e => cb(e.target.result);
@@ -1464,25 +1771,33 @@ function compressImage(file, maxDim, cb) {
   }
   const reader = new FileReader();
   reader.onload = e => {
+    const raw = e.target.result;
     const img = new Image();
+    // If the browser can't decode the format (e.g. some HEIC), keep the
+    // original data URL so the upload still "takes" rather than silently failing.
+    img.onerror = () => cb(raw);
     img.onload = () => {
-      const canvas = document.createElement('canvas');
-      let w = img.width, h = img.height;
-      // Only downscale; if the source is smaller than maxDim, keep it sharp.
-      const ratio = Math.min(1, maxDim / Math.max(w, h));
-      w = Math.round(w * ratio); h = Math.round(h * ratio);
-      canvas.width = w; canvas.height = h;
-      const ctx = canvas.getContext('2d');
-      ctx.imageSmoothingEnabled = true;
-      ctx.imageSmoothingQuality = 'high';
-      ctx.drawImage(img, 0, 0, w, h);
-      // PNG keeps every pixel sharp when the source is reasonably small;
-      // for bigger images we fall back to high-quality JPEG to keep storage sane.
-      const area = w * h;
-      const useJpeg = area > 1200 * 1200;
-      cb(useJpeg ? canvas.toDataURL('image/jpeg', 0.97) : canvas.toDataURL('image/png'));
+      try {
+        const canvas = document.createElement('canvas');
+        let w = img.width, h = img.height;
+        // Only downscale; if the source is smaller than maxDim, keep it sharp.
+        const ratio = Math.min(1, maxDim / Math.max(w, h));
+        w = Math.round(w * ratio); h = Math.round(h * ratio);
+        canvas.width = w; canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(img, 0, 0, w, h);
+        // PNG keeps every pixel sharp when the source is reasonably small;
+        // for bigger images we use high-quality JPEG (IndexedDB has the room).
+        const area = w * h;
+        const useJpeg = area > 1000 * 1000;
+        cb(useJpeg ? canvas.toDataURL('image/jpeg', 0.95) : canvas.toDataURL('image/png'));
+      } catch (err) {
+        cb(raw);
+      }
     };
-    img.src = e.target.result;
+    img.src = raw;
   };
   reader.readAsDataURL(file);
 }
@@ -1533,6 +1848,11 @@ function bgKeyFor(id) {
 }
 
 function getCardBg(id) { return load(bgKeyFor(id), null); }
+// The image itself lives in IndexedDB (large quota); the localStorage config
+// only carries metadata + a hasImg flag.
+function cardImgKey(id) { return 'cardimg:' + bgKeyFor(id); }
+function getCardImg(id)  { return window.dashStore.getCached(cardImgKey(id)); }
+function cardHasImg(id)  { const c = getCardBg(id); return !!(c && c.hasImg && getCardImg(id)); }
 function saveCardBg(id, val) {
   const key = bgKeyFor(id);
   if (val) save(key, val);
@@ -1554,8 +1874,9 @@ function refreshTabbedBg(id) {
 function applyCardBg(el) {
   const id = el.dataset.cardId;
   const cfg = getCardBg(id);
+  const imgSrc = (cfg && cfg.hasImg) ? getCardImg(id) : null;
   let layer = el.querySelector(':scope > .card-bg-layer');
-  if (cfg && cfg.img) {
+  if (cfg && imgSrc) {
     if (!layer) {
       layer = document.createElement('div');
       layer.className = 'card-bg-layer';
@@ -1566,7 +1887,7 @@ function applyCardBg(el) {
       el.insertBefore(layer, el.firstChild);
     }
     const img = layer.querySelector('img');
-    if (img.src !== cfg.img) img.src = cfg.img;
+    if (img.src !== imgSrc) img.src = imgSrc;
     const intensity = cfg.intensity ?? CARD_BG_DEFAULTS.intensity;
     const posX = cfg.posX ?? CARD_BG_DEFAULTS.posX;
     const posY = cfg.posY ?? CARD_BG_DEFAULTS.posY;
@@ -1584,13 +1905,15 @@ function applyCardBg(el) {
 
 function pickCardImage(id) {
   const input = document.createElement('input');
-  input.type = 'file'; input.accept = 'image/*';
+  input.type = 'file'; input.accept = 'image/*,.heic,.heif,.avif';
   input.onchange = e => {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
-    compressImage(file, 1800, dataUrl => {
+    compressImage(file, 3000, dataUrl => {
       const cur = getCardBg(id) || { ...CARD_BG_DEFAULTS };
-      cur.img = dataUrl;
+      cur.hasImg = true;
+      delete cur.img;
+      window.dashStore.set(cardImgKey(id), dataUrl);
       saveCardBg(id, cur);
       const el = document.querySelector(`[data-card-id="${id}"]`);
       if (el) applyCardBg(el);
@@ -1602,7 +1925,7 @@ function pickCardImage(id) {
 
 function setCardBgProp(id, prop, value) {
   const cur = getCardBg(id);
-  if (!cur || !cur.img) return;
+  if (!cur || !cardHasImg(id)) return;
   cur[prop] = +value;
   saveCardBg(id, cur);
   const el = document.querySelector(`[data-card-id="${id}"]`);
@@ -1617,7 +1940,7 @@ function setCardBgProp(id, prop, value) {
 
 function resetCardBgPosition(id) {
   const cur = getCardBg(id);
-  if (!cur || !cur.img) return;
+  if (!cur || !cardHasImg(id)) return;
   cur.posX = 50; cur.posY = 50; cur.zoom = 100;
   saveCardBg(id, cur);
   const el = document.querySelector(`[data-card-id="${id}"]`);
@@ -1626,6 +1949,7 @@ function resetCardBgPosition(id) {
 }
 
 function clearCardBg(id) {
+  window.dashStore.del(cardImgKey(id));
   saveCardBg(id, null);
   const el = document.querySelector(`[data-card-id="${id}"]`);
   if (el) applyCardBg(el);
@@ -1640,8 +1964,47 @@ function toggleCardBgPopover(id) {
     if (c.dataset.cardId !== id) c.classList.remove('reposition-mode');
   });
   const pop = document.querySelector(`.card-bg-popover[data-card-id="${id}"]`);
-  if (pop) pop.classList.toggle('open');
+  if (!pop) return;
+  const willOpen = !pop.classList.contains('open');
+  if (willOpen) {
+    ensureCardBgUI(id);          // fill content first so we can measure it
+    positionCardBgPopover(id);   // anchor to the button, flipping at edges
+    pop.classList.add('open');
+  } else {
+    pop.classList.remove('open');
+  }
   ensureCardBgUI(id);
+}
+
+/* Anchor the (body-mounted, fixed) popover just below its card's bg button,
+   keeping it fully on-screen no matter how small the card is. */
+function positionCardBgPopover(id) {
+  const pop = document.querySelector(`.card-bg-popover[data-card-id="${id}"]`);
+  const card = document.querySelector(`[data-card-id="${id}"]`);
+  if (!pop || !card) return;
+  const btn = card.querySelector(':scope > .card-bg-btn');
+  const anchor = btn || card;
+  const r = anchor.getBoundingClientRect();
+  // Measure off-screen-safe: it's display:flex once .open, but we measure pre-open.
+  const prevDisp = pop.style.display;
+  pop.style.visibility = 'hidden';
+  pop.style.display = 'flex';
+  const pw = pop.offsetWidth, ph = pop.offsetHeight;
+  pop.style.display = prevDisp;
+  pop.style.visibility = '';
+  const M = 8;
+  // Right-align the popover to the button, clamp into the viewport.
+  let left = r.right - pw;
+  if (left + pw > window.innerWidth - M) left = window.innerWidth - pw - M;
+  if (left < M) left = M;
+  // Below the button by default; flip above if it would overflow the bottom.
+  let top = r.bottom + 6;
+  if (top + ph > window.innerHeight - M) {
+    const above = r.top - ph - 6;
+    top = above >= M ? above : Math.max(M, window.innerHeight - ph - M);
+  }
+  pop.style.left = left + 'px';
+  pop.style.top = top + 'px';
 }
 
 function toggleRepositionMode(id) {
@@ -1655,7 +2018,8 @@ function ensureCardBgUI(id) {
   const pop = document.querySelector(`.card-bg-popover[data-card-id="${id}"]`);
   if (!pop) return;
   const cur = getCardBg(id);
-  const has = !!(cur && cur.img);
+  const has = cardHasImg(id);
+  const imgSrc = has ? getCardImg(id) : null;
   const cardEl = document.querySelector(`[data-card-id="${id}"]`);
   const reposActive = cardEl && cardEl.classList.contains('reposition-mode');
   const intensity = (cur && cur.intensity != null) ? cur.intensity : CARD_BG_DEFAULTS.intensity;
@@ -1674,7 +2038,7 @@ function ensureCardBgUI(id) {
       ${tabChip}
     </div>
     ${tabHint}
-    ${has ? `<div class="card-bg-preview" style="background-image:url('${cur.img}')"></div>` : `<div class="card-bg-preview empty">no image</div>`}
+    ${has ? `<div class="card-bg-preview" style="background-image:url('${imgSrc}')"></div>` : `<div class="card-bg-preview empty">no image</div>`}
     <button class="card-bg-action" onclick="window.dash.pickCardImage('${id}')">${has?'Replace':'Upload'} image</button>
 
     ${has ? `
@@ -1716,9 +2080,22 @@ function ensureCardBgUI(id) {
       </div>
     ` : ''}
   `;
+  // If it's currently open, content height may have changed (image added/
+  // removed) — re-anchor so it stays on-screen.
+  if (pop.classList.contains('open')) positionCardBgPopover(id);
 }
 
 function injectCardBgButtons() {
+  // Keep any open popover anchored to its button as the page scrolls/resizes.
+  if (!window.__cardBgReanchorBound) {
+    window.__cardBgReanchorBound = true;
+    const reanchor = () => {
+      const open = document.querySelector('.card-bg-popover.open');
+      if (open) positionCardBgPopover(open.dataset.cardId);
+    };
+    window.addEventListener('scroll', reanchor, true);
+    window.addEventListener('resize', reanchor);
+  }
   $$('[data-card-id]').forEach(el => {
     if (el.querySelector(':scope > .card-bg-btn')) return;
     const id = el.dataset.cardId;
@@ -1733,7 +2110,10 @@ function injectCardBgButtons() {
     pop.className = 'card-bg-popover';
     pop.dataset.cardId = id;
     pop.onclick = e => e.stopPropagation();
-    el.appendChild(pop);
+    // Mounted on <body>, not the card: a small card with overflow:hidden (and
+    // the lingering fade-in transform) would otherwise clip the popover. It's
+    // anchored to the button via fixed-position math in toggleCardBgPopover().
+    document.body.appendChild(pop);
     ensureCardBgUI(id);
 
     // Drag-to-reposition: when the card has .reposition-mode, mouse-drag on
@@ -1743,7 +2123,7 @@ function injectCardBgButtons() {
       if (!el.classList.contains('reposition-mode')) return;
       if (e.target.closest('.card-bg-popover') || e.target.closest('.card-bg-btn')) return;
       const cfg = getCardBg(id);
-      if (!cfg || !cfg.img) return;
+      if (!cfg || !cardHasImg(id)) return;
       dragging = true;
       startX = e.clientX; startY = e.clientY;
       startPosX = cfg.posX ?? 50;
@@ -1969,8 +2349,10 @@ window.dash = {
   pickSideRailBg, clearSideRailBg, applySideRailBg, openLink,
   renderHabits, toggleHabitEdit, addHabit, deleteHabit, toggleIconPicker, selectIcon, updateHabitLabel, uploadHabitIcon,
   renderPlanner, renderPlannerTabs, renderTaskClassSelect, addTask, toggleTask, delTask, switchTab,
+  openStatusMenu, closeStatusMenu, setTaskStatus,
   openClassesModal, closeClassesModal, addClass, updateClass, deleteClass,
   renderAgenda, switchAgendaView, calNavMonth, quickAddAgendaEvent, delAgendaEvent,
+  jumpToWeek,
   renderDates, addDate, delDate,
   renderLife, addLife, toggleLife, updateLife, delLife, clearDoneLife,
   renderGoals, switchGoalScope, addGoal, delGoal, cycleGoal,
@@ -2005,6 +2387,7 @@ window.dash.boot = function () {
   renderPeople();
   injectCardBgButtons();
   applyAllCardBgs();
+  initTabCarousel();
 
   const msToMidnight = (() => { const n=new Date(), m=new Date(n); m.setHours(24,0,0,0); return m-n; })();
   setTimeout(() => { initHeader(); renderHabits(); renderAgenda(); renderDates(); renderHealth(); }, msToMidnight + 1000);

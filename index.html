@@ -79,6 +79,10 @@
         </div>
         <button class="sync-pill" id="syncBtn">Sign in to sync</button>
         <div class="quote-line" id="quoteLine">small steps, every day.</div>
+        <button class="hdr-week-btn" id="weekBtn" type="button" onclick="dash.jumpToWeek()" title="Jump to this week's agenda">
+          <span class="hdr-week-num" id="weekNum">Week —</span>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+        </button>
       </div>
     </div>
   </section>
@@ -508,7 +512,13 @@
 <script src="tweaks.js"></script>
 <script src="blocks.js"></script>
 <script src="widgets.js"></script>
-<script>window.dash.boot(); window.blocks.boot(); window.widgets.boot();</script>
+<script src="phoneview.js"></script>
+<script>
+  (async function () {
+    try { await window.dashStore.ready; } catch (e) {}
+    window.dash.boot(); window.blocks.boot(); window.widgets.boot();
+  })();
+</script>
 
 </body>
 </html>

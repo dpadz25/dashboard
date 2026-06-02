@@ -22,26 +22,15 @@ const DEFAULTS = /*EDITMODE-BEGIN*/{
   "pageBgPosX": 50,
   "pageBgPosY": 50,
   "headerBgIntensity": 70,
-  "railBgIntensity": 55
+  "railBgIntensity": 55,
+  "railBgOverlay": 35,
+  "railBgZoom": 100,
+  "railBgPosX": 50,
+  "railBgPosY": 50
 }/*EDITMODE-END*/;
 
 let state = { ...DEFAULTS, ...(window.dashUtil.load('tweaksState', {})) };
-let pageBg = window.dashUtil.load('pageBg', null);
-
-// ── one-time migration: move legacy headerBg into the per-card system ──
-(function migrateHeaderBg() {
-  const legacy = window.dashUtil.load('headerBg', null);
-  if (!legacy) return;
-  const existing = window.dashUtil.load('cardBg::header', null);
-  if (!existing) {
-    window.dashUtil.save('cardBg::header', {
-      img: legacy,
-      intensity: state.headerBgIntensity ?? 70,
-      posX: 50, posY: 50, zoom: 100,
-    });
-  }
-  localStorage.removeItem('headerBg');
-})();
+let pageBg = null; // loaded from the image store once it's ready (see window load handler)
 
 let panelOpen = false;
 
@@ -176,10 +165,13 @@ function applyBackgrounds() {
     body.removeAttribute('data-has-bg');
   }
 
-  // Side rail intensity
+  // Side rail background image — mirror the page-bg controls (overlay, zoom, position)
   const rail = $('sideRail');
   if (rail) {
-    rail.style.setProperty('--rail-bg-intensity', (state.railBgIntensity / 100).toFixed(2));
+    rail.style.setProperty('--rail-bg-overlay', (1 - ((state.railBgOverlay ?? 35) / 100)).toFixed(2));
+    rail.style.setProperty('--rail-bg-zoom', ((state.railBgZoom ?? 100) / 100).toFixed(3));
+    rail.style.setProperty('--rail-bg-pos-x', (state.railBgPosX ?? 50) + '%');
+    rail.style.setProperty('--rail-bg-pos-y', (state.railBgPosY ?? 50) + '%');
   }
 }
 
@@ -227,15 +219,15 @@ function uploadPageBg() {
   if (!compressImage) return;
   const input = document.createElement('input');
   input.type = 'file';
-  input.accept = 'image/*';
+  input.accept = 'image/*,.heic,.heif,.avif';
   input.onchange = e => {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
     // Generous size so the background stays sharp at full-bleed
     // — and even sharper when the user zooms in via the resize controls.
-    compressImage(file, 5200, dataUrl => {
+    compressImage(file, 6000, dataUrl => {
       pageBg = dataUrl;
-      window.dashUtil.save('pageBg', dataUrl);
+      window.dashStore.set('pageBg', dataUrl);
       applyBackgrounds();
       renderPanel();
     });
@@ -248,7 +240,7 @@ function clearHeaderBg()  { /* deprecated — use per-card system */ }
 
 function clearPageBg() {
   pageBg = null;
-  localStorage.removeItem('pageBg');
+  window.dashStore.del('pageBg');
   applyBackgrounds();
   renderPanel();
 }
@@ -263,11 +255,18 @@ function resetPageBgPosition() {
 function clearHeaderBg2() { /* removed */ }
 
 function uploadRailBg() {
-  if (window.dash && window.dash.pickSideRailBg) window.dash.pickSideRailBg();
+  // Re-render the panel once the new image is saved so the preview updates.
+  if (window.dash && window.dash.pickSideRailBg) window.dash.pickSideRailBg(() => { applyBackgrounds(); renderPanel(); });
 }
 function clearRailBg() {
   if (window.dash && window.dash.clearSideRailBg) window.dash.clearSideRailBg();
   renderPanel();
+}
+function resetRailBgPosition() {
+  state.railBgZoom = 100;
+  state.railBgPosX = 50;
+  state.railBgPosY = 50;
+  persist();
 }
 
 function renderPanel() {
@@ -280,7 +279,7 @@ function renderPanel() {
     { id:'dusk',  name:'Dusk Sage',    colors:['#0d1411','#1d2722','#94c08e','#6cb8b0'] },
   ];
 
-  const railBg = window.dashUtil.load('sideRailBg', null);
+  const railBg = window.dashStore.getCached('sideRailBg');
 
   panel.innerHTML = `
     <div class="tweaks-head" id="tweaksHead">
@@ -360,9 +359,23 @@ function renderPanel() {
         </div>
         ${railBg ? `
           <div style="margin-top:0.5rem">
-            <div class="tweak-row"><span class="tweak-label">Image strength</span><span class="tweak-slider-value">${state.railBgIntensity}%</span></div>
-            <input class="tweak-slider" type="range" min="10" max="100" value="${state.railBgIntensity}"
-                   oninput="window.tweaks.set('railBgIntensity',+this.value)"/>
+            <div class="tweak-row"><span class="tweak-label">Overlay opacity</span><span class="tweak-slider-value">${state.railBgOverlay ?? 35}%</span></div>
+            <input class="tweak-slider" type="range" min="0" max="95" value="${state.railBgOverlay ?? 35}"
+                   oninput="window.tweaks.setLive('railBgOverlay',+this.value)"
+                   onchange="window.tweaks.set('railBgOverlay',+this.value)"/>
+            <div class="tweak-row" style="margin-top:0.55rem"><span class="tweak-label">Zoom</span><span class="tweak-slider-value">${state.railBgZoom ?? 100}%</span></div>
+            <input class="tweak-slider" type="range" min="100" max="400" step="5" value="${state.railBgZoom ?? 100}"
+                   oninput="window.tweaks.setLive('railBgZoom',+this.value)"
+                   onchange="window.tweaks.set('railBgZoom',+this.value)"/>
+            <div class="tweak-row" style="margin-top:0.55rem"><span class="tweak-label">Position X</span><span class="tweak-slider-value">${state.railBgPosX ?? 50}%</span></div>
+            <input class="tweak-slider" type="range" min="0" max="100" value="${state.railBgPosX ?? 50}"
+                   oninput="window.tweaks.setLive('railBgPosX',+this.value)"
+                   onchange="window.tweaks.set('railBgPosX',+this.value)"/>
+            <div class="tweak-row" style="margin-top:0.55rem"><span class="tweak-label">Position Y</span><span class="tweak-slider-value">${state.railBgPosY ?? 50}%</span></div>
+            <input class="tweak-slider" type="range" min="0" max="100" value="${state.railBgPosY ?? 50}"
+                   oninput="window.tweaks.setLive('railBgPosY',+this.value)"
+                   onchange="window.tweaks.set('railBgPosY',+this.value)"/>
+            <button class="tweak-upload-btn" style="margin-top:0.55rem" onclick="window.tweaks.resetRailBgPosition()">Reset zoom &amp; position</button>
           </div>
         ` : ''}
       </div>
@@ -456,6 +469,12 @@ function resetData() {
   keys.forEach(k => localStorage.removeItem(k));
   // also remove all card backgrounds
   Object.keys(localStorage).filter(k => k.startsWith('cardBg::')).forEach(k => localStorage.removeItem(k));
+  localStorage.removeItem('imgMigrated_v2');
+  // and every stored image (page / rail / per-card) in IndexedDB
+  if (window.dashStore && window.dashStore.clearAll) {
+    window.dashStore.clearAll().then(() => location.reload());
+    return;
+  }
   location.reload();
 }
 
@@ -465,9 +484,11 @@ window.addEventListener('message', e => {
   if (d.type === '__deactivate_edit_mode') close();
 });
 
-window.tweaks = { open, close, set: setKey, setLive, resetData, uploadPageBg, uploadHeaderBg, clearPageBg, clearHeaderBg, uploadRailBg, clearRailBg, resetPageBgPosition };
+window.tweaks = { open, close, set: setKey, setLive, resetData, uploadPageBg, uploadHeaderBg, clearPageBg, clearHeaderBg, uploadRailBg, clearRailBg, resetPageBgPosition, resetRailBgPosition };
 
-window.addEventListener('load', () => {
+window.addEventListener('load', async () => {
+  try { await window.dashStore.ready; } catch (e) {}
+  pageBg = window.dashStore.getCached('pageBg');
   applyState();
   renderPanel();
   try { window.parent.postMessage({ type: '__edit_mode_available' }, '*'); } catch(e){}

@@ -158,6 +158,30 @@
 .block.is-resizing > .block-resize-grip { opacity: 0.65; }
 .block-resize-grip:hover { opacity: 1; color: var(--bh-color-strong); }
 
+/* Discoverability: a bare faint grip is impossible to find on a fixed-height
+   card or over a background photo. Give those a translucent rounded chip and
+   keep it gently visible at rest (full opacity on hover) so users can see
+   there's a corner to drag to resize. */
+.block.block--fixed > .block-resize-grip,
+.card[data-has-bg="1"] > .block-resize-grip,
+.header-card[data-has-bg="1"] > .block-resize-grip {
+  box-sizing: border-box;
+  width: 22px;
+  height: 22px;
+  right: 6px;
+  bottom: 6px;
+  padding: 4px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--card) 70%, transparent);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.28);
+  opacity: 0.6;
+}
+.block.block--fixed:hover > .block-resize-grip,
+.card[data-has-bg="1"]:hover > .block-resize-grip,
+.header-card[data-has-bg="1"]:hover > .block-resize-grip { opacity: 1; color: var(--bh-color-strong); }
+
 /* ── RIGHT-EDGE RESIZE STRIP (drag to change width) ──────────── */
 .block-edge-resize {
   position: absolute;
@@ -186,6 +210,12 @@
 .block-edge-resize:hover { opacity: 1; }
 .block-edge-resize:hover::before { background: var(--bh-color-strong); height: 48px; }
 .block.is-resizing > .block-edge-resize { opacity: 1; }
+
+/* A block that is the only column in its row has no neighbour to trade
+   width with, so the right-edge width handle would do nothing. Hide it —
+   width resize only appears once two cards share a row. (The corner grip
+   stays visible and becomes height-only; see startResize in blocks.js.) */
+.brow > .bcol:only-child > .block > .block-edge-resize { display: none !important; }
 
 @media (max-width: 880px) {
   .block-edge-resize { display: none; }

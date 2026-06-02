@@ -533,6 +533,16 @@
 
     const col   = block.parentElement;                 // .bcol
     const row   = col ? col.parentElement : container;  // .brow
+
+    // A lone column can't trade width with a neighbour, so width resize is a
+    // no-op (the card's flex-grow re-expands it to fill the row). Ignore the
+    // right edge entirely and make the corner grip resize height only.
+    const soloCol = row && row.querySelectorAll(':scope > .bcol').length === 1;
+    if (soloCol) {
+      if (mode === 'edge')   return;
+      if (mode === 'corner') mode = 'bottom';
+    }
+
     const cRect = (row || container).getBoundingClientRect();
     const bRect = block.getBoundingClientRect();
     const colRect = (col || block).getBoundingClientRect();
