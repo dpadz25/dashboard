@@ -94,7 +94,36 @@
 @media (max-width: 880px) {
   .brow { flex-direction: column; }
   .bcol { flex-basis: auto !important; width: 100%; }
+  /* Desktop heights don't translate to the narrower phone layout, so a
+     widget reverts to its natural height there — UNLESS the user has given
+     it a phone-specific size (block--mscale). In that case we CROP: the box
+     is pinned to --bh-m and overflow:hidden clips the bottom. Content keeps
+     its designed size — nothing scales, zooms, or transforms. */
   .block.block--fixed { height: auto !important; overflow: visible !important; }
+  .block.block--mscale {
+    height: var(--bh-m) !important;
+    overflow: hidden !important;       /* clips content at the bottom edge */
+  }
+  /* Keep the background photo at the widget's natural height, anchored to the
+     top, so a shorter box clips the photo at the bottom instead of zooming it. */
+  .block.block--mscale > .card-bg-layer,
+  .block.block--mscale > .header-card-bg {
+    height: var(--bh-nat, 100%) !important;
+    bottom: auto !important;
+  }
+  /* Tuck the chrome inside a scaled widget so the clip never eats a handle. */
+  .block.block--mscale > .block-handle      { left: 6px; top: 6px; background: color-mix(in srgb, var(--card) 72%, transparent); backdrop-filter: blur(4px); }
+  .block.block--mscale > .block-resize-grip { right: 4px; bottom: 4px; }
+  .block.block--mscale > .block-insert      { display: none; }
+}
+
+/* The content wrapper we scale. transform-origin + scale are set inline by
+   JS; the wrapper itself is a plain block so widget layout is unchanged at
+   scale 1. width:100% keeps it filling the card. */
+.block-scale {
+  width: 100%;
+  transform-origin: top center;
+  will-change: transform;
 }
 
 /* ── DRAG HANDLE (top-left, six dots) ─────────────────────────── */
@@ -252,6 +281,53 @@
 
 @media (max-width: 880px) {
   .block-edge-resize-bottom { display: none; }
+}
+
+/* ── PHONE RESIZE PULL TAB ───────────────────────────────────
+   A persistent vertical resize slider for touch. Hidden on desktop
+   (which has hover edge-handles); on phones it sits at the bottom-centre
+   of every widget so any box can be resized to taste at any time. Dragging
+   scales the widget's content to fit — nothing is clipped. */
+.block-mcrop-handle { display: none; }
+
+@media (max-width: 880px) {
+  .block-mcrop-handle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
+    left: 50%;
+    bottom: -13px;                 /* rests in the inter-card gap */
+    transform: translateX(-50%);
+    width: 54px;
+    height: 22px;
+    padding-bottom: 1px;
+    border-radius: 4px 4px 11px 11px;
+    background: var(--card);
+    border: 1px solid color-mix(in srgb, var(--bh-color) 45%, transparent);
+    border-top: none;
+    color: var(--bh-color);
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.10);
+    z-index: 7;
+    cursor: ns-resize;
+    touch-action: none;            /* let the tab own the vertical drag */
+    -webkit-user-select: none;
+    user-select: none;
+    transition: color 0.14s ease, background 0.14s ease, border-color 0.14s ease;
+  }
+  .block-mcrop-handle svg { width: 15px; height: 15px; display: block; }
+
+  /* While dragging — and on any resized card — pull the tab inside the
+     box (overflow is clipped there) and make it pop. */
+  .block.is-mcropping > .block-mcrop-handle,
+  .block.block--mscale > .block-mcrop-handle {
+    bottom: 3px;
+    border-radius: 11px;
+    border-top: 1px solid color-mix(in srgb, var(--bh-color) 45%, transparent);
+    background: var(--bh-color-strong);
+    border-color: var(--bh-color-strong);
+    color: var(--card);
+  }
 }
 
 /* ── INSERT (+) BUTTON (bottom edge, between cards) ──────────── */
@@ -466,3 +542,78 @@ body.blocks-resizing-corner * { cursor: nwse-resize !important; }
 .block-note .note-del svg { width: 10px; height: 10px; stroke: currentColor; stroke-width: 2.2; fill: none; stroke-linecap: round; }
 .block-note:hover .note-del { opacity: 0.7; }
 .block-note .note-del:hover { opacity: 1; color: var(--red, #b8501e); border-color: var(--red, #b8501e); }
+
+/* ═══════════════════════════════════════════════════════════════
+   CROPPED-WIDGET SCROLL (phone view)
+   When a widget is shrunk on phone (.block--mscale), the card pins to
+   --bh-m and clips its overflow. The card's content lives inside the
+   .block-scale wrapper, so instead of clipping it dead, we turn that
+   wrapper into a scroll viewport: the full content stays reachable —
+   you can scroll (or drag, see dragscroll.js) to the bottom. The
+   chrome (drag handle, resize grip, mcrop pull-tab) are siblings of
+   the wrapper, so they stay pinned to the card and never scroll away.
+   ═══════════════════════════════════════════════════════════════ */
+@media (max-width: 880px) {
+  .block.block--mscale > .block-scale {
+    height: 100%;
+    max-height: 100%;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+  .block.block--mscale > .block-scale::-webkit-scrollbar { width: 5px; }
+  .block.block--mscale > .block-scale::-webkit-scrollbar-thumb {
+    background: var(--border); border-radius: 3px;
+  }
+  .block.block--mscale > .block-scale::-webkit-scrollbar-thumb:hover { background: var(--border2); }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SIZE-DRIVEN SCROLL  (the fix for "scroll won't pop up when small")
+   When a widget is given an explicit height — .block--fixed on desktop,
+   .block--mscale (cropped) on phone — its content wrapper becomes the
+   single scroll viewport. This is needed because the .block-scale
+   wrapper sits between the card and the inner lists, which broke the
+   older `.card > .list` direct-child scroll selectors. Scrolling the
+   wrapper works for EVERY widget regardless of what's inside it, so the
+   scrollbar now appears the moment the box is shorter than its content.
+   ═══════════════════════════════════════════════════════════════ */
+.block.block--fixed > .block-scale,
+.block.block--mscale > .block-scale {
+  height: 100%;
+  max-height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 3px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+.block.block--fixed > .block-scale::-webkit-scrollbar,
+.block.block--mscale > .block-scale::-webkit-scrollbar { width: 6px; }
+.block.block--fixed > .block-scale::-webkit-scrollbar-thumb,
+.block.block--mscale > .block-scale::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+.block.block--fixed > .block-scale::-webkit-scrollbar-thumb:hover,
+.block.block--mscale > .block-scale::-webkit-scrollbar-thumb:hover { background: var(--border2); }
+
+/* Inside a sized/cropped card the WRAPPER scrolls, so the inner lists
+   must drop their own caps and inner scrollbars — otherwise you'd get a
+   second, competing scroll region that dead-ends. One scroller only. */
+.block.block--fixed .task-list,   .block.block--mscale .task-list,
+.block.block--fixed .dates-list,  .block.block--mscale .dates-list,
+.block.block--fixed .goals-list,  .block.block--mscale .goals-list,
+.block.block--fixed .life-list,   .block.block--mscale .life-list,
+.block.block--fixed .people-list, .block.block--mscale .people-list,
+.block.block--fixed .tomorrow-list, .block.block--mscale .tomorrow-list {
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+/* Active grab-to-scroll feedback (any scroll box being dragged). */
+.is-grab-scrolling, .is-grab-scrolling * { cursor: grabbing !important; }

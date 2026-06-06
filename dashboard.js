@@ -174,12 +174,12 @@ function initHeader() {
   const h    = now.getHours();
   const tone = h < 5 ? 'Still up' : h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : h < 21 ? 'Good evening' : 'Hey night owl';
   const name = (load('tweaksState', {}) || {}).name || 'Delan';
-  $('greeting').innerHTML = `${tone}, <em>${esc(name)}</em>.`;
-  const DAYS   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-  const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const tEl = $('greetingTone'); if (tEl) tEl.textContent = tone;
+  $('greeting').innerHTML = `${esc(name)}<span class="greeting-dot">.</span>`;
+  const DAYS   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   $('dateLine').innerHTML =
-    `<span>${DAYS[now.getDay()]}</span><span class="dot">·</span>` +
-    `<span>${MONTHS[now.getMonth()]} ${now.getDate()}, ${now.getFullYear()}</span>`;
+    `<span class="date-dot">●</span><span>${DAYS[now.getDay()]} ${MONTHS[now.getMonth()]} ${now.getDate()}</span>`;
   const seed = Math.floor((+now - new Date(now.getFullYear(),0,1)) / 86400000);
   $('quoteLine').textContent = QUOTES[seed % QUOTES.length];
 
@@ -744,16 +744,18 @@ function renderPlanner() {
       : '';
     const meta = STATUS_META[st];
     div.innerHTML = `
-      <div class="tcheck${done ? ' checked' : ''}" onclick="window.dash.toggleTask('${t.id}')" title="${done ? 'Tap to clear from list' : 'Tap to mark complete'}"></div>
+      <div class="tcheck${done ? ' checked' : ''}" onclick="window.dash.toggleTask('${t.id}')" title="Tap to complete &amp; clear"></div>
       <span class="task-txt" onclick="window.dash.toggleTask('${t.id}')">${esc(t.text)}</span>
+      <span class="task-meta">
       <button class="status-pill st-${st}" onclick="window.dash.openStatusMenu('${t.id}',event)" title="Change status">
         <span class="status-dot"></span>
         <span class="status-lbl">${meta.label}</span>
         <svg class="status-caret" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
       </button>
-      ${classBadge}
-      ${t.type ? `<span class="type-badge ${cat}">${esc(t.type)}</span>` : ''}
-      ${pill ? `<span class="days-pill ${pill.cls}">${pill.label}</span>` : ''}
+        ${classBadge}
+        ${t.type ? `<span class="type-badge ${cat}">${esc(t.type)}</span>` : ''}
+        ${pill ? `<span class="days-pill ${pill.cls}">${pill.label}</span>` : ''}
+      </span>
       <button class="del-btn" onclick="window.dash.delTask('${t.id}')">×</button>`;
     el.appendChild(div);
   });
@@ -848,15 +850,13 @@ function toggleTask(id) {
   const t = tasks.find(t => t.id === id);
   if (!t) return;
   if (taskStatus(t) !== 'done') {
-    // First tap: mark complete. It stays in the list, highlighted green.
+    // Check the box: mark complete, briefly show it checked, then remove it.
     t.status = 'done';
     t.done = true;
     saveTasks(tasks);
-    renderPlanner(); renderAgenda();
-  } else {
-    // Already completed: this tap clears it from the list.
-    saveTasks(tasks);
     const node = document.querySelector(`#plannerList .task-item[data-id="${id}"]`);
+    const check = node && node.querySelector('.tcheck');
+    if (check) check.classList.add('checked');
     if (node) {
       node.classList.add('finishing');
       setTimeout(() => {
@@ -867,6 +867,10 @@ function toggleTask(id) {
       saveTasks(getTasks().filter(x => x.id !== id));
       renderPlanner(); renderAgenda();
     }
+  } else {
+    // Already done (e.g. set via status menu): unchecking clears it immediately.
+    saveTasks(getTasks().filter(x => x.id !== id));
+    renderPlanner(); renderAgenda();
   }
 }
 
@@ -971,6 +975,8 @@ function switchAgendaView(view, el) {
   centerTab(el);
   renderAgenda();
   refreshTabbedBg('agenda');
+  // Each agenda view keeps its own height — re-apply it for the new tab.
+  if (window.blocks && window.blocks.applyTabHeight) window.blocks.applyTabHeight('agenda');
 }
 
 // Smoothly bring a tab into view within its scrollable strip
@@ -1221,6 +1227,7 @@ function renderTomorrow() {
     <div class="tomorrow-grid">
       <div class="tomorrow-col">
         <div class="tomorrow-col-label">Tasks due tomorrow</div>
+        <div class="tomorrow-list">
         ${tasks.length ? tasks.map(x => {
           const cls = x.classId ? getClass(x.classId) : null;
           const classBadge = cls ? `<span class="class-badge" style="background:${cls.color}22;color:${cls.color};border:1px solid ${cls.color}44">${esc(cls.name.split(' ')[0])}</span>` : '';
@@ -1232,15 +1239,16 @@ function renderTomorrow() {
             <button class="del-btn" style="opacity:1" onclick="window.dash.delTask('${x.id}')">×</button>
           </div>`;
         }).join('') : `<div class="tomorrow-empty">No tasks yet. Tee one up below.</div>`}
+        </div>
         <div class="tomorrow-add">
           <input class="t-input" id="tmrTaskName" placeholder="Task for tomorrow…" onkeydown="if(event.key==='Enter')window.dash.addTomorrowTask()"/>
-          <select class="t-select" id="tmrTaskClass">${classSel}</select>
           <button class="btn-add" onclick="window.dash.addTomorrowTask()">Add</button>
         </div>
       </div>
 
       <div class="tomorrow-col">
         <div class="tomorrow-col-label">Events</div>
+        <div class="tomorrow-list">
         ${events.length ? events.map(e => `
           <div class="tomorrow-row event">
             <span class="tomorrow-event-dot ${e._kind==='starred'?'starred':''}"></span>
@@ -1248,6 +1256,7 @@ function renderTomorrow() {
             ${e._kind==='agenda' ? `<button class="del-btn" style="opacity:1" onclick="window.dash.delAgendaEvent('${e.id}')">×</button>` : ''}
           </div>
         `).join('') : `<div class="tomorrow-empty">Nothing on the calendar.</div>`}
+        </div>
         <div class="tomorrow-add">
           <input class="t-input" id="tmrEventName" placeholder="Event for tomorrow…" onkeydown="if(event.key==='Enter')window.dash.addTomorrowEvent()"/>
           <button class="btn-add" onclick="window.dash.addTomorrowEvent()">Add</button>
@@ -1277,8 +1286,8 @@ function addTomorrowTask() {
     id: uid(),
     text: name,
     dueDate: tomorrowKey(),
-    type: 'assignment',
-    classId: $('tmrTaskClass').value || null,
+    type: '',
+    classId: null,
     done: false,
     createdAt: Date.now(),
   });
@@ -1299,7 +1308,7 @@ function addTomorrowEvent() {
 
 function copyHabitsToTomorrow() { /* placeholder — reserved for future */ }
 
-function openTomorrow()  { agendaView = 'tomorrow'; $$('.agenda-tab').forEach(t => t.classList.remove('active')); document.querySelectorAll('.agenda-tab').forEach(b => { if ((b.textContent || '').trim() === 'Tomorrow') b.classList.add('active'); }); renderAgenda(); }
+function openTomorrow()  { agendaView = 'tomorrow'; $$('.agenda-tab').forEach(t => t.classList.remove('active')); document.querySelectorAll('.agenda-tab').forEach(b => { if ((b.textContent || '').trim() === 'Tomorrow') b.classList.add('active'); }); renderAgenda(); if (window.blocks && window.blocks.applyTabHeight) window.blocks.applyTabHeight('agenda'); }
 function closeTomorrow() { /* placeholder */ }
 
 function getWeekDates() {
@@ -2359,6 +2368,7 @@ window.dash = {
   renderCurrently, renderCurrentlyTabs, switchCurKind, curPrev, curNext, curGoTo, curAdd, updateCur, cycleCurProgress, finishCur, pickCurImage,
   renderHealth, openHealthModal, closeHealthModal, syncHealth, openManualHealth, closeManualHealth, saveManualHealth, toggleHealth,
   renderPeople, addPerson, checkin, delPerson,
+  currentTabFor,
   pickCardImage, setCardBgProp, clearCardBg, toggleCardBgPopover, toggleRepositionMode, resetCardBgPosition, applyAllCardBgs, applyCardBg,
   // streaks / schedule / tomorrow
   renderClassSchedule, addScheduleBlock, delScheduleBlock, updateScheduleBlock,

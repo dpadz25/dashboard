@@ -299,9 +299,36 @@ body::after {
   position: relative;
   z-index: 1;
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
   align-items: flex-start;
-  gap: 1rem;
+  gap: 0.5rem;
+  min-height: 8rem;
+}
+
+/* greeting + date pinned to the top */
+.header-top {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+/* motivational quote floats in the middle, horizontally centered */
+.header-mid {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 0;
+}
+
+/* weather (and the week jump) anchored to the bottom edge */
+.header-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
 }
 
 .header-card[data-has-bg="1"] .greeting,
@@ -916,6 +943,11 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); cur
 
 .task-item.completed .task-txt { color: var(--green); }
 
+/* The meta wrapper is invisible to layout on desktop — its children
+   (status pill + badges) behave as direct flex items of .task-item,
+   exactly as before. On phones it becomes a full-width second row. */
+.task-meta { display: contents; }
+
 /* ── Task status dropdown ───────────────────────────────────── */
 .status-pill {
   display: inline-flex;
@@ -1518,10 +1550,11 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); cur
 .week-chip.default  { background: var(--surface3);   color: var(--muted); }
 
 @media (max-width: 720px) {
-  .week-strip { grid-template-columns: 1fr; grid-auto-rows: auto; }
-  .week-day { min-height: 0; flex-direction: row; align-items: center; }
-  .week-day-head { flex-direction: row; gap: 0.5rem; min-width: 80px; }
-  .week-day-items { flex: 1; flex-direction: row; flex-wrap: wrap; }
+  .week-strip { grid-template-columns: 1fr; grid-auto-rows: auto; min-width: 0; }
+  .week-day { min-height: 0; flex-direction: row; align-items: center; min-width: 0; }
+  .week-day-head { flex-direction: row; gap: 0.5rem; min-width: 80px; flex: 0 0 auto; }
+  .week-day-items { flex: 1 1 0; min-width: 0; flex-direction: row; flex-wrap: wrap; }
+  .week-day-items .week-chip { max-width: 100%; }
 }
 
 /* Month view */
@@ -3268,8 +3301,8 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); cur
 /* Lift real content above the background image + scrim. The block drag/resize
    handles are NOT content — they need their own absolute positioning and
    z-index, so exclude them here (otherwise they flow inline and vanish). */
-.card[data-has-bg="1"] > *:not(.card-bg-layer):not(.card-bg-popover):not(.card-bg-btn):not(.block-handle):not(.block-resize-grip):not(.block-edge-resize):not(.block-edge-resize-bottom):not(.block-insert),
-.header-card[data-has-bg="1"] > *:not(.card-bg-layer):not(.card-bg-popover):not(.card-bg-btn):not(.block-handle):not(.block-resize-grip):not(.block-edge-resize):not(.block-edge-resize-bottom):not(.block-insert) {
+.card[data-has-bg="1"] > *:not(.card-bg-layer):not(.card-bg-popover):not(.card-bg-btn):not(.block-handle):not(.block-resize-grip):not(.block-edge-resize):not(.block-edge-resize-bottom):not(.block-insert):not(.block-mcrop-handle),
+.header-card[data-has-bg="1"] > *:not(.card-bg-layer):not(.card-bg-popover):not(.card-bg-btn):not(.block-handle):not(.block-resize-grip):not(.block-edge-resize):not(.block-edge-resize-bottom):not(.block-insert):not(.block-mcrop-handle) {
   position: relative;
   z-index: 1;
 }
@@ -3488,6 +3521,8 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); cur
    so it stays legible regardless of photo brightness/scrim intensity. */
 .card[data-has-bg="1"] .sec-label {
   align-self: flex-start;
+  width: fit-content;
+  max-width: 100%;
   padding: 0.32rem 0.6rem 0.32rem 0.55rem;
   background: color-mix(in srgb, var(--card) 88%, transparent);
   border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
@@ -3808,9 +3843,43 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); cur
   .tomorrow-row { flex-wrap: wrap; row-gap: 0.35rem; }
   .tomorrow-row .task-txt,
   .tomorrow-row > span[style*="flex:1"] { min-width: 0; }
-  /* Planner rows: let the status pill + badges wrap to a second line. */
-  .task-item { flex-wrap: wrap; row-gap: 0.4rem; }
-  .task-item .task-txt { min-width: 0; }
+  /* Planner rows: title gets the whole first line so it never gets
+     squeezed into a one-word-per-line column. Status pill + badges
+     drop to a tidy full-width second row below. */
+  .task-item {
+    flex-wrap: wrap;
+    row-gap: 0.55rem;
+    padding: 0.7rem 0.75rem;
+  }
+  .task-item .task-txt {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 0.9375rem;
+    line-height: 1.35;
+    order: 1;
+  }
+  .task-item .tcheck { order: 0; width: 18px; height: 18px; }
+  .task-item .del-btn {
+    order: 2;
+    opacity: 1;
+    margin-left: auto;
+    font-size: 1.35rem;
+    padding: 0 0.15rem;
+  }
+  /* Second row: all the meta chips, left-aligned and comfortably sized. */
+  .task-item .task-meta {
+    display: flex;
+    flex-basis: 100%;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem;
+    order: 3;
+    padding-left: calc(18px + 0.5rem); /* align under the title, past the checkbox */
+  }
+  .task-item .status-pill { font-size: 0.6875rem; padding: 0.28rem 0.45rem 0.28rem 0.5rem; }
+  .task-item .type-badge,
+  .task-item .days-pill,
+  .task-item .class-badge { font-size: 0.625rem; padding: 0.24rem 0.5rem; }
 }
 
 .tomorrow-col {
@@ -3832,6 +3901,32 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); cur
   color: var(--muted);
   margin-bottom: 0.25rem;
 }
+
+/* Scrolling list inside each Tomorrow column — same treatment as the
+   other widget lists (planner / dates / goals / life / people): caps at
+   a sane default, fills space, and scrolls within with a slim bar.
+   Label stays on top and the add-row stays pinned at the bottom. */
+.tomorrow-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: 240px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+.tomorrow-list::-webkit-scrollbar { width: 5px; }
+.tomorrow-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+.tomorrow-list::-webkit-scrollbar-thumb:hover { background: var(--border2); }
+/* When the agenda card is resized to an explicit height, drop the cap so
+   the lists fill all available space (mirrors .block--fixed list rule). */
+.block--fixed .tomorrow-list { max-height: none; }
 
 .tomorrow-row {
   display: flex;
@@ -4483,4 +4578,321 @@ body[data-has-bg="1"]::before {
    floating tools so the mockup looks like the real phone app. */
 body.in-phone-preview .phone-preview-fab,
 body.in-phone-preview .tweak-fab { display: none !important; }
+
+/* ═══════════════════════════════════════════════════════════════
+   UNIVERSAL WIDGET LIST SCROLL
+   Every widget box that holds a vertical list scrolls inside the
+   card — the same behavior as Important Dates — so the list stays
+   usable at ANY widget height. The list flex-fills the available
+   space; when content overflows, it scrolls with a themed bar.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* 1) Each list-bearing card becomes a flex column so its list can
+      grow/shrink to whatever height the widget box is given. */
+.card[data-card-id="planner"],
+.card[data-card-id="dates"],
+.card[data-card-id="goals"],
+.card[data-card-id="life"],
+.card[data-card-id="people"] {
+  display: flex;
+  flex-direction: column;
+}
+
+/* 2) The list itself fills remaining card space and scrolls. The
+      max-height is the default cap for AUTO-height cards (so the
+      list never runs off the page); flex makes it shrink further
+      when the widget is small. */
+.card[data-card-id="planner"] > .task-list,
+.card[data-card-id="dates"]   > .dates-list,
+.card[data-card-id="goals"]   > .goals-list,
+.card[data-card-id="life"]    > .life-list,
+.card[data-card-id="people"]  > .people-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: 340px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* 3) When a widget has been resized to an explicit height
+      (.block--fixed), drop the default cap so the list fills ALL
+      the remaining space and scrolls within it. */
+.block--fixed .task-list,
+.block--fixed .dates-list,
+.block--fixed .goals-list,
+.block--fixed .life-list,
+.block--fixed .people-list {
+  max-height: none;
+}
+
+/* Keep Important Dates at its tuned default cap (it's the reference). */
+.card[data-card-id="dates"] > .dates-list { max-height: 208px; }
+.block--fixed .dates-list { max-height: none; }
+
+/* 4) Matching slim WebKit scrollbar for every list. */
+.card[data-card-id="planner"] > .task-list::-webkit-scrollbar,
+.card[data-card-id="dates"]   > .dates-list::-webkit-scrollbar,
+.card[data-card-id="goals"]   > .goals-list::-webkit-scrollbar,
+.card[data-card-id="life"]    > .life-list::-webkit-scrollbar,
+.card[data-card-id="people"]  > .people-list::-webkit-scrollbar {
+  width: 5px;
+}
+.card[data-card-id="planner"] > .task-list::-webkit-scrollbar-thumb,
+.card[data-card-id="dates"]   > .dates-list::-webkit-scrollbar-thumb,
+.card[data-card-id="goals"]   > .goals-list::-webkit-scrollbar-thumb,
+.card[data-card-id="life"]    > .life-list::-webkit-scrollbar-thumb,
+.card[data-card-id="people"]  > .people-list::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+.card[data-card-id="planner"] > .task-list::-webkit-scrollbar-thumb:hover,
+.card[data-card-id="dates"]   > .dates-list::-webkit-scrollbar-thumb:hover,
+.card[data-card-id="goals"]   > .goals-list::-webkit-scrollbar-thumb:hover,
+.card[data-card-id="life"]    > .life-list::-webkit-scrollbar-thumb:hover,
+.card[data-card-id="people"]  > .people-list::-webkit-scrollbar-thumb:hover {
+  background: var(--border2);
+}
+
+/* ════════════════════════════════════════════════════════════
+   HEADER — TWO-ROW GROUPED LAYOUT (redesign)
+   Row 1: identity (left) · date + week (right)
+   Row 2: quote (left) · weather (right)
+   Each group is its own frosted, rounded panel.
+   ════════════════════════════════════════════════════════════ */
+.header-card-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  min-height: 0;
+  align-items: stretch;
+}
+
+.hdr-row {
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 0.6rem;
+  width: 100%;
+}
+
+/* The frosted panel shared by every group — same bubble as the date/week pills,
+   nudged a tad darker so the clear glass stays visible over a photo background */
+.hdr-grp {
+  display: flex;
+  background: rgba(12, 9, 6, 0.34);
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 16px;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.18);
+  min-width: 0;
+}
+/* When there's no background photo, fall back to surface tones */
+.header-card:not([data-has-bg="1"]) .hdr-grp {
+  background: var(--surface2);
+  border-color: var(--border);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: none;
+}
+
+/* ── Group: identity (eyebrow + name) ── */
+.hdr-grp-identity {
+  flex: 0 1 auto;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.3rem;
+  padding: 0.95rem 1.25rem;
+}
+.hdr-eyebrow {
+  font-family: var(--font-b);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.62);
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.4);
+}
+.header-card:not([data-has-bg="1"]) .hdr-eyebrow { color: var(--muted); text-shadow: none; }
+
+/* Neutralise the legacy per-line pill on the name; the group owns the bg now */
+.hdr-grp .greeting {
+  background: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  padding: 0 !important;
+  width: auto !important;
+  max-width: 100% !important;
+  border-radius: 0 !important;
+  font-size: clamp(1.9rem, 5vw, 2.55rem);
+  line-height: 1.02;
+}
+.greeting-dot { color: var(--accent); }
+
+/* ── Group: date + week ── */
+.hdr-grp-when {
+  flex: 0 0 auto;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 0.45rem;
+  /* The group itself is just a layout container now — each child (date + week)
+     carries its own minimal pill, so the shared frosted panel is dropped here. */
+  background: none !important;
+  border: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  text-align: right;
+}
+.hdr-grp .date-line {
+  background: rgba(12, 9, 6, 0.34) !important;
+  border: 1px solid rgba(255, 255, 255, 0.13) !important;
+  box-shadow: none !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  padding: 0.3rem 0.7rem !important;
+  margin: 0 !important;
+  width: auto !important;
+  border-radius: 999px !important;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  white-space: nowrap;
+  color: rgba(255, 255, 255, 0.9);
+}
+.header-card:not([data-has-bg="1"]) .hdr-grp .date-line {
+  background: var(--surface3) !important;
+  border-color: var(--border2) !important;
+  color: var(--text-s);
+}
+.date-dot { color: var(--accent); font-size: 0.55em; line-height: 1; }
+
+/* Week button becomes a subtle inner chip inside the frosted group */
+.hdr-grp-when .hdr-week-btn {
+  background: rgba(12, 9, 6, 0.34) !important;
+  border: 1px solid rgba(255, 255, 255, 0.13) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  color: rgba(255, 255, 255, 0.92) !important;
+  padding: 0.3rem 0.5rem 0.3rem 0.7rem;
+  font-size: 0.66rem;
+}
+.hdr-grp-when .hdr-week-btn:hover {
+  background: rgba(12, 9, 6, 0.5) !important;
+  border-color: var(--accent) !important;
+}
+.header-card:not([data-has-bg="1"]) .hdr-grp-when .hdr-week-btn {
+  background: var(--surface3) !important;
+  border-color: var(--border2) !important;
+  color: var(--text-s) !important;
+}
+
+/* ── Group: quote ── */
+.hdr-grp-quote {
+  flex: 0 1 auto;
+  align-items: center;
+  padding: 0.7rem 1.25rem;
+}
+.hdr-grp .quote-line {
+  background: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  padding: 0 !important;
+  width: auto !important;
+  max-width: 100% !important;
+  text-align: left;
+  font-size: 0.92rem;
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.85);
+}
+.header-card:not([data-has-bg="1"]) .hdr-grp .quote-line { color: var(--muted); }
+
+/* ── Group: weather ── */
+.hdr-grp-weather {
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  padding: 0.55rem 0.95rem;
+}
+.hdr-grp-weather .weather-pill {
+  background: none !important;
+  border: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9) !important;
+}
+.header-card:not([data-has-bg="1"]) .hdr-grp-weather .weather-pill { color: var(--text-s) !important; }
+
+/* ── Phone tuning — single uniform left-aligned stack ──
+   The two desktop rows collapse into one column. Date + week ride the
+   top-right corner so they clear the fixed "Links" FAB at top-left; the
+   greeting, quote, and weather then stack as full-width bubbles that all
+   share the exact same left and right edges for a clean, aligned look. */
+@media (max-width: 720px) {
+  .header-card-content {
+    padding-left: 0;
+    gap: 0.55rem;
+  }
+  /* Dissolve the row wrappers so all four groups become direct children
+     of the column and can be re-ordered individually. */
+  .hdr-row { display: contents; }
+
+  /* 1 — date + week, top-right, clearing the FAB on the left */
+  .hdr-grp-when {
+    order: 1;
+    flex-direction: row;
+    align-self: flex-end;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.4rem;
+    width: auto;
+    min-height: 30px;
+  }
+
+  /* 2 — greeting, full width, left-aligned */
+  .hdr-grp-identity {
+    order: 2;
+    width: 100%;
+    flex: 0 0 auto;
+    align-items: flex-start;
+    padding: 0.85rem 1.1rem;
+  }
+
+  /* 3 — quote, full width, left-aligned */
+  .hdr-grp-quote {
+    order: 3;
+    width: 100%;
+    flex: 0 0 auto;
+    align-items: flex-start;
+    padding: 0.75rem 1.1rem;
+  }
+
+  /* 4 — weather, full width, left-aligned */
+  .hdr-grp-weather {
+    order: 4;
+    width: 100%;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 0.65rem 1.1rem;
+  }
+
+  .hdr-grp .greeting { font-size: clamp(1.9rem, 9vw, 2.3rem); }
+  .hdr-grp .quote-line { font-size: 0.9rem; }
+}
 
