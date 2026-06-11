@@ -26,7 +26,8 @@ const DEFAULTS = /*EDITMODE-BEGIN*/{
   "railBgOverlay": 35,
   "railBgZoom": 100,
   "railBgPosX": 50,
-  "railBgPosY": 50
+  "railBgPosY": 50,
+  "panelOpacity": 86
 }/*EDITMODE-END*/;
 
 let state = { ...DEFAULTS, ...(window.dashUtil.load('tweaksState', {})) };
@@ -149,14 +150,21 @@ function applyState() {
 
 function applyBackgrounds() {
   const body = document.body;
+  // Frosted widget-panel opacity (used by tiles & the Tomorrow tee-up over a
+  // card photo). Lower = more of the photo shows through the panels.
+  document.documentElement.style.setProperty('--panel-opacity', (state.panelOpacity ?? 86) + '%');
   if (pageBg) {
-    body.style.setProperty('--user-bg', `url("${pageBg}")`);
+    // Use a blob: object URL — a multi-MB data URL in a CSS var is silently
+    // dropped by the browser (the bug big photos hit). See dashImg.cssUrl.
+    const bgUrl = (window.dashImg && window.dashImg.cssUrl) ? window.dashImg.cssUrl('pageBg', pageBg) : pageBg;
+    body.style.setProperty('--user-bg', `url("${bgUrl}")`);
     body.style.setProperty('--bg-overlay', (1 - (state.pageBgOverlay / 100)).toFixed(2));
     body.style.setProperty('--bg-zoom', ((state.pageBgZoom ?? 100) / 100).toFixed(3));
     body.style.setProperty('--bg-pos-x', (state.pageBgPosX ?? 50) + '%');
     body.style.setProperty('--bg-pos-y', (state.pageBgPosY ?? 50) + '%');
     body.setAttribute('data-has-bg', '1');
   } else {
+    if (window.dashImg && window.dashImg.cssUrl) window.dashImg.cssUrl('pageBg', null);
     body.style.removeProperty('--user-bg');
     body.style.removeProperty('--bg-overlay');
     body.style.removeProperty('--bg-zoom');
@@ -280,6 +288,11 @@ function renderPanel() {
   ];
 
   const railBg = window.dashStore.getCached('sideRailBg');
+  // Blob URLs for the preview thumbnails — a 9 MB data URL inlined into
+  // background-image fails the same way the live background did.
+  const _cu = (window.dashImg && window.dashImg.cssUrl) ? window.dashImg.cssUrl : (k, v) => v;
+  const pageBgUrl = pageBg ? _cu('pageBg', pageBg) : '';
+  const railBgUrl = railBg ? _cu('sideRailBg', railBg) : '';
 
   panel.innerHTML = `
     <div class="tweaks-head" id="tweaksHead">
@@ -317,7 +330,7 @@ function renderPanel() {
 
       <div class="tweak-section">
         <div class="tweak-section-title">Page Background</div>
-        <div class="tweak-bg-preview ${pageBg?'has-image':''}" style="${pageBg?`background-image:url('${pageBg}')`:''}">
+        <div class="tweak-bg-preview ${pageBg?'has-image':''}" style="${pageBg?`background-image:url('${pageBgUrl}')`:''}">
           ${!pageBg ? 'No image' : ''}
           <button class="clear" onclick="window.tweaks.clearPageBg()" title="Remove">×</button>
         </div>
@@ -346,11 +359,16 @@ function renderPanel() {
           </div>
         ` : ''}
         <div class="tweak-note">Tip: every card has its own image button (top-right) so you can customize backgrounds per module.</div>
+        <div class="tweak-row" style="margin-top:0.6rem"><span class="tweak-label">Panel opacity</span><span class="tweak-slider-value">${state.panelOpacity ?? 86}%</span></div>
+        <input class="tweak-slider" type="range" min="40" max="100" value="${state.panelOpacity ?? 86}"
+               oninput="window.tweaks.setLive('panelOpacity',+this.value)"
+               onchange="window.tweaks.set('panelOpacity',+this.value)"/>
+        <div class="tweak-note">How see-through the widget panels are when a card has a background photo (e.g. the Tomorrow tee-up).</div>
       </div>
 
       <div class="tweak-section">
         <div class="tweak-section-title">Side Rail Background</div>
-        <div class="tweak-bg-preview ${railBg?'has-image':''}" style="${railBg?`background-image:url('${railBg}')`:''}">
+        <div class="tweak-bg-preview ${railBg?'has-image':''}" style="${railBg?`background-image:url('${railBgUrl}')`:''}">
           ${!railBg ? 'No image' : ''}
           <button class="clear" onclick="window.tweaks.clearRailBg()" title="Remove">×</button>
         </div>

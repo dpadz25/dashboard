@@ -609,6 +609,7 @@ body.blocks-resizing-corner * { cursor: nwse-resize !important; }
 .block.block--fixed .dates-list,  .block.block--mscale .dates-list,
 .block.block--fixed .goals-list,  .block.block--mscale .goals-list,
 .block.block--fixed .life-list,   .block.block--mscale .life-list,
+.block.block--fixed .shopping-list, .block.block--mscale .shopping-list,
 .block.block--fixed .people-list, .block.block--mscale .people-list,
 .block.block--fixed .tomorrow-list, .block.block--mscale .tomorrow-list {
   max-height: none !important;

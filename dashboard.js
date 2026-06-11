@@ -237,6 +237,7 @@ function initWeather() {
 
 // ─── SIDE RAIL (Quick Links) ──────────────────────────────────
 const DEFAULT_QLINKS = [
+  { id:'claude',   label:'Claude',   url:'https://claude.ai', icon:'claude', kbd:'A' },
   { id:'obsidian', label:'Obsidian', url:'obsidian://open', icon:'obsidian', kbd:'O' },
   { id:'notion',   label:'Notion',   url:'https://www.notion.so/394fbd098667463d8714324f21d44eba?pvs=1', icon:'notion', kbd:'N' },
   { id:'gcal',     label:'Calendar', url:'https://calendar.google.com', icon:'gcal', kbd:'C' },
@@ -244,19 +245,60 @@ const DEFAULT_QLINKS = [
   { id:'spotify',  label:'Spotify',  url:'https://open.spotify.com',    icon:'spotify', kbd:'S' },
 ];
 
+/* Curated icon choices for quick links — brand chips (colored) + line icons.
+   Picking one stores it as link.icon; the rail renders linkChipInner(). */
+const LINK_ICON_BRANDS = {
+  claude:1, obsidian:1, notion:1, gmail:1, gcal:1, spotify:1, github:1, youtube:1, figma:1
+};
+const LINK_BRAND_ICON = {
+  claude:'claude', obsidian:null, notion:'notion', gmail:'mail', gcal:'cal',
+  spotify:'music', github:'code', youtube:'film', figma:'palette'
+};
+const LINK_ICON_OPTIONS = [
+  'claude','obsidian','notion','gmail','gcal','spotify','github','youtube','figma',
+  'globe','link','mail','cloud','terminal','code','message','book','graduation',
+  'music','film','gamepad','camera','palette','briefcase','coffee','heart',
+  'cart','bookmark','folder','cal','clock','flag','star'
+];
+
+// Inner content for a rail-link-icon chip given an icon key.
+function linkChipInner(key) {
+  if (LINK_ICON_BRANDS[key]) {
+    const ico = LINK_BRAND_ICON[key];
+    return (ico && ICONS[ico]) ? ICONS[ico] : key.slice(0,1).toUpperCase();
+  }
+  return ICONS[key] || (key || '?').slice(0,1).toUpperCase();
+}
+
+// One-time: make sure long-time users get a Claude link in their side rail.
+function ensureClaudeLink() {
+  if (load('claudeLinkAdded_v1', false)) { return; }
+  const links = getQlinks().slice();
+  const has = links.some(l => l.id === 'claude' || /claude\.ai/i.test(l.url || ''));
+  if (!has) {
+    links.unshift({ id:'claude', label:'Claude', url:'https://claude.ai', icon:'claude', kbd:'A' });
+    saveQlinks(links);
+  }
+  save('claudeLinkAdded_v1', true);
+}
+
 let qlinkEditMode = false;
 
 function getQlinks() { return load('qlinks', DEFAULT_QLINKS); }
 function saveQlinks(v) { save('qlinks', v); }
 
 function openLink(url) {
-  // Force open via top-level navigation when running inside an iframe (avoids
-  // Gmail / OAuth providers refusing to load in an iframe context).
-  if (url.startsWith('obsidian://')) { window.location.href = url; return; }
-  try {
-    const w = window.open(url, '_blank', 'noopener,noreferrer');
-    if (!w) (window.top || window.parent || window).location.href = url;
-  } catch { window.location.href = url; }
+  if (!url) { return; }
+  // http(s) → open in a NEW tab (synthetic anchor click works reliably even
+  // inside an iframe and leaves this dashboard tab untouched).
+  if (/^https?:\/\//i.test(url)) {
+    const a = document.createElement('a');
+    a.href = url; a.target = '_blank'; a.rel = 'noopener noreferrer';
+    document.body.appendChild(a); a.click(); a.remove();
+    return;
+  }
+  // Custom schemes (obsidian://, etc.) — hand off via the current frame.
+  try { window.location.href = url; } catch (_) {}
 }
 
 function renderQlinks() {
@@ -278,13 +320,20 @@ function renderQlinks() {
     const useCustom = l.customIcon && l.customIcon.startsWith('custom:');
     const iconHTML = useCustom
       ? iconRender(l.customIcon)
-      : (l.label || '?').slice(0,1).toUpperCase();
+      : (l.icon ? linkChipInner(l.icon) : (l.label || '?').slice(0,1).toUpperCase());
     const a = document.createElement('a');
     a.className = 'rail-link';
     a.href = l.url;
     a.target = '_blank';
     a.rel = 'noopener noreferrer';
-    a.onclick = e => { e.preventDefault(); openLink(l.url); };
+    a.onclick = e => {
+      const url = l.url || '';
+      // http(s): let the native target="_blank" open a new tab and keep the
+      // dashboard here. Only custom schemes (obsidian://, …) need JS.
+      if (/^https?:\/\//i.test(url)) { return; }
+      e.preventDefault();
+      openLink(url);
+    };
     a.innerHTML = `
       <span class="rail-link-icon ${l.icon || ''}${useCustom?' has-custom':''}">${iconHTML}</span>
       <span class="rail-link-text">
@@ -314,7 +363,70 @@ function deleteQlink(id) {
   renderQlinks();
 }
 
-function editQlinkIcon(id) {
+/* ── LINK ICON PICKER ─────────────────────────────────────────
+   A visual popup of choosable icons (brand chips + line icons), plus an
+   Upload option. Used both when adding a new link (inline grid in the Add
+   modal) and when editing an existing link's icon (standalone modal). */
+let iconPickerTarget = null;   // { mode:'link', id } when editing an existing link
+let pendingNewIcon = '';       // selected icon key for the link being added
+let pendingNewCustom = null;   // 'custom:<id>' if an uploaded icon was chosen
+
+function iconGridHTML(selectedKey, customPreview) {
+  let html = '';
+  if (customPreview) {
+    html += `<button type="button" class="icon-pick-opt selected" title="Your uploaded icon">
+      <span class="rail-link-icon has-custom"><img src="${customPreview}" class="custom-icon-img" alt=""/></span>
+    </button>`;
+  }
+  html += LINK_ICON_OPTIONS.map(key => {
+    const brand = LINK_ICON_BRANDS[key] ? key : '';
+    const sel = (!customPreview && key === selectedKey) ? ' selected' : '';
+    return `<button type="button" class="icon-pick-opt${sel}" data-icon="${key}" title="${key}" onclick="window.dash.pickLinkIcon('${key}')">
+      <span class="rail-link-icon ${brand}">${linkChipInner(key)}</span>
+    </button>`;
+  }).join('');
+  html += `<button type="button" class="icon-pick-opt upload" title="Upload your own" onclick="window.dash.uploadLinkIcon()">
+    <span class="rail-link-icon upload-chip">${ICONS.upload}</span>
+  </button>`;
+  return html;
+}
+
+function renderQlmIconGrid() {
+  const g = $('qlmIconGrid'); if (!g) return;
+  const preview = pendingNewCustom ? getCustomIcons()[pendingNewCustom.slice(7)] : null;
+  g.innerHTML = iconGridHTML(pendingNewIcon, preview);
+}
+
+function editQlinkIcon(id) { openIconPicker({ mode:'link', id }); }
+
+function openIconPicker(target) {
+  const grid = $('iconPickerGrid'), modal = $('iconPickerModal');
+  if (!grid || !modal) return;   // older archived layouts don't have this modal
+  iconPickerTarget = target;
+  let cur = '';
+  if (target && target.mode === 'link') {
+    const l = getQlinks().find(x => x.id === target.id);
+    cur = (l && !l.customIcon) ? (l.icon || '') : '';
+  }
+  grid.innerHTML = iconGridHTML(cur, null);
+  modal.classList.add('open');
+}
+function closeIconPicker() { const m = $('iconPickerModal'); if (m) m.classList.remove('open'); iconPickerTarget = null; }
+
+function pickLinkIcon(key) {
+  if (iconPickerTarget && iconPickerTarget.mode === 'link') {
+    const links = getQlinks();
+    const l = links.find(x => x.id === iconPickerTarget.id);
+    if (l) { l.icon = key; l.customIcon = null; saveQlinks(links); renderQlinks(); }
+    closeIconPicker();
+  } else {
+    pendingNewIcon = key;
+    pendingNewCustom = null;
+    renderQlmIconGrid();
+  }
+}
+
+function uploadLinkIcon() {
   const input = document.createElement('input');
   input.type = 'file'; input.accept = 'image/*';
   input.onchange = e => {
@@ -325,16 +437,27 @@ function editQlinkIcon(id) {
       const cid = uid();
       customs[cid] = dataUrl;
       saveCustomIcons(customs);
-      const links = getQlinks();
-      const l = links.find(x => x.id === id);
-      if (l) { l.customIcon = 'custom:' + cid; saveQlinks(links); renderQlinks(); }
+      const ckey = 'custom:' + cid;
+      if (iconPickerTarget && iconPickerTarget.mode === 'link') {
+        const links = getQlinks();
+        const l = links.find(x => x.id === iconPickerTarget.id);
+        if (l) { l.customIcon = ckey; saveQlinks(links); renderQlinks(); }
+        closeIconPicker();
+      } else {
+        pendingNewCustom = ckey;
+        pendingNewIcon = '';
+        renderQlmIconGrid();
+      }
     });
   };
   input.click();
 }
 
 function openQlinkModal() {
-  ['qlmLabel','qlmUrl','qlmIcon','qlmKbd'].forEach(id => $(id).value = '');
+  ['qlmLabel','qlmUrl','qlmKbd'].forEach(id => $(id).value = '');
+  pendingNewIcon = '';
+  pendingNewCustom = null;
+  renderQlmIconGrid();
   $('qlinkModal').classList.add('open');
   setTimeout(()=>$('qlmLabel').focus(), 100);
 }
@@ -347,7 +470,8 @@ function submitQlink() {
   const links = getQlinks();
   links.push({
     id: uid(), label, url,
-    icon: $('qlmIcon').value.trim().toLowerCase() || '',
+    icon: pendingNewCustom ? '' : (pendingNewIcon || ''),
+    customIcon: pendingNewCustom || null,
     kbd: $('qlmKbd').value.trim().toUpperCase().slice(0,1) || ''
   });
   saveQlinks(links);
@@ -378,7 +502,8 @@ function pickSideRailBg(done) {
 function clearSideRailBg() { window.dashStore.del('sideRailBg'); applySideRailBg(); }
 function applySideRailBg() {
   const rail = $('sideRail'); if (!rail) return;
-  const url = window.dashStore.getCached('sideRailBg');
+  const data = window.dashStore.getCached('sideRailBg');
+  const url = window.dashImg.cssUrl('sideRailBg', data);
   if (url) { rail.style.setProperty('--rail-bg', `url("${url}")`); rail.setAttribute('data-has-bg','1'); }
   else { rail.style.removeProperty('--rail-bg'); rail.removeAttribute('data-has-bg'); }
 }
@@ -679,7 +804,7 @@ function renderTaskClassSelect() {
 }
 
 // ─── PLANNER / TASKS ──────────────────────────────────────────
-let activeTab = 'all';
+let activeTab = 'priority';
 
 const PRIORITY_TYPES = ['priority'];
 
@@ -962,6 +1087,72 @@ function clearDoneLife() {
   if (!confirm(`Clear ${done} completed item${done>1?'s':''}?`)) return;
   saveLife(getLife().filter(i => !i.done));
   renderLife();
+}
+
+// ─── SHOPPING LIST ────────────────────────────────────────────
+function getShopping()  { return load('shoppingItems', []); }
+function saveShopping(l) { save('shoppingItems', l); }
+
+function renderShopping() {
+  const el = $('shoppingList');
+  if (!el) return;
+  const items = getShopping();
+  if (!items.length) {
+    el.innerHTML = `<div class="life-empty">list's empty — add what you need.</div>`;
+    return;
+  }
+  // Unchecked stay on top; checked items sink to the bottom.
+  const sorted = [...items].sort((a,b) => (a.done?1:0) - (b.done?1:0));
+  el.innerHTML = '';
+  sorted.forEach(item => {
+    const div = document.createElement('div');
+    div.className = 'shop-item' + (item.done ? ' done' : '');
+    div.dataset.id = item.id;
+    div.innerHTML = `
+      <div class="shop-check${item.done?' checked':''}" onclick="window.dash.toggleShopping('${item.id}')"></div>
+      <input class="shop-txt" value="${esc(item.text)}" onchange="window.dash.updateShopping('${item.id}',this.value)" onkeydown="if(event.key==='Enter')this.blur()"/>
+      <button class="del-btn" onclick="window.dash.delShopping('${item.id}')">×</button>`;
+    el.appendChild(div);
+  });
+}
+
+function addShopping() {
+  const inp = $('shopInput');
+  const text = inp.value.trim();
+  if (!text) return;
+  const items = getShopping();
+  items.unshift({ id: uid(), text, done: false, t: Date.now() });
+  saveShopping(items);
+  inp.value = '';
+  renderShopping();
+}
+
+function toggleShopping(id) {
+  const items = getShopping();
+  const i = items.find(x => x.id === id);
+  if (!i) return;
+  i.done = !i.done;
+  saveShopping(items);
+  renderShopping();
+}
+
+function updateShopping(id, text) {
+  const items = getShopping();
+  const i = items.find(x => x.id === id);
+  if (i) { i.text = text.trim() || i.text; saveShopping(items); renderShopping(); }
+}
+
+function delShopping(id) {
+  saveShopping(getShopping().filter(x => x.id !== id));
+  renderShopping();
+}
+
+function clearDoneShopping() {
+  const done = getShopping().filter(i => i.done).length;
+  if (!done) return;
+  if (!confirm(`Clear ${done} checked item${done>1?'s':''}?`)) return;
+  saveShopping(getShopping().filter(i => !i.done));
+  renderShopping();
 }
 
 // ─── AGENDA ───────────────────────────────────────────────────
@@ -1790,8 +1981,17 @@ function compressImage(file, maxDim, cb) {
         const canvas = document.createElement('canvas');
         let w = img.width, h = img.height;
         // Only downscale; if the source is smaller than maxDim, keep it sharp.
-        const ratio = Math.min(1, maxDim / Math.max(w, h));
-        w = Math.round(w * ratio); h = Math.round(h * ratio);
+        let ratio = Math.min(1, maxDim / Math.max(w, h));
+        // CANVAS AREA CEILING — the real reason big Unsplash photos "won't
+        // upload". Browsers cap a single canvas's area (Safari/iOS at
+        // ~16.78 M px²); a full-res 6000×4000 download is 24 MP and blows
+        // past it, so drawImage/toDataURL silently yields a BLANK image and
+        // we save nothing visible. Clamp total area under that ceiling (with
+        // headroom) so the photo actually renders. This caps every caller.
+        const MAX_AREA = 14000000; // px² — safely under the 16.78M Safari limit
+        const scaledArea = (w * ratio) * (h * ratio);
+        if (scaledArea > MAX_AREA) ratio *= Math.sqrt(MAX_AREA / scaledArea);
+        w = Math.max(1, Math.round(w * ratio)); h = Math.max(1, Math.round(h * ratio));
         canvas.width = w; canvas.height = h;
         const ctx = canvas.getContext('2d');
         ctx.imageSmoothingEnabled = true;
@@ -1810,7 +2010,37 @@ function compressImage(file, maxDim, cb) {
   };
   reader.readAsDataURL(file);
 }
-window.dashImg = { compressImage };
+/* CSS can't hold a multi-MB data URL: assigning one to a custom property or
+   background-image is SILENTLY dropped by Chrome (oversized inline style
+   value), so big photos "upload" but never render. Convert the stored data
+   URL to a short blob: object URL — those work in CSS at any size. Cache one
+   live URL per logical key and revoke the old one when the source changes. */
+const _cssObjUrls = {};
+function dataUrlToBlob(d) {
+  const comma = d.indexOf(',');
+  const head = d.slice(0, comma), body = d.slice(comma + 1);
+  const mime = (head.match(/data:([^;]+)/) || [])[1] || 'image/jpeg';
+  if (!/;base64/i.test(head)) return new Blob([decodeURIComponent(body)], { type: mime });
+  const bin = atob(body);
+  const arr = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+  return new Blob([arr], { type: mime });
+}
+function cssUrl(key, dataUrl) {
+  const slot = _cssObjUrls[key];
+  if (!dataUrl) {
+    if (slot) { try { URL.revokeObjectURL(slot.url); } catch (e) {} delete _cssObjUrls[key]; }
+    return null;
+  }
+  if (slot && slot.src === dataUrl) return slot.url;
+  if (slot) { try { URL.revokeObjectURL(slot.url); } catch (e) {} }
+  let url;
+  try { url = URL.createObjectURL(dataUrlToBlob(dataUrl)); }
+  catch (e) { url = dataUrl; } // tiny images still work inline as a fallback
+  _cssObjUrls[key] = { url, src: dataUrl };
+  return url;
+}
+window.dashImg = { compressImage, cssUrl };
 
 // ─── PER-CARD BACKGROUNDS ─────────────────────────────────────
 /* Each .card with [data-card-id] gets its own optional bg image,
@@ -2355,6 +2585,7 @@ function delPerson(id) {
 window.dash = {
   initHeader, initWeather,
   renderQlinks, deleteQlink, editQlinkIcon, openQlinkModal, closeQlinkModal, submitQlink, toggleMobileLinks,
+  openIconPicker, closeIconPicker, pickLinkIcon, uploadLinkIcon,
   pickSideRailBg, clearSideRailBg, applySideRailBg, openLink,
   renderHabits, toggleHabitEdit, addHabit, deleteHabit, toggleIconPicker, selectIcon, updateHabitLabel, uploadHabitIcon,
   renderPlanner, renderPlannerTabs, renderTaskClassSelect, addTask, toggleTask, delTask, switchTab,
@@ -2364,6 +2595,7 @@ window.dash = {
   jumpToWeek,
   renderDates, addDate, delDate,
   renderLife, addLife, toggleLife, updateLife, delLife, clearDoneLife,
+  renderShopping, addShopping, toggleShopping, updateShopping, delShopping, clearDoneShopping,
   renderGoals, switchGoalScope, addGoal, delGoal, cycleGoal,
   renderCurrently, renderCurrentlyTabs, switchCurKind, curPrev, curNext, curGoTo, curAdd, updateCur, cycleCurProgress, finishCur, pickCurImage,
   renderHealth, openHealthModal, closeHealthModal, syncHealth, openManualHealth, closeManualHealth, saveManualHealth, toggleHealth,
@@ -2380,6 +2612,7 @@ window.dash = {
 window.dash.boot = function () {
   initHeader();
   initWeather();
+  ensureClaudeLink();
   renderQlinks();
   applySideRailBg();
   renderHabits();
@@ -2387,6 +2620,7 @@ window.dash.boot = function () {
   renderTaskClassSelect();
   renderPlanner();
   renderLife();
+  renderShopping();
   renderCurrentlyTabs();
   renderAgenda();
   renderDates();
