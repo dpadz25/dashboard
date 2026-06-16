@@ -284,10 +284,11 @@
 }
 
 /* ── PHONE RESIZE PULL TAB ───────────────────────────────────
-   A persistent vertical resize slider for touch. Hidden on desktop
-   (which has hover edge-handles); on phones it sits at the bottom-centre
-   of every widget so any box can be resized to taste at any time. Dragging
-   scales the widget's content to fit — nothing is clipped. */
+   A touch-only vertical resize slider. Hidden on desktop (which has
+   hover edge-handles). On phones it stays out of the way and only fades
+   in when you interact with a widget (.show-mcrop, toggled in blocks.js),
+   so it no longer clutters the inter-card gaps. Dragging scales the
+   widget's content to fit — nothing is clipped. */
 .block-mcrop-handle { display: none; }
 
 @media (max-width: 880px) {
@@ -313,7 +314,16 @@
     touch-action: none;            /* let the tab own the vertical drag */
     -webkit-user-select: none;
     user-select: none;
-    transition: color 0.14s ease, background 0.14s ease, border-color 0.14s ease;
+    /* Out of the way until you touch the widget. */
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.18s ease, color 0.14s ease, background 0.14s ease, border-color 0.14s ease;
+  }
+  /* Revealed while interacting with this widget (or mid-resize). */
+  .block.show-mcrop > .block-mcrop-handle,
+  .block.is-mcropping > .block-mcrop-handle {
+    opacity: 1;
+    pointer-events: auto;
   }
   .block-mcrop-handle svg { width: 15px; height: 15px; display: block; }
 

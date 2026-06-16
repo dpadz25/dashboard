@@ -2608,8 +2608,30 @@ window.dash = {
   habitStreak,
 };
 
+// ─── AUTO-PRUNE OVERDUE DATES/EVENTS ──────────────────────────
+// Any Important Date or Agenda event whose date is more than 7 days
+// in the past is removed automatically.
+function pruneOverdue() {
+  const cutoff = new Date(); cutoff.setHours(0,0,0,0);
+  cutoff.setDate(cutoff.getDate() - 7); // anything strictly before this is gone
+  const cutoffT = cutoff.getTime();
+  const keep = e => {
+    const t = new Date((e.date || '') + 'T00:00:00').getTime();
+    return isNaN(t) || t >= cutoffT;
+  };
+  let changed = false;
+  const dates = load('importantDates', []);
+  const datesKept = dates.filter(keep);
+  if (datesKept.length !== dates.length) { save('importantDates', datesKept); changed = true; }
+  const evs = load('agendaEvents', []);
+  const evsKept = evs.filter(keep);
+  if (evsKept.length !== evs.length) { save('agendaEvents', evsKept); changed = true; }
+  return changed;
+}
+
 // ─── BOOT ─────────────────────────────────────────────────────
 window.dash.boot = function () {
+  pruneOverdue();
   initHeader();
   initWeather();
   ensureClaudeLink();
@@ -2634,7 +2656,7 @@ window.dash.boot = function () {
   initTabCarousel();
 
   const msToMidnight = (() => { const n=new Date(), m=new Date(n); m.setHours(24,0,0,0); return m-n; })();
-  setTimeout(() => { initHeader(); renderHabits(); renderAgenda(); renderDates(); renderHealth(); }, msToMidnight + 1000);
+  setTimeout(() => { pruneOverdue(); initHeader(); renderHabits(); renderAgenda(); renderDates(); renderHealth(); }, msToMidnight + 1000);
 };
 
 })();

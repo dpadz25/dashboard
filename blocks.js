@@ -111,7 +111,35 @@
     });
 
     bindTouch();
+    setupMcropReveal();
   }
+
+  /* Phone pull-tabs are hidden until you interact with a widget, so they no
+     longer clutter the gaps between cards. Touching a widget fades in its
+     tab; it fades back out a couple seconds after you stop touching. */
+  function setupMcropReveal() {
+    const isPhone = () => !window.matchMedia('(min-width: 881px)').matches;
+    let hideTimer = null;
+    const hideIdle = () => {
+      if (!container) return;
+      container.querySelectorAll('.block.show-mcrop').forEach((b) => {
+        if (!b.classList.contains('is-mcropping')) b.classList.remove('show-mcrop');
+      });
+    };
+    const scheduleHide = () => { clearTimeout(hideTimer); hideTimer = setTimeout(hideIdle, 2600); };
+    const reveal = (node) => {
+      if (!isPhone() || !node || !node.closest || !container) return;
+      const block = node.closest('.block');
+      if (!block || !container.contains(block)) { scheduleHide(); return; }
+      container.querySelectorAll('.block.show-mcrop').forEach((b) => {
+        if (b !== block) b.classList.remove('show-mcrop');
+      });
+      block.classList.add('show-mcrop');
+      scheduleHide();
+    };
+    document.addEventListener('pointerdown', (e) => reveal(e.target), { passive: true });
+  }
+
 
   /* ── LAYOUT LOAD / MIGRATION ────────────────────────────── */
   // Returns an array of rows: [{ cols: [{ frac, items:[{id,h}] }] }] or null.
