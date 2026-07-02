@@ -125,7 +125,7 @@ body {
   font-size: 14px;
   color: var(--text);
   min-height: 100vh;
-  padding: 1.25rem 1.25rem 1.25rem 5rem;
+  padding: 1.25rem 1.25rem 6rem 5rem;
   transition: background var(--t-med), color var(--t-med);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -134,8 +134,8 @@ body {
 body.no-rail { padding-left: 1.25rem; }
 
 @media (max-width: 720px) {
-  body { padding: 0.75rem; }
-  body.no-rail { padding: 0.75rem; }
+  body { padding: 0.75rem 0.75rem 5rem; }
+  body.no-rail { padding: 0.75rem 0.75rem 5rem; }
 }
 
 /* ── PAGE BACKGROUND IMAGE LAYER ─────────────────────────── */
@@ -299,9 +299,36 @@ body::after {
   position: relative;
   z-index: 1;
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
   align-items: flex-start;
-  gap: 1rem;
+  gap: 0.5rem;
+  min-height: 8rem;
+}
+
+/* greeting + date pinned to the top */
+.header-top {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+/* motivational quote floats in the middle, horizontally centered */
+.header-mid {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 0;
+}
+
+/* weather (and the week jump) anchored to the bottom edge */
+.header-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
 }
 
 .header-card[data-has-bg="1"] .greeting,
@@ -402,6 +429,33 @@ body::after {
   text-align: right;
   max-width: 320px;
   line-height: 1.35;
+}
+
+/* ── HEADER WEEK BUTTON ──────────────────────────────────────── */
+.hdr-week-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.4rem 0.55rem 0.4rem 0.8rem;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 999px;
+  color: var(--text-s);
+  font-family: var(--font-b);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color var(--t-fast), border-color var(--t-fast), background var(--t-fast);
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+}
+.hdr-week-btn:hover { color: var(--text); border-color: var(--accent); background: var(--surface3); }
+.hdr-week-btn:active { transform: scale(0.97); }
+.hdr-week-btn svg { width: 13px; height: 13px; color: var(--accent); }
+.header-card[data-has-bg="1"] .hdr-week-btn {
+  background: rgba(0,0,0,0.4); border-color: rgba(255,255,255,0.2); color: #fff; backdrop-filter: blur(8px);
 }
 
 /* ── QUICK LINKS ────────────────────────────────────────────── */
@@ -887,7 +941,98 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); cur
   color: var(--text);
 }
 
-.task-item.done .task-txt { text-decoration: line-through; color: var(--muted2); }
+.task-item.completed .task-txt { color: var(--green); }
+
+/* The meta wrapper is invisible to layout on desktop — its children
+   (status pill + badges) behave as direct flex items of .task-item,
+   exactly as before. On phones it becomes a full-width second row. */
+.task-meta { display: contents; }
+
+/* ── Task status dropdown ───────────────────────────────────── */
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-shrink: 0;
+  padding: 0.2rem 0.34rem 0.2rem 0.42rem;
+  border-radius: 999px;
+  border: 1px solid var(--border2);
+  background: var(--surface3);
+  color: var(--muted);
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color var(--t-fast), background var(--t-fast), color var(--t-fast);
+}
+.status-pill:hover { border-color: var(--muted2); }
+.status-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+.status-caret { width: 11px; height: 11px; opacity: 0.65; margin-left: -1px; }
+
+.status-pill.st-todo  { color: var(--muted); }
+.status-pill.st-doing {
+  color: var(--accent);
+  background: var(--accent-dim);
+  border-color: color-mix(in srgb, var(--accent) 38%, transparent);
+}
+.status-pill.st-done {
+  color: var(--green);
+  background: var(--green-dim);
+  border-color: color-mix(in srgb, var(--green) 38%, transparent);
+}
+
+/* Completed row — highlighted green, stays in the list until cleared */
+.task-item.completed {
+  background: var(--green-dim);
+  border-color: color-mix(in srgb, var(--green) 42%, transparent);
+}
+.task-item.completed .tcheck { background: var(--green); border-color: var(--green); }
+.task-item.completed .tcheck::after {
+  border-left-color: var(--on-accent);
+  border-bottom-color: var(--on-accent);
+}
+
+/* Status picker popover (fixed — cards clip overflow) */
+.status-menu {
+  position: fixed;
+  z-index: 620;
+  min-width: 170px;
+  background: var(--card);
+  border: 1px solid var(--border2);
+  border-radius: var(--r-sm);
+  box-shadow: 0 14px 38px rgba(0,0,0,0.4);
+  padding: 0.3rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  opacity: 0;
+  transform: translateY(-4px);
+  transition: opacity 0.13s var(--ease), transform 0.13s var(--ease);
+}
+.status-menu.open { opacity: 1; transform: none; }
+.status-opt {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.5rem 0.55rem;
+  border: none;
+  background: none;
+  border-radius: calc(var(--r-sm) - 4px);
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text);
+  text-align: left;
+  transition: background var(--t-fast);
+}
+.status-opt:hover,
+.status-opt.active { background: var(--surface2); }
+.status-opt .status-dot { width: 9px; height: 9px; }
+.status-opt.st-todo  .status-dot { background: var(--muted2); }
+.status-opt.st-doing .status-dot { background: var(--accent); }
+.status-opt.st-done  .status-dot { background: var(--green); }
+.status-check { width: 14px; height: 14px; margin-left: auto; color: var(--muted); }
 
 .type-badge {
   font-size: 0.5rem;
@@ -1356,7 +1501,7 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); cur
   min-height: 130px;
 }
 
-.week-day.today { background: var(--accent-dim); border-color: var(--accent-s); }
+.week-day.today { background: var(--surface2); border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
 .week-day.past { opacity: 0.6; }
 
 .week-day-head { display: flex; justify-content: space-between; align-items: baseline; }
@@ -1405,10 +1550,11 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); cur
 .week-chip.default  { background: var(--surface3);   color: var(--muted); }
 
 @media (max-width: 720px) {
-  .week-strip { grid-template-columns: 1fr; grid-auto-rows: auto; }
-  .week-day { min-height: 0; flex-direction: row; align-items: center; }
-  .week-day-head { flex-direction: row; gap: 0.5rem; min-width: 80px; }
-  .week-day-items { flex: 1; flex-direction: row; flex-wrap: wrap; }
+  .week-strip { grid-template-columns: 1fr; grid-auto-rows: auto; min-width: 0; }
+  .week-day { min-height: 0; flex-direction: row; align-items: center; min-width: 0; }
+  .week-day-head { flex-direction: row; gap: 0.5rem; min-width: 80px; flex: 0 0 auto; }
+  .week-day-items { flex: 1 1 0; min-width: 0; flex-direction: row; flex-wrap: wrap; }
+  .week-day-items .week-chip { max-width: 100%; }
 }
 
 /* Month view */
@@ -1420,7 +1566,7 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); cur
   letter-spacing: -0.02em;
 }
 
-.cal-grid-header { display: grid; grid-template-columns: repeat(7, 1fr); margin-bottom: 0.25rem; }
+.cal-grid-header { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); margin-bottom: 0.25rem; }
 .cal-grid-header span {
   text-align: center;
   font-size: 0.5rem;
@@ -1431,7 +1577,7 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); cur
   padding: 0.375rem 0;
 }
 
-.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px; }
 
 .cal-cell {
   min-height: 72px;
@@ -1443,7 +1589,7 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); cur
 }
 
 .cal-cell.other-month { opacity: 0.3; background: transparent; }
-.cal-cell.today { background: var(--accent-dim); border-color: var(--accent-s); }
+.cal-cell.today { background: var(--surface2); border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
 
 .cal-cell-num {
   font-size: 0.6875rem;
@@ -1474,6 +1620,15 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); cur
 .cal-task-chip.essay    { background: var(--purple-dim); color: var(--purple); }
 .cal-task-chip.event    { background: var(--purple-dim); color: var(--purple); }
 .cal-task-chip.default  { background: var(--surface3);   color: var(--muted); }
+
+/* Phone: cells get narrow (~40px), so tighten padding + height and shrink the
+   day number / chips a touch so content fits without forcing track expansion. */
+@media (max-width: 720px) {
+  .cal-grid { gap: 3px; }
+  .cal-cell { min-height: 58px; padding: 0.25rem 0.2rem; }
+  .cal-cell-num { font-size: 0.625rem; margin-bottom: 0.2rem; }
+  .cal-task-chip { font-size: 0.5rem; padding: 1px 3px; }
+}
 
 /* Habit heat */
 .habit-heat {
@@ -2034,8 +2189,29 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); cur
 /* ── RESPONSIVE ─────────────────────────────────────────────── */
 @media (max-width: 720px) {
   body { padding: 0.75rem; }
-  .header-card { flex-direction: column; gap: 0.75rem; align-items: stretch; }
-  .header-right { align-items: flex-start; }
+  /* The flex container is .header-card-content, not .header-card — stack it. */
+  .header-card-content {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.85rem;
+  }
+  .header-right {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6rem 0.75rem;
+    width: 100%;
+  }
+  /* Quote sits on its own line, left-aligned; weather + week share the bottom row. */
+  .header-right .quote-line {
+    order: 1;
+    flex-basis: 100%;
+    text-align: left;
+    max-width: 100%;
+    margin: 0;
+  }
+  .header-right .weather-pill { order: 2; }
+  .header-right .hdr-week-btn { order: 3; margin-left: auto; }
   .habits-grid { grid-template-columns: repeat(3, 1fr); }
   .task-add-form { grid-template-columns: 1fr 1fr; }
   .task-add-form .t-input:first-child { grid-column: 1/-1; }
@@ -2176,6 +2352,52 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); cur
 .rail-link-icon.github   { background: #24292e; color: #fff; }
 .rail-link-icon.youtube  { background: #ff0000; color: #fff; }
 .rail-link-icon.figma    { background: #0acf83; color: #fff; }
+.rail-link-icon.claude   { background: #d97757; color: #fff; }
+
+/* ── LINK ICON PICKER (Add-link modal + edit popup) ─────────── */
+.qlm-icon-field { display: flex; flex-direction: column; gap: 0.5rem; }
+.qlm-field-label {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.icon-pick-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
+  gap: 0.4rem;
+  max-height: 232px;
+  overflow-y: auto;
+  padding: 0.15rem;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+.icon-pick-grid::-webkit-scrollbar { width: 5px; }
+.icon-pick-grid::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+.icon-pick-opt {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.3rem;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  cursor: pointer;
+  transition: border-color var(--t-fast), background var(--t-fast), transform 0.1s;
+}
+.icon-pick-opt:hover { border-color: var(--border2); background: var(--surface3); }
+.icon-pick-opt:active { transform: scale(0.94); }
+.icon-pick-opt.selected { border-color: var(--accent); background: var(--accent-dim); box-shadow: 0 0 0 1px var(--accent); }
+.icon-pick-opt .rail-link-icon { width: 30px; height: 30px; }
+.icon-pick-opt .rail-link-icon svg { width: 15px; height: 15px; }
+.icon-pick-opt .rail-link-icon.has-custom { padding: 0; overflow: hidden; }
+.icon-pick-opt .rail-link-icon .custom-icon-img { width: 100%; height: 100%; object-fit: cover; border-radius: 7px; }
+.icon-pick-opt.upload .rail-link-icon.upload-chip {
+  background: var(--surface3);
+  color: var(--muted);
+  border: 1px dashed var(--border2);
+}
 
 .rail-link-text {
   flex: 1;
@@ -2395,6 +2617,69 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); cur
   color: var(--muted);
   text-align: center;
   padding: 2rem 0;
+}
+
+/* ── SHOPPING LIST ──────────────────────────────────────────── */
+.shopping-list { display: flex; flex-direction: column; gap: 0.35rem; max-height: 380px; overflow-y: auto; }
+
+.shop-item {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.5rem 0.7rem;
+  border-radius: var(--r-sm);
+  background: var(--surface2);
+  border: 1px solid transparent;
+  transition: all var(--t-fast);
+  position: relative;
+}
+.shop-item:hover { background: var(--surface3); border-color: var(--border); }
+.shop-item:hover .del-btn { opacity: 1; }
+
+.shop-check {
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  border: 1.5px solid var(--border2);
+  flex-shrink: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--t-fast);
+}
+.shop-check:hover { border-color: var(--blue); }
+.shop-check.checked { background: var(--blue); border-color: var(--blue); }
+.shop-check.checked::after {
+  content: '';
+  width: 6px;
+  height: 3.5px;
+  border-left: 1.75px solid var(--on-accent);
+  border-bottom: 1.75px solid var(--on-accent);
+  transform: rotate(-45deg) translate(0.5px, -0.5px);
+}
+
+.shop-txt {
+  flex: 1;
+  font-family: var(--font-b);
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text);
+  cursor: text;
+  line-height: 1.35;
+  word-break: break-word;
+  background: transparent;
+  border: none;
+  padding: 0;
+  outline: none;
+}
+.shop-txt:focus { outline: 1px dashed var(--accent); outline-offset: 4px; border-radius: 2px; }
+
+.shop-item.done .shop-txt {
+  text-decoration: line-through;
+  color: var(--muted2);
+  text-decoration-thickness: 1px;
+  text-decoration-color: var(--muted);
 }
 
 /* ── CURRENTLY CAROUSEL ─────────────────────────────────────── */
@@ -2727,6 +3012,28 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); cur
   border-radius: 50%;
   background: var(--class-color, var(--accent));
 }
+.class-tab-x {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin-left: 0.1rem;
+  margin-right: -0.2rem;
+  border-radius: 50%;
+  font-size: 0.95rem;
+  line-height: 1;
+  color: var(--muted2);
+  opacity: 0.55;
+  cursor: pointer;
+  transition: opacity 0.15s var(--ease), background 0.15s var(--ease), color 0.15s var(--ease);
+}
+.class-tab-x:hover {
+  opacity: 1;
+  color: var(--red, #d96d6d);
+  background: color-mix(in srgb, var(--red, #d96d6d) 18%, transparent);
+}
+.tab.planner-tab.class-tab.active .class-tab-x { opacity: 0.75; }
 
 .class-edit-row {
   display: flex;
@@ -3122,8 +3429,11 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); cur
   pointer-events: none;
 }
 
-.card[data-has-bg="1"] > *:not(.card-bg-layer):not(.card-bg-popover):not(.card-bg-btn),
-.header-card[data-has-bg="1"] > *:not(.card-bg-layer):not(.card-bg-popover):not(.card-bg-btn) {
+/* Lift real content above the background image + scrim. The block drag/resize
+   handles are NOT content — they need their own absolute positioning and
+   z-index, so exclude them here (otherwise they flow inline and vanish). */
+.card[data-has-bg="1"] > *:not(.card-bg-layer):not(.card-bg-popover):not(.card-bg-btn):not(.block-handle):not(.block-resize-grip):not(.block-edge-resize):not(.block-edge-resize-bottom):not(.block-insert):not(.block-mcrop-handle),
+.header-card[data-has-bg="1"] > *:not(.card-bg-layer):not(.card-bg-popover):not(.card-bg-btn):not(.block-handle):not(.block-resize-grip):not(.block-edge-resize):not(.block-edge-resize-bottom):not(.block-insert):not(.block-mcrop-handle) {
   position: relative;
   z-index: 1;
 }
@@ -3180,18 +3490,22 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); cur
   backdrop-filter: blur(8px);
 }
 
-/* Card bg popover */
+/* Card bg popover — lives on <body> & is fixed-positioned next to its
+   trigger button, so it's never clipped by a small/overflow-hidden card. */
 .card-bg-popover {
-  position: absolute;
-  top: 2.6rem;
-  right: 0.65rem;
+  position: fixed;
+  top: 0;
+  left: 0;
   width: 260px;
+  max-width: calc(100vw - 16px);
+  max-height: calc(100vh - 16px);
+  overflow-y: auto;
   background: var(--card-elev);
   border: 1px solid var(--border2);
   border-radius: var(--r-sm);
   padding: 0.85rem;
   box-shadow: var(--shadow);
-  z-index: 10;
+  z-index: 600;
   display: none;
   flex-direction: column;
   gap: 0.55rem;
@@ -3271,31 +3585,61 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); cur
   -webkit-appearance: none;
   appearance: none;
   width: 100%;
-  height: 3px;
-  border-radius: 2px;
-  background: var(--surface3);
+  /* Tall transparent box = a generous, easy-to-grab hit area; the visible
+     track is drawn on the runnable-track pseudo so it stays a thin 6px line. */
+  height: 20px;
+  background: transparent;
+  cursor: pointer;
   outline: none;
+  margin: 0;
+  touch-action: none;
 }
 
+/* ── Track (WebKit / Blink) ── */
+.card-bg-slider::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--surface3);
+}
+/* ── Track (Firefox) ── */
+.card-bg-slider::-moz-range-track {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--surface3);
+}
+
+/* ── Thumb (WebKit / Blink) ── */
 .card-bg-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 12px;
-  height: 12px;
+  width: 16px;
+  height: 16px;
+  margin-top: -5px; /* centre the 16px thumb on the 6px track */
   border-radius: 50%;
   background: var(--accent);
-  cursor: pointer;
   border: 2px solid var(--card-elev);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.32);
+  cursor: grab;
+  transition: transform var(--t-fast);
+}
+/* ── Thumb (Firefox) ── */
+.card-bg-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--card-elev);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.32);
+  cursor: grab;
+  transition: transform var(--t-fast);
 }
 
-.card-bg-slider::-moz-range-thumb {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: var(--accent);
-  cursor: pointer;
-  border: 2px solid var(--card-elev);
-}
+.card-bg-slider:hover::-webkit-slider-thumb { transform: scale(1.08); }
+.card-bg-slider:hover::-moz-range-thumb     { transform: scale(1.08); }
+.card-bg-slider:active::-webkit-slider-thumb { transform: scale(1.18); cursor: grabbing; }
+.card-bg-slider:active::-moz-range-thumb     { transform: scale(1.18); cursor: grabbing; }
+.card-bg-slider:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 3px var(--accent-dim), 0 1px 3px rgba(0,0,0,0.32); }
+.card-bg-slider:focus-visible::-moz-range-thumb     { box-shadow: 0 0 0 3px var(--accent-dim), 0 1px 3px rgba(0,0,0,0.32); }
 
 .card-bg-slider-val {
   font-size: 0.65rem;
@@ -3308,6 +3652,8 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); cur
    so it stays legible regardless of photo brightness/scrim intensity. */
 .card[data-has-bg="1"] .sec-label {
   align-self: flex-start;
+  width: fit-content;
+  max-width: 100%;
   padding: 0.32rem 0.6rem 0.32rem 0.55rem;
   background: color-mix(in srgb, var(--card) 88%, transparent);
   border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
@@ -3334,7 +3680,74 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); cur
 .card[data-has-bg="1"] .habit-item,
 .card[data-has-bg="1"] .week-day,
 .card[data-has-bg="1"] .cal-cell {
-  background: color-mix(in srgb, var(--card) 80%, transparent);
+  background: color-mix(in srgb, var(--card) var(--panel-opacity, 86%), transparent);
+  backdrop-filter: blur(3px);
+}
+
+/* Agenda day/calendar boxes need to stay clearly readable over a photo —
+   make them nearly solid and keep the inner labels/chips at full strength. */
+.card[data-card-id="agenda"][data-has-bg="1"] .week-day,
+.card[data-card-id="agenda"][data-has-bg="1"] .cal-cell,
+.card[data-card-id="agenda"][data-has-bg="1"] .schedule-body {
+  background: color-mix(in srgb, var(--card) 97%, transparent);
+  backdrop-filter: blur(5px);
+  border-color: var(--border);
+}
+
+/* ── TOMORROW TEE-UP over a card photo ─────────────────────────
+   Don't drop one big opaque slab over the photo — that's the awkward
+   "box cutting off the background" look. Instead let the body stay
+   transparent so the photo shows through the gaps, and give each
+   cluster its own frosted-glass mini-panel: the evening tee-up + date
+   header, the two columns (tasks / events), and the non-negotiables
+   footer. Opacity is driven by --panel-opacity (Tweaks slider). */
+.card[data-card-id="agenda"][data-has-bg="1"] .tomorrow-body {
+  background: transparent;
+}
+.card[data-card-id="agenda"][data-has-bg="1"] .tomorrow-head,
+.card[data-card-id="agenda"][data-has-bg="1"] .tomorrow-col,
+.card[data-card-id="agenda"][data-has-bg="1"] .tomorrow-foot {
+  background: color-mix(in srgb, var(--card) var(--panel-opacity, 86%), transparent);
+  -webkit-backdrop-filter: blur(8px) saturate(1.15);
+  backdrop-filter: blur(8px) saturate(1.15);
+  border: 1px solid color-mix(in srgb, var(--border) 65%, transparent);
+  border-radius: var(--r-sm);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.20);
+}
+/* Header becomes a self-contained pill instead of a bare underline. */
+.card[data-card-id="agenda"][data-has-bg="1"] .tomorrow-head {
+  padding: 0.7rem 0.9rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 65%, transparent);
+  align-items: center;
+}
+/* Inner rows sit on the frosted panel — keep them crisp and readable. */
+.card[data-card-id="agenda"][data-has-bg="1"] .tomorrow-row {
+  background: color-mix(in srgb, var(--card) 90%, transparent);
+  border-color: color-mix(in srgb, var(--border) 80%, transparent);
+}
+.card[data-card-id="agenda"][data-has-bg="1"] .tomorrow-row.event {
+  background: color-mix(in srgb, var(--blue-dim) 55%, var(--card));
+}
+.card[data-card-id="agenda"][data-has-bg="1"] .tomorrow-habit-chip {
+  background: color-mix(in srgb, var(--card) 90%, transparent);
+}
+.card[data-card-id="agenda"][data-has-bg="1"] .week-day.today {
+  background: color-mix(in srgb, var(--card) 97%, transparent);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+.card[data-card-id="agenda"][data-has-bg="1"] .cal-cell.today {
+  background: color-mix(in srgb, var(--card) 97%, transparent);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+.card[data-card-id="agenda"][data-has-bg="1"] .week-day.past { opacity: 0.9; }
+.card[data-card-id="agenda"][data-has-bg="1"] .week-day-lbl,
+.card[data-card-id="agenda"][data-has-bg="1"] .week-day-num,
+.card[data-card-id="agenda"][data-has-bg="1"] .cal-day-num { opacity: 1; }
+/* Make the colored event chips read as solid tags rather than washed-out tints */
+.card[data-card-id="agenda"][data-has-bg="1"] .week-chip {
+  font-weight: 700;
   backdrop-filter: blur(2px);
 }
 
@@ -3486,7 +3899,10 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); cur
   inset: 0;
   background-image: var(--rail-bg);
   background-size: cover;
-  background-position: center;
+  background-position: var(--rail-bg-pos-x, 50%) var(--rail-bg-pos-y, 50%);
+  background-repeat: no-repeat;
+  transform: scale(var(--rail-bg-zoom, 1));
+  transform-origin: var(--rail-bg-pos-x, 50%) var(--rail-bg-pos-y, 50%);
   z-index: 0;
   opacity: 1;
   pointer-events: none;
@@ -3584,7 +4000,55 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); cur
   gap: 1rem;
 }
 
-@media (max-width: 720px) { .tomorrow-grid { grid-template-columns: 1fr; } }
+@media (max-width: 720px) {
+  .tomorrow-grid { grid-template-columns: 1fr; }
+  /* Keep the add-rows inside the card: input on its own line, controls below. */
+  .tomorrow-add { grid-template-columns: 1fr auto; }
+  .tomorrow-add #tmrTaskName,
+  .tomorrow-add #tmrEventName { grid-column: 1 / -1; min-width: 0; }
+  .tomorrow-add .t-select { min-width: 0; }
+  /* Long task rows wrap their badges instead of spilling past the edge. */
+  .tomorrow-row { flex-wrap: wrap; row-gap: 0.35rem; }
+  .tomorrow-row .task-txt,
+  .tomorrow-row > span[style*="flex:1"] { min-width: 0; }
+  /* Planner rows: title gets the whole first line so it never gets
+     squeezed into a one-word-per-line column. Status pill + badges
+     drop to a tidy full-width second row below. */
+  .task-item {
+    flex-wrap: wrap;
+    row-gap: 0.55rem;
+    padding: 0.7rem 0.75rem;
+  }
+  .task-item .task-txt {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 0.9375rem;
+    line-height: 1.35;
+    order: 1;
+  }
+  .task-item .tcheck { order: 0; width: 18px; height: 18px; }
+  .task-item .del-btn {
+    order: 2;
+    opacity: 1;
+    margin-left: auto;
+    font-size: 1.35rem;
+    padding: 0 0.15rem;
+  }
+  /* Second row: all the meta chips, left-aligned and comfortably sized. */
+  .task-item .task-meta {
+    display: flex;
+    flex-basis: 100%;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem;
+    order: 3;
+    padding-left: calc(18px + 0.5rem); /* align under the title, past the checkbox */
+  }
+  .task-item .status-pill { font-size: 0.6875rem; padding: 0.28rem 0.45rem 0.28rem 0.5rem; }
+  .task-item .type-badge,
+  .task-item .days-pill,
+  .task-item .class-badge { font-size: 0.625rem; padding: 0.24rem 0.5rem; }
+}
 
 .tomorrow-col {
   display: flex;
@@ -3605,6 +4069,32 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); cur
   color: var(--muted);
   margin-bottom: 0.25rem;
 }
+
+/* Scrolling list inside each Tomorrow column — same treatment as the
+   other widget lists (planner / dates / goals / life / people): caps at
+   a sane default, fills space, and scrolls within with a slim bar.
+   Label stays on top and the add-row stays pinned at the bottom. */
+.tomorrow-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: 240px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+.tomorrow-list::-webkit-scrollbar { width: 5px; }
+.tomorrow-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+.tomorrow-list::-webkit-scrollbar-thumb:hover { background: var(--border2); }
+/* When the agenda card is resized to an explicit height, drop the cap so
+   the lists fill all available space (mirrors .block--fixed list rule). */
+.block--fixed .tomorrow-list { max-height: none; }
 
 .tomorrow-row {
   display: flex;
@@ -3701,7 +4191,7 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); cur
 /* Calendar cells become clickable */
 .cal-cell:not(.other-month) { cursor: pointer; }
 .cal-cell:not(.other-month):hover { background: var(--surface3); }
-.cal-cell.today:hover { background: var(--accent-dim); }
+.cal-cell.today:hover { background: var(--surface3); }
 
 /* ── TWEAKS: font-preset grid ─────────────────────────────── */
 .font-grid {
@@ -3867,9 +4357,13 @@ body[data-has-bg="1"]::before {
 
 #healthCard.collapsed .sec-label-row { margin-bottom: 0; }
 
-/* ── SIDE RAIL BG: PER-ROW CHIPS, NO FULL-RAIL SCRIM ──────── */
-/* Keep the rail photo fully visible — drop the full-rail scrim entirely. */
-.side-rail[data-has-bg="1"]::after { display: none; }
+/* ── SIDE RAIL BG: PER-ROW CHIPS + adjustable readability scrim ──── */
+/* The scrim opacity is driven by the Overlay slider (Tweaks → Side Rail). */
+.side-rail[data-has-bg="1"]::after {
+  display: block;
+  background: rgba(var(--bg-rgb, 13,11,9), var(--rail-bg-overlay, 0.65));
+  pointer-events: none;
+}
 
 /* Instead, give every row (links, add, edit-toggle, brand) a solid
    surface chip so labels + icons sit on a readable background. */
@@ -3954,5 +4448,620 @@ body[data-has-bg="1"]::before {
   font-style: italic;
   line-height: 1.4;
   margin-top: -0.1rem;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   v6 additions — MOBILE / PHONE LAYOUT HARDENING
+   Fixes: off-center load (horizontal overflow), tab rows spilling
+   out of their cards, cramped section-label rows, quick-links rail
+   reachability. Plus the desktop "Phone preview" device frame.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Kill horizontal overflow everywhere (the off-center-on-load bug).
+   Cards are overflow:visible so handles can peek out — but that let the
+   non-wrapping tab rows push the page wider than the screen. Clamp the
+   page width and let cards clip horizontally on phones. ── */
+@media (max-width: 720px) {
+  html, body { max-width: 100%; overflow-x: hidden; }
+  .dash, .blocks, .brow, .bcol { max-width: 100%; min-width: 0; }
+  .block { min-width: 0; }
+  /* Allow vertical handles to still show, but never spill sideways. */
+  .card.block { overflow-x: clip; }
+}
+
+/* ── Tab rows: never overflow the card. They become a horizontally
+   swipeable strip that fits inside the widget. ── */
+@media (max-width: 720px) {
+  .tabs,
+  .agenda-tabs,
+  #plannerTabs,
+  #currentlyTabs,
+  #pomoTabs {
+    width: 100%;
+    max-width: 100%;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    scroll-snap-type: x proximity;
+  }
+  .tabs::-webkit-scrollbar,
+  .agenda-tabs::-webkit-scrollbar { display: none; }
+
+  .tab,
+  .agenda-tab,
+  .planner-tab,
+  .goals-tab,
+  .cur-tab,
+  .pomo-tab {
+    flex: 0 0 auto;
+    white-space: nowrap;
+    scroll-snap-align: start;
+  }
+
+  /* Draggable carousel affordances: grab cursor + soft fades that hint
+     there are more tabs to scrub through left/right. */
+  .agenda-tabs,
+  #currentlyTabs { cursor: grab; scroll-behavior: smooth; }
+  .agenda-tabs.dragging,
+  #currentlyTabs.dragging { cursor: grabbing; scroll-behavior: auto; user-select: none; }
+  .agenda-tabs.dragging .agenda-tab { pointer-events: none; }
+
+  .agenda-tabs.can-right {
+    -webkit-mask-image: linear-gradient(to right, #000 78%, transparent 100%);
+            mask-image: linear-gradient(to right, #000 78%, transparent 100%);
+  }
+  .agenda-tabs.can-left {
+    -webkit-mask-image: linear-gradient(to right, transparent 0%, #000 14%);
+            mask-image: linear-gradient(to right, transparent 0%, #000 14%);
+  }
+  .agenda-tabs.can-left.can-right {
+    -webkit-mask-image: linear-gradient(to right, transparent 0%, #000 13%, #000 78%, transparent 100%);
+            mask-image: linear-gradient(to right, transparent 0%, #000 13%, #000 78%, transparent 100%);
+  }
+}
+
+/* ── Section-label rows: stack the title above its controls so the
+   tab strip / buttons get the full card width instead of being
+   crushed against the label. ── */
+@media (max-width: 720px) {
+  .sec-label-row {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    row-gap: 0.6rem;
+  }
+  .sec-label-row > .sec-label,
+  .sec-label-row > .habits-header-left { flex: 0 0 auto; }
+  /* Wrapper divs (e.g. planner's label+tabs group) must be able to shrink
+     so the .tabs strip inside them actually scrolls instead of overflowing. */
+  .sec-label-row > div { min-width: 0; max-width: 100%; }
+  .sec-label-row .tabs,
+  .sec-label-row .agenda-tabs {
+    order: 2;
+    flex-basis: 100%;
+  }
+  /* Edit / gear / sync buttons stay pinned to the right of the label row */
+  .sec-label-row > .icon-btn,
+  .sec-label-row > button:not(.sec-label),
+  .sec-label-row > div:last-child { margin-left: auto; }
+}
+
+/* ── Planner add-form: the 4-column grid is too tight on a phone.
+   Reflow to name on top, then date/class/type/add wrapping below. ── */
+@media (max-width: 720px) {
+  .task-add-form {
+    grid-template-columns: 1fr 1fr;
+  }
+  .task-add-form #taskName { grid-column: 1 / -1; }
+  .task-add-form .btn-add  { grid-column: 1 / -1; }
+}
+
+/* ── Slightly tighter cards + bigger touch targets on phones ── */
+@media (max-width: 720px) {
+  .card { padding: 1.1rem; }
+  .header-card { padding: 1.25rem 1.15rem; }
+  /* Clear the floating quick-links button so it never sits on the greeting */
+  .header-card-content { padding-left: 2.6rem; }
+  .icon-btn { width: 34px; height: 34px; }
+  .tab, .agenda-tab { padding: 0.4rem 0.7rem; }
+}
+
+/* ── Quick-links rail on phones: a proper labelled button that opens a
+   slide-in drawer with a dimmed backdrop. ── */
+.qlinks-fab {
+  gap: 0.4rem;
+}
+
+@media (max-width: 720px) {
+  /* Make the launcher unmistakable: pill with a label, not a bare dot. */
+  .qlinks-fab {
+    width: auto;
+    height: 38px;
+    padding: 0 0.85rem;
+    border-radius: 999px;
+    font-family: var(--font-d);
+    font-weight: 800;
+    font-size: 0.72rem;
+    letter-spacing: 0.02em;
+  }
+  .qlinks-fab::after {
+    content: 'Links';
+  }
+  /* Backdrop behind the open drawer */
+  .side-rail.mobile-open::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    left: 240px;
+    background: rgba(0,0,0,0.5);
+    z-index: -1;
+  }
+  .side-rail.mobile-open {
+    animation: railSlideIn 0.26s var(--ease);
+  }
+}
+
+@keyframes railSlideIn {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(0); }
+}
+
+/* ═══ PHONE PREVIEW (desktop tool: see the live mobile layout) ═══ */
+.phone-preview-fab {
+  position: fixed;
+  bottom: 1rem;
+  right: 4rem;            /* sits just left of the tweak FAB */
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--card-elev);
+  border: 1px solid var(--border2);
+  color: var(--text-s);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 590;
+  box-shadow: var(--shadow);
+  transition: color var(--t-fast), border-color var(--t-fast), transform var(--t-fast);
+}
+.phone-preview-fab:hover { color: var(--accent); border-color: var(--accent); transform: translateY(-1px); }
+.phone-preview-fab svg { width: 18px; height: 18px; }
+
+/* The preview tool is meaningless on an actual phone — hide it there. */
+@media (max-width: 720px) {
+  .phone-preview-fab { display: none; }
+}
+
+.phone-preview-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 700;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+.phone-preview-overlay.open { display: flex; }
+
+.ppv-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.72);
+  backdrop-filter: blur(6px);
+}
+[data-theme="paper"] .ppv-backdrop { background: rgba(60,40,15,0.5); }
+
+.ppv-stage {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.ppv-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: var(--card-elev);
+  border: 1px solid var(--border2);
+  border-radius: 999px;
+  padding: 0.4rem 0.5rem 0.4rem 1rem;
+  box-shadow: var(--shadow);
+}
+.ppv-title {
+  font-family: var(--font-d);
+  font-weight: 800;
+  font-size: 0.8rem;
+  color: var(--text);
+  letter-spacing: -0.01em;
+}
+.ppv-actions { display: flex; gap: 0.4rem; }
+.ppv-btn {
+  font-family: var(--font-b);
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.38rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid var(--border2);
+  background: var(--surface2);
+  color: var(--text-s);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  transition: all var(--t-fast);
+}
+.ppv-btn:hover { color: var(--accent); border-color: var(--accent); }
+.ppv-btn svg { width: 12px; height: 12px; }
+.ppv-btn.primary { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+.ppv-btn.primary:hover { background: var(--accent-s); color: var(--on-accent); }
+
+.ppv-device-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+/* The device bezel. Internal iframe is a true 390px viewport so the
+   real mobile media queries fire. The whole device is scaled by JS to
+   fit shorter screens (transform doesn't change the iframe's viewport).
+   The wrapper above carries the scaled footprint so centring is correct. */
+.ppv-device {
+  width: 390px;
+  height: 800px;
+  background: #0a0a0a;
+  border-radius: 44px;
+  padding: 12px;
+  box-shadow: 0 30px 80px rgba(0,0,0,0.5), inset 0 0 0 2px rgba(255,255,255,0.06);
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: top left;
+  flex-shrink: 0;
+}
+.ppv-notch {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 120px;
+  height: 26px;
+  background: #0a0a0a;
+  border-radius: 0 0 16px 16px;
+  z-index: 2;
+}
+.ppv-frame {
+  width: 100%;
+  height: 100%;
+  border: none;
+  border-radius: 32px;
+  background: var(--bg);
+  display: block;
+}
+
+/* When viewing inside the phone-preview iframe, hide the desktop-only
+   floating tools so the mockup looks like the real phone app. */
+body.in-phone-preview .phone-preview-fab,
+body.in-phone-preview .tweak-fab { display: none !important; }
+
+/* ═══════════════════════════════════════════════════════════════
+   UNIVERSAL WIDGET LIST SCROLL
+   Every widget box that holds a vertical list scrolls inside the
+   card — the same behavior as Important Dates — so the list stays
+   usable at ANY widget height. The list flex-fills the available
+   space; when content overflows, it scrolls with a themed bar.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* 1) Each list-bearing card becomes a flex column so its list can
+      grow/shrink to whatever height the widget box is given. */
+.card[data-card-id="planner"],
+.card[data-card-id="dates"],
+.card[data-card-id="goals"],
+.card[data-card-id="life"],
+.card[data-card-id="people"] {
+  display: flex;
+  flex-direction: column;
+}
+
+/* 2) The list itself fills remaining card space and scrolls. The
+      max-height is the default cap for AUTO-height cards (so the
+      list never runs off the page); flex makes it shrink further
+      when the widget is small. */
+.card[data-card-id="planner"] > .task-list,
+.card[data-card-id="dates"]   > .dates-list,
+.card[data-card-id="goals"]   > .goals-list,
+.card[data-card-id="life"]    > .life-list,
+.card[data-card-id="people"]  > .people-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: 340px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* 3) When a widget has been resized to an explicit height
+      (.block--fixed), drop the default cap so the list fills ALL
+      the remaining space and scrolls within it. */
+.block--fixed .task-list,
+.block--fixed .dates-list,
+.block--fixed .goals-list,
+.block--fixed .life-list,
+.block--fixed .shopping-list,
+.block--fixed .people-list {
+  max-height: none;
+}
+
+/* Keep Important Dates at its tuned default cap (it's the reference). */
+.card[data-card-id="dates"] > .dates-list { max-height: 208px; }
+.block--fixed .dates-list { max-height: none; }
+
+/* 4) Matching slim WebKit scrollbar for every list. */
+.card[data-card-id="planner"] > .task-list::-webkit-scrollbar,
+.card[data-card-id="dates"]   > .dates-list::-webkit-scrollbar,
+.card[data-card-id="goals"]   > .goals-list::-webkit-scrollbar,
+.card[data-card-id="life"]    > .life-list::-webkit-scrollbar,
+.card[data-card-id="people"]  > .people-list::-webkit-scrollbar {
+  width: 5px;
+}
+.card[data-card-id="planner"] > .task-list::-webkit-scrollbar-thumb,
+.card[data-card-id="dates"]   > .dates-list::-webkit-scrollbar-thumb,
+.card[data-card-id="goals"]   > .goals-list::-webkit-scrollbar-thumb,
+.card[data-card-id="life"]    > .life-list::-webkit-scrollbar-thumb,
+.card[data-card-id="people"]  > .people-list::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+.card[data-card-id="planner"] > .task-list::-webkit-scrollbar-thumb:hover,
+.card[data-card-id="dates"]   > .dates-list::-webkit-scrollbar-thumb:hover,
+.card[data-card-id="goals"]   > .goals-list::-webkit-scrollbar-thumb:hover,
+.card[data-card-id="life"]    > .life-list::-webkit-scrollbar-thumb:hover,
+.card[data-card-id="people"]  > .people-list::-webkit-scrollbar-thumb:hover {
+  background: var(--border2);
+}
+
+/* ════════════════════════════════════════════════════════════
+   HEADER — TWO-ROW GROUPED LAYOUT (redesign)
+   Row 1: identity (left) · date + week (right)
+   Row 2: quote (left) · weather (right)
+   Each group is its own frosted, rounded panel.
+   ════════════════════════════════════════════════════════════ */
+.header-card-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  min-height: 0;
+  align-items: stretch;
+}
+
+.hdr-row {
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 0.6rem;
+  width: 100%;
+}
+
+/* The frosted panel shared by every group — same bubble as the date/week pills,
+   nudged a tad darker so the clear glass stays visible over a photo background */
+.hdr-grp {
+  display: flex;
+  background: rgba(12, 9, 6, 0.34);
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 16px;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.18);
+  min-width: 0;
+}
+/* When there's no background photo, fall back to surface tones */
+.header-card:not([data-has-bg="1"]) .hdr-grp {
+  background: var(--surface2);
+  border-color: var(--border);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: none;
+}
+
+/* ── Group: identity (eyebrow + name) ── */
+.hdr-grp-identity {
+  flex: 0 1 auto;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.3rem;
+  padding: 0.95rem 1.25rem;
+}
+.hdr-eyebrow {
+  font-family: var(--font-b);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.62);
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.4);
+}
+.header-card:not([data-has-bg="1"]) .hdr-eyebrow { color: var(--muted); text-shadow: none; }
+
+/* Neutralise the legacy per-line pill on the name; the group owns the bg now */
+.hdr-grp .greeting {
+  background: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  padding: 0 !important;
+  width: auto !important;
+  max-width: 100% !important;
+  border-radius: 0 !important;
+  font-size: clamp(1.9rem, 5vw, 2.55rem);
+  line-height: 1.02;
+}
+.greeting-dot { color: var(--accent); }
+
+/* ── Group: date + week ── */
+.hdr-grp-when {
+  flex: 0 0 auto;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 0.45rem;
+  /* The group itself is just a layout container now — each child (date + week)
+     carries its own minimal pill, so the shared frosted panel is dropped here. */
+  background: none !important;
+  border: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  text-align: right;
+}
+.hdr-grp .date-line {
+  background: rgba(12, 9, 6, 0.34) !important;
+  border: 1px solid rgba(255, 255, 255, 0.13) !important;
+  box-shadow: none !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  padding: 0.3rem 0.7rem !important;
+  margin: 0 !important;
+  width: auto !important;
+  border-radius: 999px !important;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  white-space: nowrap;
+  color: rgba(255, 255, 255, 0.9);
+}
+.header-card:not([data-has-bg="1"]) .hdr-grp .date-line {
+  background: var(--surface3) !important;
+  border-color: var(--border2) !important;
+  color: var(--text-s);
+}
+.date-dot { color: var(--accent); font-size: 0.55em; line-height: 1; }
+
+/* Week button becomes a subtle inner chip inside the frosted group */
+.hdr-grp-when .hdr-week-btn {
+  background: rgba(12, 9, 6, 0.34) !important;
+  border: 1px solid rgba(255, 255, 255, 0.13) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  color: rgba(255, 255, 255, 0.92) !important;
+  padding: 0.3rem 0.5rem 0.3rem 0.7rem;
+  font-size: 0.66rem;
+}
+.hdr-grp-when .hdr-week-btn:hover {
+  background: rgba(12, 9, 6, 0.5) !important;
+  border-color: var(--accent) !important;
+}
+.header-card:not([data-has-bg="1"]) .hdr-grp-when .hdr-week-btn {
+  background: var(--surface3) !important;
+  border-color: var(--border2) !important;
+  color: var(--text-s) !important;
+}
+
+/* ── Group: quote ── */
+.hdr-grp-quote {
+  flex: 0 1 auto;
+  align-items: center;
+  padding: 0.7rem 1.25rem;
+}
+.hdr-grp .quote-line {
+  background: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  padding: 0 !important;
+  width: auto !important;
+  max-width: 100% !important;
+  text-align: left;
+  font-size: 0.92rem;
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.85);
+}
+.header-card:not([data-has-bg="1"]) .hdr-grp .quote-line { color: var(--muted); }
+
+/* ── Group: weather ── */
+.hdr-grp-weather {
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  padding: 0.55rem 0.95rem;
+}
+.hdr-grp-weather .weather-pill {
+  background: none !important;
+  border: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9) !important;
+}
+.header-card:not([data-has-bg="1"]) .hdr-grp-weather .weather-pill { color: var(--text-s) !important; }
+
+/* ── Phone tuning — single uniform left-aligned stack ──
+   The two desktop rows collapse into one column. Date + week ride the
+   top-right corner so they clear the fixed "Links" FAB at top-left; the
+   greeting, quote, and weather then stack as full-width bubbles that all
+   share the exact same left and right edges for a clean, aligned look. */
+@media (max-width: 720px) {
+  .header-card-content {
+    padding-left: 0;
+    gap: 0.55rem;
+  }
+  /* Dissolve the row wrappers so all four groups become direct children
+     of the column and can be re-ordered individually. */
+  .hdr-row { display: contents; }
+
+  /* 1 — date + week, top-right, clearing the FAB on the left */
+  .hdr-grp-when {
+    order: 1;
+    flex-direction: row;
+    align-self: flex-end;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.4rem;
+    width: auto;
+    min-height: 30px;
+  }
+
+  /* 2 — greeting, full width, left-aligned */
+  .hdr-grp-identity {
+    order: 2;
+    width: 100%;
+    flex: 0 0 auto;
+    align-items: flex-start;
+    padding: 0.85rem 1.1rem;
+  }
+
+  /* 3 — quote, full width, left-aligned */
+  .hdr-grp-quote {
+    order: 3;
+    width: 100%;
+    flex: 0 0 auto;
+    align-items: flex-start;
+    padding: 0.75rem 1.1rem;
+  }
+
+  /* 4 — weather, full width, left-aligned */
+  .hdr-grp-weather {
+    order: 4;
+    width: 100%;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 0.65rem 1.1rem;
+  }
+
+  .hdr-grp .greeting { font-size: clamp(1.9rem, 9vw, 2.3rem); }
+  .hdr-grp .quote-line { font-size: 0.9rem; }
 }
 

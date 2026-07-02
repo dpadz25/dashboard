@@ -239,3 +239,43 @@
 .pomo-edit-field input:focus { border-color: var(--accent); }
 .pomo-edit-field input::-webkit-outer-spin-button,
 .pomo-edit-field input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+/* ── NUMBER LEGIBILITY (clock + pomodoro readouts) ──────────────
+   The big numbers sit on dark cards — and can sit over a user's card
+   background photo — so give them a soft shadow halo (deepened, plus a
+   translucent plate, when a bg image is present) to stay crisp. */
+.clock-time, .pomo-time {
+  text-shadow: 0 1px 1px rgba(0,0,0,0.45), 0 2px 8px rgba(0,0,0,0.38);
+}
+.clock-date, .clock-secs, .clock-ampm, .pomo-mode-lbl {
+  text-shadow: 0 1px 3px rgba(0,0,0,0.4);
+}
+
+/* Light (paper) theme: numbers are dark on a light card — a faint light
+   relief reads better than a dark halo. */
+[data-theme="paper"] .clock-time,
+[data-theme="paper"] .pomo-time {
+  text-shadow: 0 1px 0 rgba(255,255,255,0.55), 0 1px 2px rgba(80,55,20,0.16);
+}
+[data-theme="paper"] .clock-date,
+[data-theme="paper"] .clock-secs,
+[data-theme="paper"] .clock-ampm,
+[data-theme="paper"] .pomo-mode-lbl { text-shadow: none; }
+
+/* Over a background photo: white numbers, heavy outline, and a soft
+   plate behind so they never wash out against a bright image. */
+.card[data-has-bg="1"] .clock-time,
+.card[data-has-bg="1"] .pomo-time {
+  color: #fff;
+  text-shadow: 0 0 2px rgba(0,0,0,0.65), 0 2px 10px rgba(0,0,0,0.7), 0 1px 0 rgba(0,0,0,0.5);
+}
+.card[data-has-bg="1"] .clock-face,
+.card[data-has-bg="1"] .pomo-readout {
+  background: radial-gradient(ellipse at center, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.14) 58%, transparent 78%);
+}
+.card[data-has-bg="1"] .pomo-readout { border-radius: 50%; }
+.card[data-has-bg="1"] .clock-date,
+.card[data-has-bg="1"] .pomo-mode-lbl {
+  color: rgba(255,255,255,0.92);
+  text-shadow: 0 1px 6px rgba(0,0,0,0.7);
+}

@@ -19,6 +19,8 @@
   const STORAGE_LAYOUT_V2 = 'dashboard.blocks.layout.v2';   // legacy flat fracs
   const STORAGE_LAYOUT_V1 = 'dashboard.blocks.layout.v1';   // legacy span 1|2
   const STORAGE_NOTES     = 'dashboard.blocks.notes.v1';
+  const STORAGE_MHEIGHTS  = 'dashboard.blocks.mheights.v1'; // phone-only crop heights, kept apart from desktop --bh
+  const STORAGE_TABH      = 'dashboard.blocks.tabheights.v1'; // per-tab heights for tabbed cards (agenda): { "id::tab": {d,m} }
 
   const MIN_FRAC   = 0.12;  // smallest column width (~12% of row)
   const MAX_FRAC   = 1;
@@ -62,6 +64,12 @@
       <path d="M2 2l8 8M10 2l-8 8"/>
     </svg>`;
 
+  // Up/down chevrons — the phone-only "drag to crop height" pull tab.
+  const MCROP_SVG = `
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M5 6l3-3 3 3M5 10l3 3 3-3"/>
+    </svg>`;
+
   let container = null;
   let dragState = null;
   let resizeState = null;
@@ -84,6 +92,16 @@
     buildStructure(loadLayout());   // wrap blocks into rows/columns
 
     container.querySelectorAll('.block').forEach((b) => { injectHandles(b); syncFixed(b); });
+    applyMScale();                  // restore any phone-only resize scales
+    applyTabHeight('agenda');       // restore the agenda's per-tab height (desktop + phone)
+
+    // Re-fit on viewport changes: widths (and thus natural heights) shift
+    // between phone/desktop and on rotation, so recompute the scales.
+    let _mscaleRaf = null;
+    window.addEventListener('resize', () => {
+      cancelAnimationFrame(_mscaleRaf);
+      _mscaleRaf = requestAnimationFrame(applyMScale);
+    });
 
     document.addEventListener('mousemove', onMouseMove);
     document.addEventListener('mouseup',   onMouseUp);
@@ -93,7 +111,35 @@
     });
 
     bindTouch();
+    setupMcropReveal();
   }
+
+  /* Phone pull-tabs are hidden until you interact with a widget, so they no
+     longer clutter the gaps between cards. Touching a widget fades in its
+     tab; it fades back out a couple seconds after you stop touching. */
+  function setupMcropReveal() {
+    const isPhone = () => !window.matchMedia('(min-width: 881px)').matches;
+    let hideTimer = null;
+    const hideIdle = () => {
+      if (!container) return;
+      container.querySelectorAll('.block.show-mcrop').forEach((b) => {
+        if (!b.classList.contains('is-mcropping')) b.classList.remove('show-mcrop');
+      });
+    };
+    const scheduleHide = () => { clearTimeout(hideTimer); hideTimer = setTimeout(hideIdle, 2600); };
+    const reveal = (node) => {
+      if (!isPhone() || !node || !node.closest || !container) return;
+      const block = node.closest('.block');
+      if (!block || !container.contains(block)) { scheduleHide(); return; }
+      container.querySelectorAll('.block.show-mcrop').forEach((b) => {
+        if (b !== block) b.classList.remove('show-mcrop');
+      });
+      block.classList.add('show-mcrop');
+      scheduleHide();
+    };
+    document.addEventListener('pointerdown', (e) => reveal(e.target), { passive: true });
+  }
+
 
   /* ── LAYOUT LOAD / MIGRATION ────────────────────────────── */
   // Returns an array of rows: [{ cols: [{ frac, items:[{id,h}] }] }] or null.
@@ -207,6 +253,11 @@
     if (block.__blocksReady) return;
     block.__blocksReady = true;
 
+    // Wrap the widget's own content so the phone resize can scale it as a
+    // unit, independent of the chrome (handles + pull tab), which stay
+    // full-size siblings outside the scaled wrapper.
+    ensureScaleWrap(block);
+
     const dragH = el('button', 'block-handle', { type: 'button', title: 'Drag to move / stack' });
     dragH.innerHTML = HANDLE_SVG;
     dragH.addEventListener('mousedown', (e) => startDrag(e, block));
@@ -221,6 +272,11 @@
     const edgeBottom = el('div', 'block-edge-resize-bottom', { title: 'Drag to change height' });
     edgeBottom.addEventListener('mousedown', (e) => startResize(e, block, 'bottom'));
 
+    // Phone-only pull tab: always-available vertical resize slider for touch.
+    const mcrop = el('div', 'block-mcrop-handle', { title: 'Drag to resize · double-tap to reset' });
+    mcrop.innerHTML = MCROP_SVG;
+    bindMobileCrop(mcrop, block);
+
     const plus = el('button', 'block-insert', { type: 'button', title: 'Insert a note below' });
     plus.innerHTML = PLUS_SVG;
     plus.addEventListener('click', (e) => insertNoteAfter(e, block));
@@ -230,7 +286,279 @@
     block.appendChild(grip);
     block.appendChild(edge);
     block.appendChild(edgeBottom);
+    block.appendChild(mcrop);
     block.appendChild(plus);
+  }
+
+  /* ── PHONE CROP — always-available vertical resize slider ──────
+     Desktop keeps its hover edge-handles; phones can't hover and the
+     bottom strip was hidden, so cropping was impossible there. This
+     pull tab is visible on every widget under 880px. Heights live in a
+     SEPARATE store (STORAGE_MHEIGHTS) so a phone crop never disturbs the
+     desktop layout (which reflows differently at full width) and vice
+     versa. Drag up to crop, drag past the natural height (or double-tap)
+     to un-crop. Uses Pointer Events so one handler covers touch + mouse. */
+  function loadMHeights() {
+    try { return JSON.parse(localStorage.getItem(STORAGE_MHEIGHTS) || '{}') || {}; }
+    catch (_) { return {}; }
+  }
+  function saveMobileHeight(id, h) {
+    const m = loadMHeights();
+    if (h && h >= MIN_HEIGHT) m[id] = Math.round(h);
+    else delete m[id];
+    try { localStorage.setItem(STORAGE_MHEIGHTS, JSON.stringify(m)); } catch (_) {}
+  }
+
+  /* ── PER-TAB HEIGHTS (agenda) ──────────────────────────────
+     The agenda's views (This Week, Tomorrow, Schedule, Month, Events,
+     Habits) each remember their OWN height, so switching tabs resizes
+     the widget to whatever you set for that view — e.g. a tall box for
+     the Month calendar — without re-cropping every time. cardTab() only
+     returns a tab for the agenda, so every other widget is untouched. */
+  function cardTab(block) {
+    if (!block || block.dataset.cardId !== 'agenda') return null;
+    try {
+      const t = window.dash && dash.currentTabFor && dash.currentTabFor('agenda');
+      return t || null;
+    } catch (_) { return null; }
+  }
+  function tabHKey(block) {
+    const t = cardTab(block);
+    return t ? block.dataset.cardId + '::' + t : null;
+  }
+  function loadTabH() {
+    try { return JSON.parse(localStorage.getItem(STORAGE_TABH) || '{}') || {}; }
+    catch (_) { return {}; }
+  }
+  function saveTabHeight(key, dim, h) {     // dim: 'd' desktop | 'm' phone
+    if (!key) return;
+    const o = loadTabH();
+    o[key] = o[key] || {};
+    if (h && h >= MIN_HEIGHT) o[key][dim] = Math.round(h);
+    else delete o[key][dim];
+    if (o[key].d == null && o[key].m == null) delete o[key];
+    try { localStorage.setItem(STORAGE_TABH, JSON.stringify(o)); } catch (_) {}
+  }
+  // Phone crop height: routed to the per-tab store for the agenda, the plain
+  // mheights store for everything else.
+  function savePhoneHeight(block, h) {
+    const key = tabHKey(block);
+    if (key) saveTabHeight(key, 'm', h);
+    else saveMobileHeight(block.dataset.cardId, h);
+  }
+  function loadedPhoneHeight(block) {
+    const key = tabHKey(block);
+    if (key) { const o = loadTabH(); return o[key] ? o[key].m : undefined; }
+    return loadMHeights()[block.dataset.cardId];
+  }
+
+  // Re-apply the height that belongs to a tabbed card's CURRENT tab. Called
+  // after a tab switch (via dashboard's refreshTabbedBg) and once on boot.
+  function applyTabHeight(cardId) {
+    if (!container) return;
+    const block = container.querySelector('.block[data-card-id="' + cardId + '"]');
+    if (!block) return;
+    const phone = !window.matchMedia('(min-width: 881px)').matches;
+    if (phone) {
+      const t = loadedPhoneHeight(block);
+      if (t && t >= MIN_HEIGHT) applyScale(block, t);
+      else clearScale(block);
+    } else {
+      const key = tabHKey(block);
+      const o = loadTabH();
+      const h = key && o[key] ? o[key].d : null;
+      if (h && h >= MIN_HEIGHT) block.style.setProperty('--bh', Math.round(h) + 'px');
+      else block.style.removeProperty('--bh');
+      syncFixed(block);
+    }
+  }
+  /* ── PHONE RESIZE (scale-to-fit) ──────────────────────────
+     The wrapper holds the widget's content; scaling it shrinks the whole
+     widget — text, charts, every button — to fit the chosen height. Nothing
+     is clipped or lost. The chrome (handles + pull tab) lives outside the
+     wrapper, so it stays full size and reachable. */
+  function contentWrap(block) {
+    return block.querySelector(':scope > .block-scale');
+  }
+  function ensureScaleWrap(block) {
+    let wrap = contentWrap(block);
+    if (wrap) return wrap;
+    wrap = el('div', 'block-scale');
+    // Move the widget's CONTENT into the wrapper, but leave the background-
+    // image system's own layers as direct children of the card so they stay
+    // behind (and unscaled) — they're managed independently of the content.
+    const keepOut = '.card-bg-layer, .card-bg-popover, .card-bg-btn';
+    [...block.childNodes].forEach((n) => {
+      if (n.nodeType === 1 && n.matches && n.matches(keepOut)) return;
+      wrap.appendChild(n);
+    });
+    block.appendChild(wrap);
+    return wrap;
+  }
+  // Natural height of a block with no scale applied. Measured synchronously
+  // (class + transform momentarily cleared), so there's no visible flash.
+  function naturalBlockHeight(block) {
+    const wrap = contentWrap(block);
+    const hadClass = block.classList.contains('block--mscale');
+    const prevT = wrap ? wrap.style.transform : '';
+    if (wrap) wrap.style.transform = 'none';
+    if (hadClass) block.classList.remove('block--mscale');
+    const h = block.getBoundingClientRect().height;
+    if (hadClass) block.classList.add('block--mscale');
+    if (wrap) wrap.style.transform = prevT;
+    return h;
+  }
+  // Scale factor that makes a block of natural height `nat` (incl. padding
+  // `padV`) render at total height `target`.
+  function scaleFor(target, nat, padV) {
+    const contentNat = Math.max(1, nat - padV);
+    let k = (target - padV) / contentNat;
+    return Math.max(0.2, Math.min(1, k));
+  }
+  function applyScale(block, target) {
+    const wrap = contentWrap(block);
+    if (!wrap) return;
+    const nat = naturalBlockHeight(block);
+    if (!target || target >= nat - 2) { clearScale(block); return; }
+    const t = Math.max(MIN_HEIGHT, Math.round(target));
+    // CROP, don't scale: pin the widget's height and let overflow:hidden clip
+    // the bottom edge. Content keeps its designed size — nothing zooms or
+    // shrinks. --bh-nat keeps the background photo anchored at full height so
+    // it never re-zooms as the box gets shorter.
+    block.style.setProperty('--bh-m', t + 'px');
+    block.style.setProperty('--bh-nat', Math.round(nat) + 'px');
+    wrap.style.transform = '';
+    block.classList.add('block--mscale');
+  }
+  function clearScale(block) {
+    const wrap = contentWrap(block);
+    if (wrap) wrap.style.transform = '';
+    block.style.removeProperty('--bh-m');
+    block.style.removeProperty('--bh-nat');
+    block.classList.remove('block--mscale', 'is-mcropping');
+  }
+
+  function applyMScale() {
+    if (!container) return;
+    const phone = !window.matchMedia('(min-width: 881px)').matches;
+    container.querySelectorAll('.block').forEach((b) => {
+      const target = loadedPhoneHeight(b);
+      if (phone && target && target >= MIN_HEIGHT) applyScale(b, target);
+      else clearScale(b);   // desktop layout is never touched
+    });
+  }
+
+  function bindMobileCrop(handle, block) {
+    // `active` is per-handle; `moved` distinguishes a real drag from a tap so
+    // a stray tap or a browser-initiated pointercancel can NEVER reset the
+    // widget (that was the old snap-back bug). naturalH + padV are captured
+    // once on begin so the live drag doesn't thrash layout re-measuring.
+    let active = false, moved = false, startY = 0, startH = 0,
+        naturalH = 0, padV = 0, lastTap = 0, badge = null;
+
+    const isPhone = () => !window.matchMedia('(min-width: 881px)').matches;
+    const wrap = () => contentWrap(block);
+
+    const showBadge = (y, h) => {
+      if (!badge) { badge = el('div', 'block-resize-badge'); document.body.appendChild(badge); }
+      const r = block.getBoundingClientRect();
+      badge.style.left = (r.left + r.width / 2) + 'px';
+      badge.style.top  = Math.max(40, y) + 'px';
+      badge.textContent = Math.round(h) + 'px';
+    };
+
+    function liveScale(target) {
+      const t = Math.max(MIN_HEIGHT, Math.round(target));
+      // Live crop: just move the bottom boundary. Content stays full size.
+      block.style.setProperty('--bh-m', t + 'px');
+      block.style.setProperty('--bh-nat', Math.round(naturalH) + 'px');
+    }
+
+    function begin(clientY) {
+      // Double-tap (two quick taps) → restore full size.
+      const now = Date.now();
+      if (now - lastTap < 320) {
+        clearScale(block); savePhoneHeight(block, null);
+        lastTap = 0; active = false; return false;
+      }
+      lastTap = now;
+
+      active = true;
+      moved  = false;
+      naturalH = naturalBlockHeight(block);
+      const cs = getComputedStyle(block);
+      padV = (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0);
+      startH = block.getBoundingClientRect().height;
+      startY = clientY;
+      block.classList.add('block--mscale', 'is-mcropping');
+      liveScale(startH);
+      showBadge(clientY, startH);
+      return true;
+    }
+
+    function moveTo(clientY) {
+      if (!active) return;
+      if (Math.abs(clientY - startY) > 3) moved = true;
+      const target = Math.max(MIN_HEIGHT, Math.round(startH + (clientY - startY)));
+      liveScale(target);
+      showBadge(clientY, target);
+    }
+
+    function finish() {
+      if (!active) return;
+      active = false;
+      block.classList.remove('is-mcropping');
+      if (badge) { badge.remove(); badge = null; }
+
+      // A tap with no real drag must not alter anything: restore whatever was
+      // saved before. Crucially, we never reset on a tap or a cancel.
+      if (!moved) {
+        const saved = loadedPhoneHeight(block);
+        if (saved && saved >= MIN_HEIGHT) applyScale(block, saved);
+        else clearScale(block);
+        return;
+      }
+
+      const set = parseFloat(block.style.getPropertyValue('--bh-m')) || 0;
+      // Dragged down to/past full height → restore natural size.
+      if (set >= naturalH - 6) {
+        clearScale(block);
+        savePhoneHeight(block, null);
+      } else {
+        savePhoneHeight(block, set);
+        applyScale(block, set);   // recompute exact scale from a fresh measure
+      }
+    }
+
+    /* Pointer Events drive both mouse and touch. touch-action:none on the
+       handle (see CSS) stops the browser hijacking the drag as a page scroll,
+       and pointer capture keeps move/up firing even when the finger slides
+       off the small tab. */
+    handle.addEventListener('pointerdown', (e) => {
+      if (!isPhone()) return;
+      if (dragState || resizeState) return;
+      e.preventDefault();
+      e.stopPropagation();
+      if (begin(e.clientY)) {
+        try { handle.setPointerCapture(e.pointerId); } catch (_) {}
+      }
+    });
+    handle.addEventListener('pointermove', (e) => {
+      if (!active) return;
+      e.preventDefault();
+      moveTo(e.clientY);
+    });
+    handle.addEventListener('pointerup', (e) => {
+      if (!active) return;
+      try { handle.releasePointerCapture(e.pointerId); } catch (_) {}
+      finish();
+    });
+    // On cancel we still COMMIT the current size — never silently reset.
+    handle.addEventListener('pointercancel', (e) => {
+      if (!active) return;
+      try { handle.releasePointerCapture(e.pointerId); } catch (_) {}
+      finish();
+    });
   }
 
   /* ── DRAG ───────────────────────────────────────────────── */
@@ -533,6 +861,16 @@
 
     const col   = block.parentElement;                 // .bcol
     const row   = col ? col.parentElement : container;  // .brow
+
+    // A lone column can't trade width with a neighbour, so width resize is a
+    // no-op (the card's flex-grow re-expands it to fill the row). Ignore the
+    // right edge entirely and make the corner grip resize height only.
+    const soloCol = row && row.querySelectorAll(':scope > .bcol').length === 1;
+    if (soloCol) {
+      if (mode === 'edge')   return;
+      if (mode === 'corner') mode = 'bottom';
+    }
+
     const cRect = (row || container).getBoundingClientRect();
     const bRect = block.getBoundingClientRect();
     const colRect = (col || block).getBoundingClientRect();
@@ -621,6 +959,13 @@
     const s = resizeState;
     if (!s) return;
     saveLayout();
+    // Tabbed cards (the agenda) remember their height PER TAB on desktop, so
+    // each view (This Week, Month, …) keeps its own size.
+    const phone = !window.matchMedia('(min-width: 881px)').matches;
+    if (!phone && (s.mode === 'bottom' || s.mode === 'corner')) {
+      const key = tabHKey(s.block);
+      if (key) saveTabHeight(key, 'd', s.currentBh);
+    }
     if (s.vGuide) s.vGuide.remove();
     if (s.hGuide) s.hGuide.remove();
     s.badge.remove();
@@ -805,7 +1150,10 @@
         frac: round4(parseFloat(colEl.style.getPropertyValue('--col-frac')) || 1),
         items: [...colEl.querySelectorAll(':scope > .block')].map((b) => {
           const bhStr = b.style.getPropertyValue('--bh');
-          return { id: b.dataset.cardId, h: bhStr ? Math.round(parseFloat(bhStr)) : null };
+          // Tabbed cards (agenda) manage their height per-tab, so don't bake
+          // the current tab's height into the structural layout.
+          const h = (!tabHKey(b) && bhStr) ? Math.round(parseFloat(bhStr)) : null;
+          return { id: b.dataset.cardId, h };
         }),
       })),
     }));
@@ -844,6 +1192,7 @@
   window.blocks = {
     boot,
     save: saveLayout,
+    applyTabHeight,
     reset() {
       try {
         localStorage.removeItem(STORAGE_LAYOUT_V3);

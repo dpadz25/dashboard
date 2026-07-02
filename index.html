@@ -7,9 +7,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300;12..96,400;12..96,700;12..96,800&family=Inter:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css">
-  <link rel="stylesheet" href="blocks.css">
-  <link rel="stylesheet" href="widgets.css">
+  <link rel="stylesheet" href="styles.css?v=8">
+  <link rel="stylesheet" href="blocks.css?v=7">
+  <link rel="stylesheet" href="widgets.css?v=7">
 
   <!-- Firebase SDK (cloud sync) -->
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
@@ -68,17 +68,32 @@
   <!-- ═══ HEADER ════════════════════════════════════════════ -->
   <section class="header-card block fade-in s1" id="headerCard" data-card-id="header" data-screen-label="01 Header" data-default-span="2">
     <div class="header-card-content">
-      <div>
-        <div class="greeting" id="greeting">Good morning, <em>Delan</em>.</div>
-        <div class="date-line" id="dateLine"></div>
-      </div>
-      <div class="header-right">
-        <div class="weather-pill" id="weatherPill">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
-          <span id="wText">Loading…</span>
+      <!-- ROW 1 — identity (left) · date + week (right) -->
+      <div class="hdr-row hdr-row-top">
+        <div class="hdr-grp hdr-grp-identity">
+          <span class="hdr-eyebrow" id="greetingTone">Good morning</span>
+          <span class="greeting" id="greeting">Delan.</span>
         </div>
-        <button class="sync-pill" id="syncBtn">Sign in to sync</button>
-        <div class="quote-line" id="quoteLine">small steps, every day.</div>
+        <div class="hdr-grp hdr-grp-when">
+          <span class="date-line" id="dateLine"></span>
+          <button class="hdr-week-btn" id="weekBtn" type="button" onclick="dash.jumpToWeek()" title="Jump to this week's agenda">
+            <span class="hdr-week-num" id="weekNum">Week —</span>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+          </button>
+        </div>
+      </div>
+      <!-- ROW 2 — quote (left) · sync + weather (right) -->
+      <div class="hdr-row hdr-row-bottom">
+        <div class="hdr-grp hdr-grp-quote">
+          <span class="quote-line" id="quoteLine">small steps, every day.</span>
+        </div>
+        <div class="hdr-grp hdr-grp-weather">
+          <button class="sync-pill" id="syncBtn">Sign in to sync</button>
+          <div class="weather-pill" id="weatherPill">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+            <span id="wText">Loading…</span>
+          </div>
+        </div>
       </div>
     </div>
   </section>
@@ -90,7 +105,7 @@
         <div>
           <div class="sec-label teal" style="margin-bottom:0.5rem">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
-            School Planner
+            Planner
           </div>
           <div class="tabs" id="plannerTabs">
             <button class="tab planner-tab active" onclick="dash.switchTab('all',this)">All</button>
@@ -253,6 +268,24 @@
       <div class="life-list" id="lifeList"></div>
     </div>
 
+    <!-- SHOPPING LIST -->
+    <div class="card block fade-in s5" data-section="shopping" data-card-id="shopping" data-screen-label="05c Shopping List" data-default-span="1">
+      <div class="sec-label-row">
+        <div class="sec-label blue">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+          Shopping List
+        </div>
+        <button class="icon-btn" onclick="dash.clearDoneShopping()" title="Clear checked items">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+        </button>
+      </div>
+      <div style="display:flex;gap:0.375rem;margin-bottom:0.75rem">
+        <input class="t-input" id="shopInput" placeholder="add an item…" style="flex:1" onkeydown="if(event.key==='Enter')dash.addShopping()"/>
+        <button class="btn-add" onclick="dash.addShopping()">Add</button>
+      </div>
+      <div class="shopping-list" id="shoppingList"></div>
+    </div>
+
     <!-- CURRENTLY CAROUSEL -->
     <div class="card block fade-in s5" data-section="currently" data-card-id="currently" data-screen-label="05b Currently" data-default-span="1">
       <div class="sec-label-row">
@@ -305,7 +338,7 @@
     <div class="sec-label-row">
       <div class="sec-label green">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-        People I love
+        People
       </div>
       <span style="font-size:0.65rem;color:var(--muted2);letter-spacing:0.05em">tap ✓ when you've seen them</span>
     </div>
@@ -407,13 +440,28 @@
     <div style="display:flex;flex-direction:column;gap:0.5rem">
       <input class="t-input" id="qlmLabel" placeholder="Label (e.g. Obsidian)"/>
       <input class="t-input" id="qlmUrl"   placeholder="URL (e.g. https://… or obsidian://open)"/>
-      <input class="t-input" id="qlmIcon"  placeholder="Icon style (obsidian / notion / spotify / gmail / gcal / github / youtube / figma) — optional"/>
+      <div class="qlm-icon-field">
+        <span class="qlm-field-label">Choose an icon</span>
+        <div class="icon-pick-grid" id="qlmIconGrid"></div>
+      </div>
       <input class="t-input" id="qlmKbd"   placeholder="Hotkey letter (⌥ + key) — optional" maxlength="1"/>
       <div style="display:flex;gap:0.5rem;margin-top:0.5rem;justify-content:flex-end">
         <button class="btn-ghost" onclick="dash.closeQlinkModal()">Cancel</button>
         <button class="btn-add" onclick="dash.submitQlink()">Add link</button>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- Choose a Link Icon (for editing an existing link) -->
+<div class="modal-overlay" id="iconPickerModal" onclick="if(event.target===this)dash.closeIconPicker()">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Choose an icon</div>
+      <button class="modal-close" onclick="dash.closeIconPicker()"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    </div>
+    <p style="font-size:0.8rem;color:var(--muted);margin-bottom:0.9rem;line-height:1.5">Pick an icon for this link, or upload your own.</p>
+    <div class="icon-pick-grid" id="iconPickerGrid"></div>
   </div>
 </div>
 
@@ -498,17 +546,20 @@
   </div>
 </div>
 
-<!-- ═══ SCRIPTS ════════════════════════════════════════════════
-     firebase-sync.js loads FIRST so it can intercept localStorage
-     before any other script reads/writes data.
-     ═══════════════════════════════════════════════════════════ -->
 <script src="firebase-sync.js"></script>
-<script src="icons.js"></script>
-<script src="dashboard.js"></script>
-<script src="tweaks.js"></script>
-<script src="blocks.js"></script>
-<script src="widgets.js"></script>
-<script>window.dash.boot(); window.blocks.boot(); window.widgets.boot();</script>
+<script src="icons.js?v=2"></script>
+<script src="dashboard.js?v=11"></script>
+<script src="tweaks.js?v=4"></script>
+<script src="blocks.js?v=7"></script>
+<script src="widgets.js?v=3"></script>
+<script src="phoneview.js?v=3"></script>
+<script src="dragscroll.js?v=5"></script>
+<script>
+  (async function () {
+    try { await window.dashStore.ready; } catch (e) {}
+    window.dash.boot(); window.blocks.boot(); window.widgets.boot();
+  })();
+</script>
 
 </body>
 </html>

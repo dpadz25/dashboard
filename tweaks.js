@@ -22,26 +22,16 @@ const DEFAULTS = /*EDITMODE-BEGIN*/{
   "pageBgPosX": 50,
   "pageBgPosY": 50,
   "headerBgIntensity": 70,
-  "railBgIntensity": 55
+  "railBgIntensity": 55,
+  "railBgOverlay": 35,
+  "railBgZoom": 100,
+  "railBgPosX": 50,
+  "railBgPosY": 50,
+  "panelOpacity": 86
 }/*EDITMODE-END*/;
 
 let state = { ...DEFAULTS, ...(window.dashUtil.load('tweaksState', {})) };
-let pageBg = window.dashUtil.load('pageBg', null);
-
-// ── one-time migration: move legacy headerBg into the per-card system ──
-(function migrateHeaderBg() {
-  const legacy = window.dashUtil.load('headerBg', null);
-  if (!legacy) return;
-  const existing = window.dashUtil.load('cardBg::header', null);
-  if (!existing) {
-    window.dashUtil.save('cardBg::header', {
-      img: legacy,
-      intensity: state.headerBgIntensity ?? 70,
-      posX: 50, posY: 50, zoom: 100,
-    });
-  }
-  localStorage.removeItem('headerBg');
-})();
+let pageBg = null; // loaded from the image store once it's ready (see window load handler)
 
 let panelOpen = false;
 
@@ -160,14 +150,21 @@ function applyState() {
 
 function applyBackgrounds() {
   const body = document.body;
+  // Frosted widget-panel opacity (used by tiles & the Tomorrow tee-up over a
+  // card photo). Lower = more of the photo shows through the panels.
+  document.documentElement.style.setProperty('--panel-opacity', (state.panelOpacity ?? 86) + '%');
   if (pageBg) {
-    body.style.setProperty('--user-bg', `url("${pageBg}")`);
+    // Use a blob: object URL — a multi-MB data URL in a CSS var is silently
+    // dropped by the browser (the bug big photos hit). See dashImg.cssUrl.
+    const bgUrl = (window.dashImg && window.dashImg.cssUrl) ? window.dashImg.cssUrl('pageBg', pageBg) : pageBg;
+    body.style.setProperty('--user-bg', `url("${bgUrl}")`);
     body.style.setProperty('--bg-overlay', (1 - (state.pageBgOverlay / 100)).toFixed(2));
     body.style.setProperty('--bg-zoom', ((state.pageBgZoom ?? 100) / 100).toFixed(3));
     body.style.setProperty('--bg-pos-x', (state.pageBgPosX ?? 50) + '%');
     body.style.setProperty('--bg-pos-y', (state.pageBgPosY ?? 50) + '%');
     body.setAttribute('data-has-bg', '1');
   } else {
+    if (window.dashImg && window.dashImg.cssUrl) window.dashImg.cssUrl('pageBg', null);
     body.style.removeProperty('--user-bg');
     body.style.removeProperty('--bg-overlay');
     body.style.removeProperty('--bg-zoom');
@@ -176,10 +173,13 @@ function applyBackgrounds() {
     body.removeAttribute('data-has-bg');
   }
 
-  // Side rail intensity
+  // Side rail background image — mirror the page-bg controls (overlay, zoom, position)
   const rail = $('sideRail');
   if (rail) {
-    rail.style.setProperty('--rail-bg-intensity', (state.railBgIntensity / 100).toFixed(2));
+    rail.style.setProperty('--rail-bg-overlay', (1 - ((state.railBgOverlay ?? 35) / 100)).toFixed(2));
+    rail.style.setProperty('--rail-bg-zoom', ((state.railBgZoom ?? 100) / 100).toFixed(3));
+    rail.style.setProperty('--rail-bg-pos-x', (state.railBgPosX ?? 50) + '%');
+    rail.style.setProperty('--rail-bg-pos-y', (state.railBgPosY ?? 50) + '%');
   }
 }
 
@@ -227,15 +227,15 @@ function uploadPageBg() {
   if (!compressImage) return;
   const input = document.createElement('input');
   input.type = 'file';
-  input.accept = 'image/*';
+  input.accept = 'image/*,.heic,.heif,.avif';
   input.onchange = e => {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
     // Generous size so the background stays sharp at full-bleed
     // — and even sharper when the user zooms in via the resize controls.
-    compressImage(file, 5200, dataUrl => {
+    compressImage(file, 6000, dataUrl => {
       pageBg = dataUrl;
-      window.dashUtil.save('pageBg', dataUrl);
+      window.dashStore.set('pageBg', dataUrl);
       applyBackgrounds();
       renderPanel();
     });
@@ -248,7 +248,7 @@ function clearHeaderBg()  { /* deprecated — use per-card system */ }
 
 function clearPageBg() {
   pageBg = null;
-  localStorage.removeItem('pageBg');
+  window.dashStore.del('pageBg');
   applyBackgrounds();
   renderPanel();
 }
@@ -263,11 +263,18 @@ function resetPageBgPosition() {
 function clearHeaderBg2() { /* removed */ }
 
 function uploadRailBg() {
-  if (window.dash && window.dash.pickSideRailBg) window.dash.pickSideRailBg();
+  // Re-render the panel once the new image is saved so the preview updates.
+  if (window.dash && window.dash.pickSideRailBg) window.dash.pickSideRailBg(() => { applyBackgrounds(); renderPanel(); });
 }
 function clearRailBg() {
   if (window.dash && window.dash.clearSideRailBg) window.dash.clearSideRailBg();
   renderPanel();
+}
+function resetRailBgPosition() {
+  state.railBgZoom = 100;
+  state.railBgPosX = 50;
+  state.railBgPosY = 50;
+  persist();
 }
 
 function renderPanel() {
@@ -280,7 +287,12 @@ function renderPanel() {
     { id:'dusk',  name:'Dusk Sage',    colors:['#0d1411','#1d2722','#94c08e','#6cb8b0'] },
   ];
 
-  const railBg = window.dashUtil.load('sideRailBg', null);
+  const railBg = window.dashStore.getCached('sideRailBg');
+  // Blob URLs for the preview thumbnails — a 9 MB data URL inlined into
+  // background-image fails the same way the live background did.
+  const _cu = (window.dashImg && window.dashImg.cssUrl) ? window.dashImg.cssUrl : (k, v) => v;
+  const pageBgUrl = pageBg ? _cu('pageBg', pageBg) : '';
+  const railBgUrl = railBg ? _cu('sideRailBg', railBg) : '';
 
   panel.innerHTML = `
     <div class="tweaks-head" id="tweaksHead">
@@ -318,7 +330,7 @@ function renderPanel() {
 
       <div class="tweak-section">
         <div class="tweak-section-title">Page Background</div>
-        <div class="tweak-bg-preview ${pageBg?'has-image':''}" style="${pageBg?`background-image:url('${pageBg}')`:''}">
+        <div class="tweak-bg-preview ${pageBg?'has-image':''}" style="${pageBg?`background-image:url('${pageBgUrl}')`:''}">
           ${!pageBg ? 'No image' : ''}
           <button class="clear" onclick="window.tweaks.clearPageBg()" title="Remove">×</button>
         </div>
@@ -347,11 +359,16 @@ function renderPanel() {
           </div>
         ` : ''}
         <div class="tweak-note">Tip: every card has its own image button (top-right) so you can customize backgrounds per module.</div>
+        <div class="tweak-row" style="margin-top:0.6rem"><span class="tweak-label">Panel opacity</span><span class="tweak-slider-value">${state.panelOpacity ?? 86}%</span></div>
+        <input class="tweak-slider" type="range" min="40" max="100" value="${state.panelOpacity ?? 86}"
+               oninput="window.tweaks.setLive('panelOpacity',+this.value)"
+               onchange="window.tweaks.set('panelOpacity',+this.value)"/>
+        <div class="tweak-note">How see-through the widget panels are when a card has a background photo (e.g. the Tomorrow tee-up).</div>
       </div>
 
       <div class="tweak-section">
         <div class="tweak-section-title">Side Rail Background</div>
-        <div class="tweak-bg-preview ${railBg?'has-image':''}" style="${railBg?`background-image:url('${railBg}')`:''}">
+        <div class="tweak-bg-preview ${railBg?'has-image':''}" style="${railBg?`background-image:url('${railBgUrl}')`:''}">
           ${!railBg ? 'No image' : ''}
           <button class="clear" onclick="window.tweaks.clearRailBg()" title="Remove">×</button>
         </div>
@@ -360,9 +377,23 @@ function renderPanel() {
         </div>
         ${railBg ? `
           <div style="margin-top:0.5rem">
-            <div class="tweak-row"><span class="tweak-label">Image strength</span><span class="tweak-slider-value">${state.railBgIntensity}%</span></div>
-            <input class="tweak-slider" type="range" min="10" max="100" value="${state.railBgIntensity}"
-                   oninput="window.tweaks.set('railBgIntensity',+this.value)"/>
+            <div class="tweak-row"><span class="tweak-label">Overlay opacity</span><span class="tweak-slider-value">${state.railBgOverlay ?? 35}%</span></div>
+            <input class="tweak-slider" type="range" min="0" max="95" value="${state.railBgOverlay ?? 35}"
+                   oninput="window.tweaks.setLive('railBgOverlay',+this.value)"
+                   onchange="window.tweaks.set('railBgOverlay',+this.value)"/>
+            <div class="tweak-row" style="margin-top:0.55rem"><span class="tweak-label">Zoom</span><span class="tweak-slider-value">${state.railBgZoom ?? 100}%</span></div>
+            <input class="tweak-slider" type="range" min="100" max="400" step="5" value="${state.railBgZoom ?? 100}"
+                   oninput="window.tweaks.setLive('railBgZoom',+this.value)"
+                   onchange="window.tweaks.set('railBgZoom',+this.value)"/>
+            <div class="tweak-row" style="margin-top:0.55rem"><span class="tweak-label">Position X</span><span class="tweak-slider-value">${state.railBgPosX ?? 50}%</span></div>
+            <input class="tweak-slider" type="range" min="0" max="100" value="${state.railBgPosX ?? 50}"
+                   oninput="window.tweaks.setLive('railBgPosX',+this.value)"
+                   onchange="window.tweaks.set('railBgPosX',+this.value)"/>
+            <div class="tweak-row" style="margin-top:0.55rem"><span class="tweak-label">Position Y</span><span class="tweak-slider-value">${state.railBgPosY ?? 50}%</span></div>
+            <input class="tweak-slider" type="range" min="0" max="100" value="${state.railBgPosY ?? 50}"
+                   oninput="window.tweaks.setLive('railBgPosY',+this.value)"
+                   onchange="window.tweaks.set('railBgPosY',+this.value)"/>
+            <button class="tweak-upload-btn" style="margin-top:0.55rem" onclick="window.tweaks.resetRailBgPosition()">Reset zoom &amp; position</button>
           </div>
         ` : ''}
       </div>
@@ -452,10 +483,16 @@ function close() {
 
 function resetData() {
   if (!confirm('This will erase ALL dashboard data (habits, tasks, classes, dates, currently, health, people, backgrounds, etc.). Continue?')) return;
-  const keys = ['habitsConfig','habitHistory','plannerTasks','schoolClasses','importantDates','agendaEvents','health','healthHistory','healthLastSync','goals','currently','currentlyArchive','lifeItems','people','qlinks','tweaksState','weatherCache','pageBg','headerBg','sideRailBg','customIcons'];
+  const keys = ['habitsConfig','habitHistory','plannerTasks','schoolClasses','importantDates','agendaEvents','health','healthHistory','healthLastSync','healthCollapsed','goals','currently','currentlyArchive','lifeItems','shoppingItems','people','qlinks','tweaksState','weatherCache','pageBg','headerBg','sideRailBg','customIcons','pomoState','clockFormat24','dashboard.blocks.layout.v3','dashboard.blocks.layout.v2','dashboard.blocks.layout.v1','dashboard.blocks.notes.v1','dashboard.blocks.mheights.v1','dashboard.blocks.tabheights.v1'];
   keys.forEach(k => localStorage.removeItem(k));
   // also remove all card backgrounds
   Object.keys(localStorage).filter(k => k.startsWith('cardBg::')).forEach(k => localStorage.removeItem(k));
+  localStorage.removeItem('imgMigrated_v2');
+  // and every stored image (page / rail / per-card) in IndexedDB
+  if (window.dashStore && window.dashStore.clearAll) {
+    window.dashStore.clearAll().then(() => location.reload());
+    return;
+  }
   location.reload();
 }
 
@@ -465,9 +502,11 @@ window.addEventListener('message', e => {
   if (d.type === '__deactivate_edit_mode') close();
 });
 
-window.tweaks = { open, close, set: setKey, setLive, resetData, uploadPageBg, uploadHeaderBg, clearPageBg, clearHeaderBg, uploadRailBg, clearRailBg, resetPageBgPosition };
+window.tweaks = { open, close, set: setKey, setLive, resetData, uploadPageBg, uploadHeaderBg, clearPageBg, clearHeaderBg, uploadRailBg, clearRailBg, resetPageBgPosition, resetRailBgPosition };
 
-window.addEventListener('load', () => {
+window.addEventListener('load', async () => {
+  try { await window.dashStore.ready; } catch (e) {}
+  pageBg = window.dashStore.getCached('pageBg');
   applyState();
   renderPanel();
   try { window.parent.postMessage({ type: '__edit_mode_available' }, '*'); } catch(e){}

@@ -31,9 +31,10 @@
   const SYNCED_KEYS = new Set([
     'plannerTasks', 'schoolClasses', 'importantDates', 'agendaEvents',
     'habitsConfig', 'habitHistory', 'goals', 'currently', 'currentlyArchive',
-    'lifeItems', 'people', 'health', 'healthHistory', 'healthLastSync',
+    'lifeItems', 'shoppingItems', 'people', 'health', 'healthHistory', 'healthLastSync',
     'qlinks', 'tweaksState', 'clockFormat24', 'pomoState',
     'dashboard.blocks.layout.v3', 'dashboard.blocks.notes.v1',
+    'dashboard.blocks.mheights.v1', 'dashboard.blocks.tabheights.v1',
     'healthCollapsed'
   ]);
 
@@ -52,6 +53,12 @@
   // coming back from the real-time listener.
   const recentWrites = new Set();
 
+  // Writes that happened before the initial cloud pull finished.
+  // Previously these were silently dropped (and then overwritten by the
+  // pull) — e.g. adding a task on the phone right after opening the page.
+  // Now we queue them and push once the pull completes.
+  const pendingWrites = new Map();
+
   // Keep references to the original localStorage methods
   // before we wrap them with sync behavior.
   const _setItem    = localStorage.setItem.bind(localStorage);
@@ -69,6 +76,16 @@
     }
     firebase.initializeApp(FIREBASE_CONFIG);
     db = firebase.firestore();
+
+    // Offline persistence: writes made while the connection is flaky (or
+    // while iOS Safari suspends the tab) are stored on-device and sent
+    // automatically next time the page is online — instead of being lost.
+    // This is the main fix for phone edits never reaching other devices.
+    try {
+      db.enablePersistence({ synchronizeTabs: true }).catch(function (e) {
+        console.warn('[sync] persistence unavailable (still works online):', e && e.code);
+      });
+    } catch (e) { /* very old browser — sync still works online */ }
 
     // Watch for sign-in / sign-out
     firebase.auth().onAuthStateChanged(onAuth);
@@ -115,15 +132,24 @@
         // First time signing in: push your existing local data to the cloud
         pushAll();
       } else {
-        // Cloud has data: write it into localStorage
+        // Cloud has data: write it into localStorage — but never clobber a
+        // key the user just edited on THIS device while the page was loading.
         snap.forEach(function (doc) {
+          if (pendingWrites.has(doc.id)) return;
           applyRemote(doc.id, doc.data().d);
         });
         rerender();
       }
       ready = true;
-      listen();   // start real-time listener
+      flushPending(); // send any edits made while the pull was in flight
+      listen();       // start real-time listener
     }).catch(function (e) { console.error('[sync] pull failed', e); });
+  }
+
+  // Push queued early writes now that sync is ready.
+  function flushPending() {
+    pendingWrites.forEach(function (raw, key) { pushOne(key, raw); });
+    pendingWrites.clear();
   }
 
   // Write a remote value into localStorage, preserving local-only
@@ -196,8 +222,11 @@
 
   // Push a single key (called every time localStorage.setItem is used)
   function pushOne(key, raw) {
-    if (!db || !user || !ready) return;
     if (!SYNCED_KEYS.has(key)) return;
+    // Not ready yet (page still loading / pull in flight): remember the
+    // write so it gets pushed as soon as sync is ready.
+    if (!ready) { pendingWrites.set(key, raw); return; }
+    if (!db || !user) return;
 
     // Mark this key so we skip our own echo from the real-time listener
     recentWrites.add(key);
@@ -288,26 +317,19 @@
   // Re-render every section of the dashboard after receiving
   // new data from the cloud.
   function rerender() {
-    try {
-      if (window.dash) {
-        window.dash.initHeader();
-        window.dash.renderQlinks();
-        window.dash.applySideRailBg();
-        window.dash.renderHabits();
-        window.dash.renderPlannerTabs();
-        window.dash.renderTaskClassSelect();
-        window.dash.renderPlanner();
-        window.dash.renderLife();
-        window.dash.renderCurrentlyTabs();
-        window.dash.renderAgenda();
-        window.dash.renderDates();
-        window.dash.renderGoals();
-        window.dash.renderCurrently();
-        window.dash.renderHealth();
-        window.dash.renderPeople();
-        window.dash.applyAllCardBgs();
-      }
-    } catch (e) { console.warn('[sync] rerender error', e); }
+    var d = window.dash;
+    if (!d) return;
+    // Each section re-renders independently so one hiccup can't stop the rest.
+    [
+      'initHeader', 'renderQlinks', 'applySideRailBg', 'renderHabits',
+      'renderPlannerTabs', 'renderTaskClassSelect', 'renderPlanner',
+      'renderLife', 'renderShopping', 'renderCurrentlyTabs', 'renderAgenda',
+      'renderDates', 'renderGoals', 'renderCurrently', 'renderHealth',
+      'renderPeople', 'applyAllCardBgs'
+    ].forEach(function (fn) {
+      try { if (typeof d[fn] === 'function') d[fn](); }
+      catch (e) { console.warn('[sync] rerender error in ' + fn, e); }
+    });
   }
 
   // Update the sync button in the header
