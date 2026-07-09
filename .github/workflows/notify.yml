@@ -5,7 +5,16 @@ on:
     # Every 20 minutes; the script decides whether a user's configured
     # time falls in the current window (GitHub cron can drift a few min).
     - cron: '*/20 * * * *'
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'normal = real schedule check · test = push a test notification right now'
+        required: false
+        default: normal
+        type: choice
+        options:
+          - normal
+          - test
 
 permissions:
   contents: read
@@ -31,3 +40,4 @@ jobs:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           VAPID_PUBLIC_KEY: BNEtjDDcEa8zLNY5LzpHdp-tu8GPV2LrRis9VZIenZ4sTN220r0HV5Engul9L91xURshxYoFPbTn_z5VdpkrFnU
           VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+          TEST_MODE: ${{ github.event.inputs.mode || 'normal' }}

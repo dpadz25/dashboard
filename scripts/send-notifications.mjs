@@ -15,11 +15,18 @@
    - FIREBASE_SERVICE_ACCOUNT : service-account JSON for the project
    - VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY : web-push key pair
    Exits quietly if secrets aren't configured yet.
+
+   TEST MODE: set TEST_MODE=test (the "Run workflow" button's dropdown
+   does this) to immediately push a fixed test notification to every
+   subscribed device, skipping the enabled/time-window/due-task checks
+   and without touching notifyLog. Lets Delan confirm the whole pipeline
+   works without waiting for 8am/8pm.
    ═══════════════════════════════════════════════════════════════ */
 import admin from 'firebase-admin';
 import webpush from 'web-push';
 
 const WINDOW_MIN = 25; // cron runs every 20 min; small buffer for delays
+const TEST_MODE = process.env.TEST_MODE === 'test';
 
 const saRaw = process.env.FIREBASE_SERVICE_ACCOUNT;
 const vapidPub = process.env.VAPID_PUBLIC_KEY;
@@ -60,8 +67,54 @@ function parseDoc(snap) {
   try { return JSON.parse(d); } catch { return null; }
 }
 
+// Sends `payload` to every subscription on a user's dashboard doc, pruning
+// any that have gone dead (browser unsubscribed / uninstalled). Returns the
+// number of devices successfully notified.
+async function sendToSubs(userId, dash, payload) {
+  const subsSnap = await dash.doc('pushSubs').get();
+  const subs = subsSnap.exists ? subsSnap.data() : {};
+  const deadDevices = [];
+  let ok = 0;
+
+  for (const [devId, rec] of Object.entries(subs)) {
+    let sub;
+    try { sub = JSON.parse(rec.sub); } catch { deadDevices.push(devId); continue; }
+    try {
+      await webpush.sendNotification(sub, payload);
+      ok++;
+    } catch (e) {
+      if (e.statusCode === 404 || e.statusCode === 410) deadDevices.push(devId);
+      else console.warn(`push failed for ${userId}/${devId}:`, e.statusCode || e.message);
+    }
+  }
+
+  if (deadDevices.length) {
+    const del = {};
+    for (const id of deadDevices) del[id] = admin.firestore.FieldValue.delete();
+    await dash.doc('pushSubs').set(del, { merge: true });
+  }
+  return ok;
+}
+
 const users = await db.collection('users').listDocuments();
 let sent = 0;
+
+if (TEST_MODE) {
+  console.log('TEST MODE — sending immediately, ignoring schedule/enabled/due-task checks.');
+  const payload = JSON.stringify({
+    title: 'Test notification',
+    body: 'Push is wired up correctly — real reminders will look like this.',
+    url: 'https://dpadz25.github.io/dashboard/',
+  });
+  for (const userRef of users) {
+    const dash = userRef.collection('dashboard');
+    const subsSnap = await dash.doc('pushSubs').get();
+    if (!subsSnap.exists || !Object.keys(subsSnap.data()).length) continue;
+    sent += await sendToSubs(userRef.id, dash, payload);
+  }
+  console.log(`Done. ${sent} test notification(s) sent.`);
+  process.exit(0);
+}
 
 for (const userRef of users) {
   const dash = userRef.collection('dashboard');
@@ -95,28 +148,7 @@ for (const userRef of users) {
   const body = names.slice(0, 4).join(' · ') + (names.length > 4 ? ` +${names.length - 4} more` : '');
   const payload = JSON.stringify({ title, body, url: 'https://dpadz25.github.io/dashboard/' });
 
-  const subsSnap = await dash.doc('pushSubs').get();
-  const subs = subsSnap.exists ? subsSnap.data() : {};
-  const deadDevices = [];
-
-  for (const [devId, rec] of Object.entries(subs)) {
-    let sub;
-    try { sub = JSON.parse(rec.sub); } catch { deadDevices.push(devId); continue; }
-    try {
-      await webpush.sendNotification(sub, payload);
-      sent++;
-    } catch (e) {
-      if (e.statusCode === 404 || e.statusCode === 410) deadDevices.push(devId);
-      else console.warn(`push failed for ${userRef.id}/${devId}:`, e.statusCode || e.message);
-    }
-  }
-
-  if (deadDevices.length) {
-    const del = {};
-    for (const id of deadDevices) del[id] = admin.firestore.FieldValue.delete();
-    await dash.doc('pushSubs').set(del, { merge: true });
-  }
-
+  sent += await sendToSubs(userRef.id, dash, payload);
   await logRef.set({ [slot]: date }, { merge: true });
 }
 
