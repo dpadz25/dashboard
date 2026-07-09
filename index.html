@@ -4,6 +4,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Delan's Dashboard</title>
+  <!-- Installable app (needed for iPhone push notifications) -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0d0b09">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Dashboard">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300;12..96,400;12..96,700;12..96,800&family=Inter:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
@@ -565,10 +572,10 @@
 <!-- ═══ LIBRARY (full-page Reading/Watching/Playing) ═════════ -->
 <div class="library-page" id="libraryPage"></div>
 
-<script src="firebase-sync.js"></script>
+<script src="firebase-sync.js?v=2"></script>
 <script src="icons.js?v=2"></script>
 <script src="dashboard.js?v=12"></script>
-<script src="tweaks.js?v=5"></script>
+<script src="tweaks.js?v=6"></script>
 <script src="blocks.js?v=8"></script>
 <script src="widgets.js?v=3"></script>
 <script src="phoneview.js?v=3"></script>
@@ -576,6 +583,7 @@
 <script src="stickers.js?v=1"></script>
 <script src="library.js?v=1"></script>
 <script src="daystrip.js?v=1"></script>
+<script src="notify.js?v=1"></script>
 <script>
   (async function () {
     try { await window.dashStore.ready; } catch (e) {}

@@ -464,6 +464,8 @@ function renderPanel() {
         `).join('')}
       </div>
 
+      ${window.notify ? window.notify.sectionHTML() : ''}
+
       <div class="tweak-section">
         <div class="tweak-section-title">Personal</div>
         <div class="tweak-row">
@@ -521,7 +523,7 @@ function close() {
 
 function resetData() {
   if (!confirm('This will erase ALL dashboard data (habits, tasks, classes, dates, currently, health, people, backgrounds, etc.). Continue?')) return;
-  const keys = ['habitsConfig','habitHistory','plannerTasks','schoolClasses','importantDates','agendaEvents','health','healthHistory','healthLastSync','healthCollapsed','goals','currently','currentlyArchive','lifeItems','shoppingItems','people','qlinks','tweaksState','weatherCache','pageBg','headerBg','sideRailBg','customIcons','pomoState','clockFormat24','stickers','dashboard.blocks.layout.v3','dashboard.blocks.layout.v2','dashboard.blocks.layout.v1','dashboard.blocks.notes.v1','dashboard.blocks.mheights.v1','dashboard.blocks.tabheights.v1'];
+  const keys = ['habitsConfig','habitHistory','plannerTasks','schoolClasses','importantDates','agendaEvents','health','healthHistory','healthLastSync','healthCollapsed','goals','currently','currentlyArchive','lifeItems','shoppingItems','people','qlinks','tweaksState','weatherCache','pageBg','headerBg','sideRailBg','customIcons','pomoState','clockFormat24','stickers','notifySettings','notifyDeviceId','dashboard.blocks.layout.v3','dashboard.blocks.layout.v2','dashboard.blocks.layout.v1','dashboard.blocks.notes.v1','dashboard.blocks.mheights.v1','dashboard.blocks.tabheights.v1'];
   keys.forEach(k => localStorage.removeItem(k));
   // also remove all card backgrounds
   Object.keys(localStorage).filter(k => k.startsWith('cardBg::')).forEach(k => localStorage.removeItem(k));

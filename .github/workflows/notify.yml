@@ -1,0 +1,33 @@
+name: Task notifications
+
+on:
+  schedule:
+    # Every 20 minutes; the script decides whether a user's configured
+    # time falls in the current window (GitHub cron can drift a few min).
+    - cron: '*/20 * * * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: notify
+  cancel-in-progress: false
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install sender deps
+        run: npm install --no-save firebase-admin@12 web-push@3
+      - name: Send due-task notifications
+        run: node scripts/send-notifications.mjs
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          VAPID_PUBLIC_KEY: BNEtjDDcEa8zLNY5LzpHdp-tu8GPV2LrRis9VZIenZ4sTN220r0HV5Engul9L91xURshxYoFPbTn_z5VdpkrFnU
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
