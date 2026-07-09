@@ -81,9 +81,11 @@ function subsDoc() {
 let swReg = null;
 async function ensureSW() {
   if (!('serviceWorker' in navigator)) return null;
-  if (swReg) return swReg;
   try {
-    swReg = await navigator.serviceWorker.register('./sw.js');
+    await navigator.serviceWorker.register('./sw.js');
+    // Wait until the worker is fully ACTIVE — subscribing against a
+    // still-installing registration is why first-time enables failed.
+    swReg = await navigator.serviceWorker.ready;
     return swReg;
   } catch (e) {
     console.warn('[notify] service worker registration failed', e);
@@ -112,16 +114,30 @@ async function enable() {
   }
   const reg = await ensureSW();
   if (!reg) { alert('Could not set up the background worker.'); return; }
-  let sub;
-  try {
-    sub = await reg.pushManager.subscribe({
+
+  // Reuse an existing subscription if this device already has one.
+  let sub = null;
+  try { sub = await reg.pushManager.getSubscription(); } catch (_) {}
+
+  if (!sub) {
+    const opts = {
       userVisibleOnly: true,
       applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
-    });
-  } catch (e) {
-    console.warn('[notify] subscribe failed', e);
-    alert('Could not subscribe to push on this device.');
-    return;
+    };
+    try {
+      sub = await reg.pushManager.subscribe(opts);
+    } catch (e1) {
+      // One retry after a beat — a just-activated worker sometimes needs it.
+      await new Promise(r => setTimeout(r, 1200));
+      try {
+        sub = await reg.pushManager.subscribe(opts);
+      } catch (e2) {
+        console.warn('[notify] subscribe failed', e2);
+        alert('Could not subscribe to push on this device.\n\nDetails: ' +
+          (e2 && e2.name ? e2.name + ' — ' : '') + (e2 && e2.message ? e2.message : e2));
+        return;
+      }
+    }
   }
   const doc = subsDoc();
   if (!doc) return;
