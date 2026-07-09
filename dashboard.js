@@ -19,7 +19,16 @@ function todayStr()  {
   const d = new Date();
   return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
 }
-window.dashUtil = { $, $$, uid, esc, load, save, todayStr };
+// "14:30" → "2:30p" (empty/blank in → empty out)
+function fmtTime(t) {
+  if (!t) return '';
+  const [h, m] = t.split(':').map(Number);
+  if (isNaN(h)) return '';
+  const ampm = h >= 12 ? 'p' : 'a';
+  const hh = (h % 12) || 12;
+  return m ? `${hh}:${String(m).padStart(2,'0')}${ampm}` : `${hh}${ampm}`;
+}
+window.dashUtil = { $, $$, uid, esc, load, save, todayStr, fmtTime };
 
 /* ─── IMAGE STORE (IndexedDB) ──────────────────────────────────
    Big background photos are far too large for localStorage's ~5 MB
@@ -918,7 +927,9 @@ function renderPlanner() {
       </button>
         ${classBadge}
         ${t.type ? `<span class="type-badge ${cat}">${esc(t.type)}</span>` : ''}
-        ${pill ? `<span class="days-pill ${pill.cls}">${pill.label}</span>` : ''}
+        ${pill
+          ? `<button class="days-pill ${pill.cls}" onclick="window.dash.openDueMenu('${t.id}',event)" title="Change due date">${pill.label}</button>`
+          : `<button class="days-pill add-date" onclick="window.dash.openDueMenu('${t.id}',event)" title="Set a due date">+ date</button>`}
       </span>
       <button class="del-btn" onclick="window.dash.delTask('${t.id}')">×</button>`;
     el.appendChild(div);
@@ -974,6 +985,68 @@ function openStatusMenu(id, ev) {
 function closeStatusMenu() {
   const m = document.getElementById('statusMenu');
   if (m) m.remove();
+}
+
+// ── Due-date popover: click a task's days-left pill to change its date ──
+function openDueMenu(id, ev) {
+  if (ev) ev.stopPropagation();
+  const t = getTasks().find(x => x.id === id);
+  if (!t) return;
+  closeStatusMenu();
+  closeDueMenu();
+  const menu = document.createElement('div');
+  menu.className = 'status-menu due-menu';
+  menu.id = 'dueMenu';
+  menu.onclick = e => e.stopPropagation();
+  menu.innerHTML = `
+    <div class="due-menu-title">Due date</div>
+    <input class="t-input" type="date" id="dueMenuDate" value="${t.dueDate || ''}"/>
+    <div class="due-menu-actions">
+      <button class="btn-ghost" onclick="window.dash.clearDueDate('${id}')">Clear</button>
+      <button class="btn-add" onclick="window.dash.saveDueDate('${id}')">Save</button>
+    </div>`;
+  document.body.appendChild(menu);
+
+  // Anchor below the pill that was clicked (same math as the status menu).
+  const pill = ev && ev.currentTarget ? ev.currentTarget
+    : document.querySelector(`#plannerList .task-item[data-id="${id}"] .days-pill`);
+  const r = pill.getBoundingClientRect();
+  const mw = menu.offsetWidth, mh = menu.offsetHeight;
+  let left = r.left;
+  if (left + mw > window.innerWidth - 8) left = window.innerWidth - mw - 8;
+  let top = r.bottom + 6;
+  if (top + mh > window.innerHeight - 8) top = r.top - mh - 6;
+  menu.style.left = Math.max(8, left) + 'px';
+  menu.style.top  = Math.max(8, top) + 'px';
+  requestAnimationFrame(() => menu.classList.add('open'));
+  setTimeout(() => document.addEventListener('click', closeDueMenu, { once: true }), 0);
+}
+
+function closeDueMenu() {
+  const m = document.getElementById('dueMenu');
+  if (m) m.remove();
+}
+
+function saveDueDate(id) {
+  const inp = document.getElementById('dueMenuDate');
+  const val = inp ? inp.value : '';
+  closeDueMenu();
+  const tasks = getTasks();
+  const t = tasks.find(x => x.id === id);
+  if (!t) return;
+  t.dueDate = val || null;
+  saveTasks(tasks);
+  renderPlanner(); renderAgenda();
+}
+
+function clearDueDate(id) {
+  closeDueMenu();
+  const tasks = getTasks();
+  const t = tasks.find(x => x.id === id);
+  if (!t) return;
+  t.dueDate = null;
+  saveTasks(tasks);
+  renderPlanner(); renderAgenda();
 }
 
 function setTaskStatus(id, status) {
@@ -1296,6 +1369,9 @@ function renderAgenda() {
   $$('.agenda-body > div').forEach(d => d.style.display = 'none');
   const body = $(`agenda-${agendaView}`);
   if (body) body.style.display = '';
+  // The 7-day strip shows the same tasks/events — keep it in step with
+  // every agenda refresh (adds, deletes, cloud sync).
+  if (window.daystrip && window.daystrip.render) window.daystrip.render();
 }
 
 // ─── SCHEDULE (Mon–Fri timetable) ────────────────────────────
@@ -1479,16 +1555,18 @@ function renderTomorrow() {
       <div class="tomorrow-col">
         <div class="tomorrow-col-label">Events</div>
         <div class="tomorrow-list">
-        ${events.length ? events.map(e => `
+        ${events.length ? events.slice().sort((a,b) => (a.start || '').localeCompare(b.start || '')).map(e => `
           <div class="tomorrow-row event">
             <span class="tomorrow-event-dot ${e._kind==='starred'?'starred':''}"></span>
             <span style="flex:1">${e._kind==='starred'?'★ ':''}${esc(e.label)}</span>
+            ${e.start ? `<span class="event-time-chip">${fmtTime(e.start)}${e.end ? '–' + fmtTime(e.end) : ''}</span>` : ''}
             ${e._kind==='agenda' ? `<button class="del-btn" style="opacity:1" onclick="window.dash.delAgendaEvent('${e.id}')">×</button>` : ''}
           </div>
         `).join('') : `<div class="tomorrow-empty">Nothing on the calendar.</div>`}
         </div>
         <div class="tomorrow-add">
           <input class="t-input" id="tmrEventName" placeholder="Event for tomorrow…" onkeydown="if(event.key==='Enter')window.dash.addTomorrowEvent()"/>
+          <input class="t-input tmr-time" id="tmrEventTime" type="time" title="Start time (optional)"/>
           <button class="btn-add" onclick="window.dash.addTomorrowEvent()">Add</button>
         </div>
       </div>
@@ -1530,7 +1608,10 @@ function addTomorrowEvent() {
   const name = ($('tmrEventName').value || '').trim();
   if (!name) return;
   const evs = getAgendaEvents();
-  evs.push({ id: uid(), label: name, date: tomorrowKey() });
+  const e = { id: uid(), label: name, date: tomorrowKey() };
+  const start = $('tmrEventTime') ? $('tmrEventTime').value : '';
+  if (start) e.start = start;
+  evs.push(e);
   saveAgendaEvents(evs);
   $('tmrEventName').value = '';
   renderTomorrow();
@@ -1588,7 +1669,8 @@ function renderWeekView() {
     const isToday = d.getTime() === today.getTime();
     const isPast  = d < today;
     const dayTasks  = tasks.filter(t => t.dueDate === dStr);
-    const dayEvents = items.filter(e => e.date === dStr);
+    const dayEvents = items.filter(e => e.date === dStr)
+      .sort((a,b) => (a.start || '').localeCompare(b.start || '')); // all-day first, then by time
     const div = document.createElement('div');
     div.className = `week-day${isToday?' today':''}${isPast?' past':''}`;
     div.innerHTML = `
@@ -1598,7 +1680,7 @@ function renderWeekView() {
       </div>
       <div class="week-day-items">
         ${dayTasks.slice(0,4).map(t => `<div class="week-chip ${getCategory(t.type)}" title="${esc(t.text)}">${esc(t.text)}</div>`).join('')}
-        ${dayEvents.slice(0,2).map(e => `<div class="week-chip ${e._kind==='starred'?'event':'agenda-event'}" title="${esc(e.label)}">${e._kind==='starred'?'★ ':''}${esc(e.label)}</div>`).join('')}
+        ${dayEvents.slice(0,2).map(e => `<div class="week-chip ${e._kind==='starred'?'event':'agenda-event'}" title="${esc(e.label)}">${e._kind==='starred'?'★ ':''}${e.start?`${fmtTime(e.start)} · `:''}${esc(e.label)}</div>`).join('')}
       </div>`;
     strip.appendChild(div);
   });
@@ -1643,7 +1725,7 @@ function renderMonthView() {
     const c = document.createElement('div');
     c.className = `cal-cell${isToday?' today':''}`;
     c.dataset.date = dStr;
-    c.onclick = () => quickAddToDay(dStr);
+    c.onclick = (e) => { e.stopPropagation(); quickAddToDay(dStr, e); };
     let chips = '';
     dayTasks.slice(0,3).forEach(t => { chips += `<div class="cal-task-chip ${getCategory(t.type)}">${esc(t.text)}</div>`; });
     dayEvents.slice(0,1).forEach(e => { chips += `<div class="cal-task-chip ${e._kind==='starred'?'event':'agenda-event'}">${e._kind==='starred'?'★ ':''}${esc(e.label)}</div>`; });
@@ -1661,11 +1743,62 @@ function renderMonthView() {
   }
 }
 
-function quickAddToDay(dateStr) {
-  const label = prompt(`New event for ${dateStr}:`);
-  if (!label || !label.trim()) return;
+// Month view: click a day → small anchored form (label + optional times)
+// instead of the old prompt(), so events can be time-blocked.
+function quickAddToDay(dateStr, ev) {
+  closeDayQuickAdd();
+  const menu = document.createElement('div');
+  menu.className = 'status-menu due-menu day-quick-add';
+  menu.id = 'dayQuickAdd';
+  menu.onclick = e => e.stopPropagation();
+  const dt = new Date(dateStr + 'T00:00:00');
+  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  menu.innerHTML = `
+    <div class="due-menu-title">New event · ${MONTHS[dt.getMonth()]} ${dt.getDate()}</div>
+    <input class="t-input" id="dqaLabel" placeholder="Event name…"
+           onkeydown="if(event.key==='Enter')window.dash.submitDayQuickAdd('${dateStr}')"/>
+    <div class="dqa-time-row">
+      <input class="t-input" type="time" id="dqaStart" title="Start (optional)"/>
+      <span>–</span>
+      <input class="t-input" type="time" id="dqaEnd" title="End (optional)"/>
+    </div>
+    <div class="due-menu-actions">
+      <button class="btn-ghost" onclick="window.dash.closeDayQuickAdd()">Cancel</button>
+      <button class="btn-add" onclick="window.dash.submitDayQuickAdd('${dateStr}')">Add</button>
+    </div>`;
+  document.body.appendChild(menu);
+
+  const anchor = ev && ev.currentTarget ? ev.currentTarget : document.querySelector(`.cal-cell[data-date="${dateStr}"]`);
+  const r = anchor ? anchor.getBoundingClientRect() : { left: innerWidth/2, bottom: innerHeight/2, top: innerHeight/2 };
+  const mw = menu.offsetWidth, mh = menu.offsetHeight;
+  let left = r.left;
+  if (left + mw > window.innerWidth - 8) left = window.innerWidth - mw - 8;
+  let top = r.bottom + 6;
+  if (top + mh > window.innerHeight - 8) top = r.top - mh - 6;
+  menu.style.left = Math.max(8, left) + 'px';
+  menu.style.top  = Math.max(8, top) + 'px';
+  requestAnimationFrame(() => menu.classList.add('open'));
+  setTimeout(() => {
+    document.addEventListener('click', closeDayQuickAdd, { once: true });
+    const inp = $('dqaLabel'); if (inp) inp.focus();
+  }, 0);
+}
+
+function closeDayQuickAdd() {
+  const m = document.getElementById('dayQuickAdd');
+  if (m) m.remove();
+}
+
+function submitDayQuickAdd(dateStr) {
+  const label = ($('dqaLabel') ? $('dqaLabel').value : '').trim();
+  if (!label) return;
+  const start = $('dqaStart') ? $('dqaStart').value : '';
+  const end   = $('dqaEnd')   ? $('dqaEnd').value   : '';
+  closeDayQuickAdd();
   const evs = getAgendaEvents();
-  evs.push({ id: uid(), label: label.trim(), date: dateStr });
+  const e = { id: uid(), label, date: dateStr };
+  if (start) { e.start = start; if (end) e.end = end; }
+  evs.push(e);
   saveAgendaEvents(evs);
   renderAgenda();
 }
@@ -1674,7 +1807,7 @@ function renderEventsView() {
   const el = $('eventsBody'); if (!el) return;
   const items = getAllCalendarItems()
     .map(d => ({ ...d, _t: new Date(d.date+'T00:00:00').getTime() }))
-    .sort((a,b) => a._t - b._t);
+    .sort((a,b) => (a._t - b._t) || (a.start || '').localeCompare(b.start || ''));
   const today = new Date(); today.setHours(0,0,0,0);
   const upcoming = items.filter(e => new Date(e.date+'T00:00:00') >= today);
   if (!upcoming.length) { el.innerHTML = `<div class="empty">No upcoming events. Click a day in Month view to add one.</div>`; return; }
@@ -1693,6 +1826,7 @@ function renderEventsView() {
     return `<div class="date-item">
       <span class="dbadge ${cls}">${label}</span>
       <span class="date-lbl">${esc(e.label)}</span>
+      ${e.start ? `<span class="event-time-chip">${fmtTime(e.start)}${e.end ? '–' + fmtTime(e.end) : ''}</span>` : ''}
       <span style="font-size:0.7rem;color:var(--muted)">${MONTHS[dt.getMonth()]} ${dt.getDate()}</span>
       ${delAction}
     </div>`;
@@ -1709,18 +1843,31 @@ function renderHabitHeat() {
   const weekDates = getWeekDates();
   if (!habits.length) { el.innerHTML = `<div class="empty">Add some habits to track them here.</div>`; return; }
   el.innerHTML = habits.map(h => {
+    let doneCount = 0;
     const cells = weekDates.map(d => {
       const ds = d.toISOString().slice(0,10);
       const done = hist[ds] && hist[ds][h.id];
+      if (done) doneCount++;
       const isFuture = d > today;
       const isToday = ds === todayStrV;
       return `<div class="habit-cell${done?' done':''}${isToday?' today':''}${isFuture?' future':''}" title="${ds}">
         <span class="d">${DAY_LBLS[d.getDay()]}</span>
+        <span class="n">${d.getDate()}</span>
+        ${done ? `<svg class="habit-cell-check" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>` : ''}
       </div>`;
     }).join('');
     const streak = habitStreak(h.id);
     return `<div class="habit-heat-row">
-      <div class="habit-heat-name">${iconRender(h.icon)} <span>${esc(h.label)}</span>${streak >= 2 ? `<span class="habit-heat-streak">\uD83D\uDD25 ${streak}</span>` : ''}</div>
+      <div class="habit-heat-info">
+        <span class="habit-heat-chip">${iconRender(h.icon)}</span>
+        <span class="habit-heat-meta">
+          <span class="habit-heat-label">${esc(h.label)}</span>
+          <span class="habit-heat-sub">
+            <span class="habit-heat-count${doneCount === 7 ? ' full' : ''}">${doneCount}/7 this week</span>
+            ${streak >= 2 ? `<span class="habit-heat-streak" title="${streak}-day streak">\uD83D\uDD25 ${streak}</span>` : ''}
+          </span>
+        </span>
+      </div>
       <div class="habit-heat-cells">${cells}</div>
     </div>`;
   }).join('');
@@ -1749,9 +1896,22 @@ function renderDates() {
       div.innerHTML = `
         <span class="dbadge ${cls}">${label}</span>
         <span class="date-lbl">${esc(d.label)}</span>
+        ${d.start ? `<span class="event-time-chip">${fmtTime(d.start)}${d.end ? '–' + fmtTime(d.end) : ''}</span>` : ''}
         <button class="del-btn" onclick="window.dash.delDate('${d.id}')">×</button>`;
       el.appendChild(div);
     });
+}
+
+// The "+ time" toggle under the Important Dates inputs reveals optional
+// start/end fields. No time = an all-day event (the old behavior).
+function toggleDateTimeRow() {
+  const row = $('dateTimeRow');
+  const btn = $('dateTimeToggle');
+  if (!row) return;
+  const open = row.style.display !== 'none';
+  row.style.display = open ? 'none' : '';
+  if (open) { $('dateStart').value = ''; $('dateEnd').value = ''; }
+  if (btn) btn.textContent = open ? '+ time' : '× all-day';
 }
 
 function addDate() {
@@ -1759,9 +1919,17 @@ function addDate() {
   const date  = $('dateDate').value;
   if (!label || !date) return;
   const dates = load('importantDates', []);
-  dates.push({ id: uid(), label, date });
+  const start = $('dateStart') ? $('dateStart').value : '';
+  const end   = $('dateEnd')   ? $('dateEnd').value   : '';
+  const ev = { id: uid(), label, date };
+  if (start) { ev.start = start; if (end) ev.end = end; }
+  dates.push(ev);
   save('importantDates', dates);
   $('dateLabel').value = ''; $('dateDate').value = '';
+  if ($('dateStart')) $('dateStart').value = '';
+  if ($('dateEnd'))   $('dateEnd').value = '';
+  const row = $('dateTimeRow');
+  if (row && row.style.display !== 'none') toggleDateTimeRow();
   renderDates(); renderAgenda();
 }
 function delDate(id) {
@@ -1871,9 +2039,16 @@ function switchCurKind(kind, el) {
   refreshTabbedBg('currently');
 }
 
+// The widget carousel only shows what you're actively on — entries marked
+// 'queued' (via the Library page) wait there instead of cluttering the
+// carousel. filter() keeps object references, so edits write through.
+function curVisible(all) {
+  return (all[curKind] || []).filter(i => i.status !== 'queued');
+}
+
 function renderCurrently() {
   const all = getCurrentlyAll();
-  const items = all[curKind] || [];
+  const items = curVisible(all);
   const meta = CUR_KINDS[curKind];
   const wrap = $('currentlyCarousel');
   if (!items.length) {
@@ -1922,15 +2097,13 @@ function renderCurDots(active, total) {
 }
 
 function curPrev() {
-  const all = getCurrentlyAll();
-  const items = all[curKind] || [];
+  const items = curVisible(getCurrentlyAll());
   if (items.length <= 1) return;
   curIdx = (curIdx - 1 + items.length) % items.length;
   renderCurrently();
 }
 function curNext() {
-  const all = getCurrentlyAll();
-  const items = all[curKind] || [];
+  const items = curVisible(getCurrentlyAll());
   if (items.length <= 1) return;
   curIdx = (curIdx + 1) % items.length;
   renderCurrently();
@@ -1951,14 +2124,15 @@ function curAdd() {
 
 function updateCur(field, value) {
   const all = getCurrentlyAll();
-  if (!all[curKind] || !all[curKind][curIdx]) return;
-  all[curKind][curIdx][field] = value;
+  const item = curVisible(all)[curIdx];
+  if (!item) return;
+  item[field] = value;
   saveCurrentlyAll(all);
 }
 
 function cycleCurProgress() {
   const all = getCurrentlyAll();
-  const item = all[curKind] && all[curKind][curIdx];
+  const item = curVisible(all)[curIdx];
   if (!item) return;
   const cur = item.progress;
   if (cur == null) item.progress = 25;
@@ -1970,15 +2144,18 @@ function cycleCurProgress() {
 
 function finishCur() {
   const all = getCurrentlyAll();
-  const item = all[curKind] && all[curKind][curIdx];
+  const item = curVisible(all)[curIdx];
   if (!item) return;
   if (!confirm(`Mark "${item.title}" as finished?`)) return;
   const archive = load('currentlyArchive', []);
-  archive.unshift({ ...item, kind: curKind, finishedAt: Date.now() });
-  save('currentlyArchive', archive.slice(0, 80));
-  all[curKind].splice(curIdx, 1);
+  const copy = { ...item, kind: curKind, finishedAt: Date.now() };
+  delete copy.status;
+  archive.unshift(copy);
+  save('currentlyArchive', archive.slice(0, 200));
+  all[curKind].splice(all[curKind].indexOf(item), 1);
   saveCurrentlyAll(all);
-  if (curIdx >= all[curKind].length) curIdx = Math.max(0, all[curKind].length - 1);
+  const left = curVisible(all).length;
+  if (curIdx >= left) curIdx = Math.max(0, left - 1);
   renderCurrently();
 }
 
@@ -1990,8 +2167,9 @@ function pickCurImage() {
     const file = e.target.files && e.target.files[0];
     if (file) compressImage(file, 1400, dataUrl => {
       const all = getCurrentlyAll();
-      if (!all[curKind] || !all[curKind][curIdx]) return;
-      all[curKind][curIdx].img = dataUrl;
+      const item = curVisible(all)[curIdx];
+      if (!item) return;
+      item.img = dataUrl;
       saveCurrentlyAll(all);
       renderCurrently();
     });
@@ -2629,10 +2807,12 @@ window.dash = {
   renderHabits, toggleHabitEdit, addHabit, deleteHabit, toggleIconPicker, selectIcon, updateHabitLabel, uploadHabitIcon,
   renderPlanner, renderPlannerTabs, renderTaskClassSelect, addTask, toggleTask, delTask, switchTab,
   openStatusMenu, closeStatusMenu, setTaskStatus,
+  openDueMenu, closeDueMenu, saveDueDate, clearDueDate,
   openClassesModal, closeClassesModal, addClass, updateClass, deleteClass, removeClassTab,
   renderAgenda, switchAgendaView, calNavMonth, quickAddAgendaEvent, delAgendaEvent,
   jumpToWeek,
-  renderDates, addDate, delDate,
+  renderDates, addDate, delDate, toggleDateTimeRow,
+  closeDayQuickAdd, submitDayQuickAdd,
   renderLife, addLife, toggleLife, updateLife, delLife, clearDoneLife,
   renderShopping, addShopping, toggleShopping, updateShopping, delShopping, clearDoneShopping,
   renderGoals, switchGoalScope, addGoal, delGoal, cycleGoal,
@@ -2640,7 +2820,7 @@ window.dash = {
   renderHealth, openHealthModal, closeHealthModal, syncHealth, openManualHealth, closeManualHealth, saveManualHealth, toggleHealth,
   renderPeople, addPerson, checkin, delPerson,
   currentTabFor,
-  pickCardImage, setCardBgProp, clearCardBg, toggleCardBgPopover, toggleRepositionMode, resetCardBgPosition, applyAllCardBgs, applyCardBg,
+  pickCardImage, setCardBgProp, clearCardBg, toggleCardBgPopover, toggleRepositionMode, resetCardBgPosition, applyAllCardBgs, applyCardBg, injectCardBgButtons,
   // streaks / schedule / tomorrow
   renderClassSchedule, addScheduleBlock, delScheduleBlock, updateScheduleBlock,
   renderTomorrow, openTomorrow, closeTomorrow, addTomorrowTask, addTomorrowEvent, copyHabitsToTomorrow,

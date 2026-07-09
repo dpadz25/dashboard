@@ -7,8 +7,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300;12..96,400;12..96,700;12..96,800&family=Inter:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=8">
-  <link rel="stylesheet" href="blocks.css?v=7">
+  <link rel="stylesheet" href="styles.css?v=9">
+  <link rel="stylesheet" href="blocks.css?v=8">
   <link rel="stylesheet" href="widgets.css?v=7">
 
   <!-- Firebase SDK (cloud sync) -->
@@ -64,6 +64,11 @@
 
 <div class="dash">
 <div class="blocks" id="blocks">
+
+  <!-- ═══ 7-DAY STRIP (Week Ahead) ═════════════════════════ -->
+  <section class="card block fade-in s1 daystrip-card" data-section="daystrip" data-card-id="daystrip" data-screen-label="00 Week Ahead" data-default-span="2">
+    <div class="daystrip" id="daystrip"></div>
+  </section>
 
   <!-- ═══ HEADER ════════════════════════════════════════════ -->
   <section class="header-card block fade-in s1" id="headerCard" data-card-id="header" data-screen-label="01 Header" data-default-span="2">
@@ -153,6 +158,12 @@
           <div class="row2">
             <input class="t-input" id="dateDate" type="date"/>
             <button class="btn-add" onclick="dash.addDate()" style="font-size:1rem;padding:0.4rem 0.7rem;line-height:1">+</button>
+          </div>
+          <button class="date-time-toggle" id="dateTimeToggle" type="button" onclick="dash.toggleDateTimeRow()">+ time</button>
+          <div class="date-time-row" id="dateTimeRow" style="display:none">
+            <input class="t-input" id="dateStart" type="time" title="Start time"/>
+            <span class="date-time-dash">–</span>
+            <input class="t-input" id="dateEnd" type="time" title="End time (optional)"/>
           </div>
         </div>
         <div class="dates-list" id="datesList"></div>
@@ -293,10 +304,15 @@
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
           Currently
         </div>
-        <div class="tabs" id="currentlyTabs">
-          <button class="tab cur-tab active" onclick="dash.switchCurKind('reading',this)">📖 Reading</button>
-          <button class="tab cur-tab" onclick="dash.switchCurKind('watching',this)">🎬 Watching</button>
-          <button class="tab cur-tab" onclick="dash.switchCurKind('playing',this)">🎮 Playing</button>
+        <div style="display:flex;gap:0.4rem;align-items:center;min-width:0">
+          <div class="tabs" id="currentlyTabs">
+            <button class="tab cur-tab active" onclick="dash.switchCurKind('reading',this)">📖 Reading</button>
+            <button class="tab cur-tab" onclick="dash.switchCurKind('watching',this)">🎬 Watching</button>
+            <button class="tab cur-tab" onclick="dash.switchCurKind('playing',this)">🎮 Playing</button>
+          </div>
+          <button class="icon-btn" onclick="window.library.open()" title="Open the full library">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>
+          </button>
         </div>
       </div>
 
@@ -546,18 +562,26 @@
   </div>
 </div>
 
+<!-- ═══ LIBRARY (full-page Reading/Watching/Playing) ═════════ -->
+<div class="library-page" id="libraryPage"></div>
+
 <script src="firebase-sync.js"></script>
 <script src="icons.js?v=2"></script>
-<script src="dashboard.js?v=11"></script>
-<script src="tweaks.js?v=4"></script>
-<script src="blocks.js?v=7"></script>
+<script src="dashboard.js?v=12"></script>
+<script src="tweaks.js?v=5"></script>
+<script src="blocks.js?v=8"></script>
 <script src="widgets.js?v=3"></script>
 <script src="phoneview.js?v=3"></script>
 <script src="dragscroll.js?v=5"></script>
+<script src="stickers.js?v=1"></script>
+<script src="library.js?v=1"></script>
+<script src="daystrip.js?v=1"></script>
 <script>
   (async function () {
     try { await window.dashStore.ready; } catch (e) {}
     window.dash.boot(); window.blocks.boot(); window.widgets.boot();
+    if (window.stickers) window.stickers.boot();
+    if (window.daystrip) window.daystrip.render();
   })();
 </script>
 

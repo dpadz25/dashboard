@@ -92,6 +92,15 @@
     buildStructure(loadLayout());   // wrap blocks into rows/columns
 
     container.querySelectorAll('.block').forEach((b) => { injectHandles(b); syncFixed(b); });
+
+    // Notes are recreated HERE, after dash.boot() already injected the
+    // background buttons into the built-in cards — run it again so notes
+    // get the same photo controls (and their saved backgrounds re-apply).
+    if (window.dash && window.dash.injectCardBgButtons) {
+      window.dash.injectCardBgButtons();
+      window.dash.applyAllCardBgs();
+    }
+
     applyMScale();                  // restore any phone-only resize scales
     applyTabHeight('agenda');       // restore the agenda's per-tab height (desktop + phone)
 
@@ -147,8 +156,8 @@
     // v3 — nested
     try {
       const v3 = JSON.parse(localStorage.getItem(STORAGE_LAYOUT_V3) || 'null');
-      if (v3 && Array.isArray(v3.rows)) return v3.rows;
-      if (Array.isArray(v3)) return v3;
+      const rows = (v3 && Array.isArray(v3.rows)) ? v3.rows : (Array.isArray(v3) ? v3 : null);
+      if (rows) return migrateDaystrip(rows);
     } catch (_) {}
 
     // v2 — flat list of { id, frac, h } → pack into rows
@@ -161,9 +170,20 @@
         if (Array.isArray(v1)) flat = v1.map((e) => ({ id: e.id, frac: e.span === 1 ? 0.5 : 1, h: null }));
       } catch (_) {}
     }
-    if (Array.isArray(flat)) return packFlat(flat);
+    if (Array.isArray(flat)) return migrateDaystrip(packFlat(flat));
 
     return null; // signal: build default from current DOM order
+  }
+
+  // Layouts saved before the 7-day strip existed don't include it, and
+  // unknown blocks normally get appended at the BOTTOM — the strip belongs
+  // at the top, so prepend it as its own row once.
+  function migrateDaystrip(rows) {
+    const has = rows.some(r => (r.cols || []).some(c => (c.items || []).some(it => it.id === 'daystrip')));
+    if (!has && document.querySelector('.block[data-card-id="daystrip"]')) {
+      rows.unshift({ cols: [{ frac: 1, items: [{ id: 'daystrip', h: null }] }] });
+    }
+    return rows;
   }
 
   // Greedily pack a flat ordered list into rows (cumulative frac ≤ 1).
@@ -994,6 +1014,7 @@
       container.appendChild(rowEl);
     }
     injectHandles(note);
+    if (window.dash && window.dash.injectCardBgButtons) window.dash.injectCardBgButtons();
     saveLayout();
     saveNotes();
     requestAnimationFrame(() => {
@@ -1002,7 +1023,7 @@
     });
   }
 
-  function buildNote(id, content) {
+  function buildNote(id, content, title) {
     const div = document.createElement('div');
     div.className = 'card block block-note';
     div.dataset.cardId = id;
@@ -1013,15 +1034,24 @@
     div.innerHTML = `
       <div class="note-head">
         ${NOTE_SVG}
-        <span>Note</span>
+        <span class="note-title" contenteditable="true" spellcheck="false" data-placeholder="Note"></span>
         <button class="note-del" type="button" title="Delete note">${CLOSE_SVG}</button>
       </div>
       <div class="note-body" contenteditable="true" data-placeholder="Type something\u2026"></div>`;
     if (content) div.querySelector('.note-body').textContent = content;
+    if (title)   div.querySelector('.note-title').textContent = title;
 
     const body = div.querySelector('.note-body');
     body.addEventListener('input', saveNotes);
     body.addEventListener('blur',  saveNotes);
+
+    const titleEl = div.querySelector('.note-title');
+    titleEl.addEventListener('input', saveNotes);
+    titleEl.addEventListener('blur',  saveNotes);
+    // Enter commits the title instead of inserting a line break.
+    titleEl.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); titleEl.blur(); }
+    });
 
     div.querySelector('.note-del').addEventListener('click', (e) => {
       e.preventDefault();
@@ -1163,6 +1193,7 @@
   function saveNotes() {
     const notes = [...container.querySelectorAll('.block-note')].map((n) => ({
       id: n.dataset.cardId,
+      title: n.querySelector('.note-title')?.innerText.trim() || '',
       content: n.querySelector('.note-body')?.innerText || '',
     }));
     try { localStorage.setItem(STORAGE_NOTES, JSON.stringify(notes)); } catch (_) {}
@@ -1172,7 +1203,7 @@
     try { notes = JSON.parse(localStorage.getItem(STORAGE_NOTES) || 'null'); } catch (_) {}
     if (!notes || !Array.isArray(notes)) return;
     notes.forEach((n) => {
-      const node = buildNote(n.id, n.content || '');
+      const node = buildNote(n.id, n.content || '', n.title || '');
       container.appendChild(node); // buildStructure will place it per the saved layout
     });
   }

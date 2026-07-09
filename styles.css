@@ -1069,6 +1069,34 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); cur
 .days-pill.far    { background: var(--surface3);   color: var(--muted); }
 .days-pill.past   { background: var(--surface3);   color: var(--muted2); }
 
+/* The pill is a button now (click = edit the due date) — keep it looking
+   like the old badge, just clickable. */
+button.days-pill {
+  border: none;
+  font-family: inherit;
+  cursor: pointer;
+  transition: filter var(--t-fast, 0.15s);
+}
+button.days-pill:hover { filter: brightness(1.25); }
+.days-pill.add-date {
+  background: transparent;
+  color: var(--muted2);
+  border: 1px dashed var(--border2);
+}
+.days-pill.add-date:hover { color: var(--accent); border-color: var(--accent); filter: none; }
+
+/* Due-date popover (anchored like the status menu) */
+.due-menu { min-width: 200px; gap: 0.45rem; padding: 0.6rem; }
+.due-menu-title {
+  font-family: var(--font-d);
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.due-menu-actions { display: flex; gap: 0.4rem; justify-content: flex-end; }
+
 .del-btn {
   opacity: 0;
   background: none;
@@ -1469,6 +1497,15 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); cur
 /* Let the agenda widget's body fill the full (often resized) card height
    so the active view stretches instead of leaving dead space below. */
 .card[data-card-id="agenda"] { display: flex; flex-direction: column; }
+/* blocks.js wraps every card's content in a .block-scale div, which sits
+   between the card and .agenda-body — without this, the flex chain breaks
+   there and the views never stretch when the card is resized taller. */
+.card[data-card-id="agenda"] > .block-scale {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
 .card[data-card-id="agenda"] .agenda-body {
   flex: 1 1 auto;
   display: flex;
@@ -1480,6 +1517,15 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); cur
   display: flex;
   flex-direction: column;
 }
+/* Tomorrow view stretches the same way This Week does: the two columns
+   grow to fill a taller card instead of leaving dead space below. */
+.card[data-card-id="agenda"] #agenda-tomorrow {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+}
+.card[data-card-id="agenda"] #agenda-tomorrow .tomorrow-body { flex: 1 1 auto; }
+.card[data-card-id="agenda"] #agenda-tomorrow .tomorrow-grid { flex: 1 1 auto; }
 
 /* Week view */
 .week-strip {
@@ -1630,59 +1676,152 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); cur
   .cal-task-chip { font-size: 0.5rem; padding: 1px 3px; }
 }
 
-/* Habit heat */
+/* Habit heat — each habit is a soft panel row: icon chip + label + weekly
+   count on the left, seven roomy day cells (weekday letter + date number)
+   on the right. Panels stay frosted so the view reads over photos too. */
 .habit-heat {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: 0.55rem;
 }
 
 .habit-heat-row {
   display: grid;
-  grid-template-columns: 130px 1fr;
-  gap: 0.6rem;
+  grid-template-columns: minmax(150px, 180px) 1fr;
+  gap: 0.85rem;
   align-items: center;
+  padding: 0.6rem 0.7rem;
+  border-radius: var(--r-sm);
+  background: var(--surface2);
+  border: 1px solid var(--border);
 }
 
-.habit-heat-name {
-  font-size: 0.7rem;
-  font-weight: 600;
-  color: var(--text-s);
+.habit-heat-info {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
+.habit-heat-chip {
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  background: var(--accent-dim);
+  color: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+}
+.habit-heat-chip svg { width: 14px; height: 14px; }
+.habit-heat-chip img.custom-icon-img { width: 16px; height: 16px; border-radius: 4px; }
+
+.habit-heat-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.habit-heat-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.habit-heat-sub {
   display: flex;
   align-items: center;
   gap: 0.35rem;
 }
 
-.habit-heat-name svg { width: 12px; height: 12px; color: var(--muted); flex-shrink: 0; }
+.habit-heat-count {
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.habit-heat-count.full { color: var(--green); }
 
 .habit-heat-cells {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 3px;
+  gap: 5px;
 }
 
 .habit-cell {
-  aspect-ratio: 1;
-  border-radius: 4px;
+  min-height: 38px;
+  border-radius: 8px;
   background: var(--surface3);
+  border: 1px solid transparent;
   position: relative;
-}
-
-.habit-cell.done { background: var(--green); }
-.habit-cell.today { outline: 1.5px solid var(--accent); outline-offset: 1px; }
-.habit-cell .d {
-  position: absolute;
-  inset: 0;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 1px;
+  overflow: hidden;
+}
+
+.habit-cell .d {
   font-size: 0.45rem;
   font-weight: 800;
   color: var(--muted2);
-  letter-spacing: 0.05em;
+  letter-spacing: 0.08em;
 }
 
-.habit-cell.done .d { color: var(--on-accent); }
+.habit-cell .n {
+  font-family: var(--font-d);
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: var(--text-s);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.habit-cell.done {
+  background: linear-gradient(145deg, var(--green) 0%, color-mix(in srgb, var(--green) 72%, var(--teal, var(--green))) 100%);
+  border-color: color-mix(in srgb, var(--green) 55%, transparent);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--green) 25%, transparent);
+}
+.habit-cell.done .d { color: color-mix(in srgb, var(--on-accent) 75%, transparent); }
+.habit-cell.done .n { color: var(--on-accent); }
+
+.habit-cell-check {
+  position: absolute;
+  right: 3px;
+  top: 3px;
+  width: 9px;
+  height: 9px;
+  color: var(--on-accent);
+  opacity: 0.9;
+}
+
+.habit-cell.today {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+.habit-cell.today:not(.done) .d,
+.habit-cell.today:not(.done) .n { color: var(--accent); }
+
+.habit-cell.future { opacity: 0.45; }
+
+/* Habits view over a card photo: frosted panels, solid enough to read. */
+.card[data-has-bg="1"] .habit-heat-row {
+  background: color-mix(in srgb, var(--card) var(--panel-opacity, 86%), transparent);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+}
+
+/* Phone: stack info above the cells so the seven boxes keep their size. */
+@media (max-width: 720px) {
+  .habit-heat-row { grid-template-columns: 1fr; gap: 0.5rem; }
+}
 
 /* ── IMPORTANT DATES ────────────────────────────────────────── */
 .date-add-row {
@@ -3684,6 +3823,88 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); cur
   backdrop-filter: blur(3px);
 }
 
+/* ── FULL READABILITY PASS over a card photo ──────────────────
+   Every remaining text surface gets its own frosted panel so no widget
+   text ever sits raw on a photo: shopping rows, tab strips, input rows,
+   empty states, month header, carousel controls, hints. Frosted boxes
+   for small/dense text; text-shadow stays reserved for display-scale
+   text (greeting, clock, pomodoro — handled elsewhere). */
+.card[data-has-bg="1"] .shop-item {
+  background: color-mix(in srgb, var(--card) var(--panel-opacity, 86%), transparent);
+  backdrop-filter: blur(3px);
+}
+.card[data-has-bg="1"] .tabs,
+.card[data-has-bg="1"] .agenda-tabs {
+  background: color-mix(in srgb, var(--card) 80%, transparent);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  border-radius: 999px;
+  padding: 2px;
+  width: fit-content;
+  max-width: 100%;
+}
+.card[data-has-bg="1"] .t-input,
+.card[data-has-bg="1"] .t-select {
+  background: color-mix(in srgb, var(--card) 90%, transparent);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+.card[data-has-bg="1"] .t-input::placeholder { color: var(--muted); }
+.card[data-has-bg="1"] .btn-ghost {
+  background: color-mix(in srgb, var(--card) 82%, transparent);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+}
+.card[data-has-bg="1"] .empty,
+.card[data-has-bg="1"] .life-empty,
+.card[data-has-bg="1"] .tomorrow-empty,
+.card[data-has-bg="1"] .sched-empty {
+  background: color-mix(in srgb, var(--card) 84%, transparent);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  border-radius: var(--r-sm);
+  padding: 0.55rem 0.7rem;
+  width: fit-content;
+  max-width: 100%;
+  color: var(--text-s);
+}
+.card[data-has-bg="1"] .month-nav,
+.card[data-has-bg="1"] .cal-grid-header {
+  background: color-mix(in srgb, var(--card) 84%, transparent);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  border-radius: var(--r-sm);
+}
+.card[data-has-bg="1"] .cal-grid-header { padding: 0.25rem 0; }
+.card[data-has-bg="1"] .carousel-controls {
+  background: color-mix(in srgb, var(--card) 80%, transparent);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  border-radius: 999px;
+  padding: 0.3rem 0.45rem;
+}
+.card[data-has-bg="1"] .sec-label-row > span,
+.card[data-has-bg="1"] .health-status,
+.card[data-has-bg="1"] .tomorrow-counts {
+  background: color-mix(in srgb, var(--card) 84%, transparent);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  border-radius: 999px;
+  padding: 0.22rem 0.55rem;
+}
+.card[data-has-bg="1"] .goal-bar {
+  background: color-mix(in srgb, var(--surface3) 92%, transparent);
+}
+.card[data-has-bg="1"] .status-pill,
+.card[data-has-bg="1"] .type-badge,
+.card[data-has-bg="1"] .days-pill,
+.card[data-has-bg="1"] .class-badge,
+.card[data-has-bg="1"] .dbadge {
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+}
+
 /* Agenda day/calendar boxes need to stay clearly readable over a photo —
    make them nearly solid and keep the inner labels/chips at full strength. */
 .card[data-card-id="agenda"][data-has-bg="1"] .week-day,
@@ -5065,3 +5286,543 @@ body.in-phone-preview .tweak-fab { display: none !important; }
   .hdr-grp .quote-line { font-size: 0.9rem; }
 }
 
+
+/* ═══════════════════════════════════════════════════════════════
+   STICKERS — scrapbook PNG overlays (see stickers.js)
+   ═══════════════════════════════════════════════════════════════ */
+.sticker-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.sticker-layer.above  { z-index: 60; }
+.sticker-layer.behind { z-index: -1; }
+/* While arranging, the behind layer surfaces so its stickers are grabbable. */
+.sticker-layer.behind.arranging { z-index: 60; }
+
+.sticker {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  user-select: none;
+  -webkit-user-drag: none;
+  filter: drop-shadow(0 4px 12px rgba(0,0,0,0.28));
+  max-width: none;
+}
+
+.sticker-layer.arranging .sticker {
+  pointer-events: auto;
+  cursor: grab;
+  outline: 2px dashed color-mix(in srgb, var(--accent) 65%, transparent);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+.sticker.dragging { cursor: grabbing; z-index: 5; }
+
+/* Card highlighted as an attach target while a sticker hovers over it */
+body.stickers-arranging .block.sticker-target {
+  outline: 2px dashed var(--accent);
+  outline-offset: 3px;
+}
+
+/* ── Sticker rows in the Tweaks panel ── */
+.sticker-row {
+  display: grid;
+  grid-template-columns: 52px 1fr auto;
+  gap: 0.6rem;
+  align-items: start;
+  padding: 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--surface2);
+  margin-top: 0.5rem;
+}
+.sticker-thumb {
+  width: 52px;
+  height: 52px;
+  border-radius: 8px;
+  background-color: var(--surface3);
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+  border: 1px solid var(--border);
+}
+.sticker-controls { display: flex; flex-direction: column; gap: 0.3rem; min-width: 0; }
+.sticker-ctl {
+  display: grid;
+  grid-template-columns: 52px 1fr;
+  align-items: center;
+  gap: 0.4rem;
+}
+.sticker-ctl label {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.sticker-ctl input[type="range"] { width: 100%; margin: 0; }
+.sticker-layer-toggle {
+  display: flex;
+  gap: 0.3rem;
+}
+.sticker-layer-toggle button {
+  flex: 1;
+  font-size: 0.6rem;
+  font-weight: 700;
+  padding: 0.28rem 0.4rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+.sticker-layer-toggle button.active {
+  background: var(--accent-dim);
+  color: var(--accent);
+  border-color: var(--accent-s, var(--accent));
+}
+.sticker-del {
+  background: none;
+  border: none;
+  color: var(--muted2);
+  cursor: pointer;
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 2px 4px;
+}
+.sticker-del:hover { color: var(--red); }
+.tweak-upload-btn.active {
+  background: var(--accent-dim);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   LIBRARY — full-screen database view for Reading/Watching/Playing
+   ═══════════════════════════════════════════════════════════════ */
+.library-page {
+  position: fixed;
+  inset: 0;
+  z-index: 700;
+  background: var(--bg);
+  overflow-y: auto;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(14px);
+  transition: opacity 0.25s var(--ease, ease), transform 0.25s var(--ease, ease);
+}
+.library-page.open {
+  opacity: 1;
+  pointer-events: auto;
+  transform: none;
+}
+body.library-open { overflow: hidden; }
+
+.library-inner {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 1.5rem 1.25rem 4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.library-head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.library-back { flex-shrink: 0; }
+.library-title {
+  font-family: var(--font-d);
+  font-weight: 800;
+  font-size: 1.5rem;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  margin-right: auto;
+}
+.library-search {
+  width: min(280px, 100%);
+}
+
+.library-tabs-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.library-kind-tabs .cur-tab-icon svg { width: 12px; height: 12px; }
+
+.library-status-chips { display: flex; gap: 0.35rem; flex-wrap: wrap; }
+.lib-chip {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 0.3rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--muted);
+  cursor: pointer;
+  transition: all var(--t-fast);
+}
+.lib-chip:hover { color: var(--text-s); border-color: var(--border2); }
+.lib-chip.active { background: var(--accent-dim); color: var(--accent); border-color: var(--accent); }
+.lib-chip.finished.active { background: var(--green-dim); color: var(--green); border-color: var(--green); }
+
+.library-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 0.9rem;
+}
+
+.lib-card {
+  display: grid;
+  grid-template-columns: 96px 1fr;
+  gap: 0.8rem;
+  padding: 0.8rem;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  align-items: start;
+}
+.lib-card.finished { opacity: 0.78; }
+
+.lib-cover {
+  aspect-ratio: 3/4;
+  border-radius: var(--r-sm);
+  overflow: hidden;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  position: relative;
+  cursor: pointer;
+}
+.lib-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.lib-cover-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  color: var(--muted2);
+  font-size: 0.55rem;
+  letter-spacing: 0.05em;
+}
+.lib-cover-empty svg { width: 20px; height: 20px; stroke-width: 1.4; }
+
+.lib-status-badge {
+  position: absolute;
+  left: 5px;
+  bottom: 5px;
+  font-size: 0.5rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.18rem 0.4rem;
+  border-radius: 4px;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+.lib-status-badge.current  { background: color-mix(in srgb, var(--accent) 26%, rgba(0,0,0,0.5)); color: #fff; }
+.lib-status-badge.queued   { background: rgba(0,0,0,0.55); color: rgba(255,255,255,0.85); }
+.lib-status-badge.finished { background: color-mix(in srgb, var(--green) 30%, rgba(0,0,0,0.5)); color: #fff; }
+
+.lib-body { display: flex; flex-direction: column; gap: 0.4rem; min-width: 0; }
+
+.lib-title, .lib-sub {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 0.15rem 0.3rem;
+  margin-left: -0.3rem;
+  color: var(--text);
+  outline: none;
+  width: 100%;
+  transition: border-color var(--t-fast), background var(--t-fast);
+}
+.lib-title { font-family: var(--font-d); font-weight: 700; font-size: 0.95rem; }
+.lib-sub   { font-size: 0.72rem; color: var(--muted); }
+.lib-title:hover, .lib-sub:hover { background: var(--surface2); }
+.lib-title:focus, .lib-sub:focus { background: var(--surface2); border-color: var(--border2); }
+
+.lib-actions {
+  display: flex;
+  gap: 0.35rem;
+  align-items: center;
+  margin-top: auto;
+  flex-wrap: wrap;
+}
+.lib-status-select { font-size: 0.65rem; padding: 0.3rem 0.4rem; }
+.lib-actions .cur-action svg { width: 11px; height: 11px; }
+
+.library-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 4rem 1rem;
+  color: var(--muted2);
+  text-align: center;
+  font-size: 0.8rem;
+  line-height: 1.6;
+}
+.library-empty svg { width: 30px; height: 30px; stroke-width: 1.2; }
+
+@media (max-width: 600px) {
+  .library-head { gap: 0.5rem; }
+  .library-search { order: 3; width: 100%; }
+  .library-grid { grid-template-columns: 1fr; }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   7-DAY STRIP (Week Ahead) + DAY VIEW MODAL — see daystrip.js
+   ═══════════════════════════════════════════════════════════════ */
+.daystrip-card { padding: 0.85rem 1rem; }
+
+.daystrip {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.5rem;
+}
+
+.ds-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.55rem 0.3rem 0.45rem;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color var(--t-fast), background var(--t-fast), transform var(--t-fast);
+}
+.ds-day:hover { border-color: var(--border2); background: var(--surface3); transform: translateY(-1px); }
+.ds-day.today { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+
+.ds-lbl {
+  font-size: 0.5rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: var(--muted2);
+}
+.ds-day.today .ds-lbl { color: var(--accent); }
+
+.ds-num {
+  font-family: var(--font-d);
+  font-weight: 800;
+  font-size: 1.25rem;
+  line-height: 1.1;
+  color: var(--text);
+  /* Display-scale text — shadow halo keeps it crisp over card photos */
+  text-shadow: 0 1px 1px rgba(0,0,0,0.3);
+}
+[data-theme="paper"] .ds-num { text-shadow: none; }
+.ds-day.today .ds-num { color: var(--accent); }
+
+.ds-month {
+  font-size: 0.5rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.ds-dots { display: flex; gap: 3px; height: 6px; align-items: center; }
+.ds-dot { width: 5px; height: 5px; border-radius: 50%; }
+.ds-dot.ev   { background: var(--accent); }
+.ds-dot.task { background: var(--teal, var(--green)); }
+.ds-dot.cls  { background: var(--purple, var(--muted)); }
+.ds-dot.none { background: var(--surface3); }
+
+/* Strip over a card photo: chips go frosted like every other panel */
+.card[data-card-id="daystrip"][data-has-bg="1"] .ds-day {
+  background: color-mix(in srgb, var(--card) var(--panel-opacity, 86%), transparent);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+@media (max-width: 720px) {
+  .daystrip { display: flex; overflow-x: auto; scrollbar-width: none; }
+  .daystrip::-webkit-scrollbar { display: none; }
+  .ds-day { min-width: 64px; flex: 0 0 auto; }
+}
+
+/* ── Day view modal ── */
+.day-view-modal { max-width: 560px; width: min(560px, calc(100vw - 2rem)); }
+
+.dv-eyebrow {
+  font-size: 0.55rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  color: var(--accent);
+  margin-bottom: 0.15rem;
+}
+.dv-title { margin: 0; }
+
+.dv-allday {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  padding-bottom: 0.75rem;
+  margin-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border);
+}
+.dv-allday-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 0.3rem 0.55rem;
+  border-radius: 999px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text-s);
+  max-width: 100%;
+}
+.dv-allday-chip.starred { background: var(--purple-dim, var(--surface2)); color: var(--purple, var(--text-s)); border-color: color-mix(in srgb, var(--purple, #888) 40%, transparent); }
+.dv-allday-chip.task    { background: var(--teal-dim, var(--surface2)); color: var(--teal, var(--text-s)); border-color: color-mix(in srgb, var(--teal, #888) 40%, transparent); }
+.dv-allday-chip svg { width: 11px; height: 11px; flex-shrink: 0; }
+.dv-allday-chip .class-badge { font-size: 0.5rem; padding: 0.1rem 0.3rem; border-radius: 4px; }
+
+.dv-timeline {
+  display: grid;
+  grid-template-columns: 42px 1fr;
+  gap: 0;
+  max-height: min(58vh, 560px);
+  overflow-y: auto;
+  padding-right: 2px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+.dv-timeline::-webkit-scrollbar { width: 5px; }
+.dv-timeline::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+.dv-time-col { position: relative; }
+.dv-hour-lbl {
+  position: absolute;
+  right: 8px;
+  transform: translateY(-50%);
+  font-size: 0.55rem;
+  font-weight: 700;
+  color: var(--muted2);
+  font-variant-numeric: tabular-nums;
+}
+
+.dv-track {
+  position: relative;
+  border-left: 1px solid var(--border);
+}
+.dv-hour-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-top: 1px dashed color-mix(in srgb, var(--border) 70%, transparent);
+}
+.dv-now-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-top: 2px solid var(--red);
+  z-index: 3;
+}
+.dv-now-line::before {
+  content: '';
+  position: absolute;
+  left: -4px;
+  top: -5px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--red);
+}
+
+.dv-block {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  border-radius: 8px;
+  padding: 0.3rem 0.5rem;
+  overflow: hidden;
+  border-left: 3px solid var(--accent);
+  background: var(--accent-dim);
+  color: var(--accent);
+  z-index: 2;
+}
+.dv-block.starred {
+  border-left-color: var(--purple, var(--accent));
+  background: var(--purple-dim, var(--accent-dim));
+  color: var(--purple, var(--accent));
+}
+.dv-block.cls { z-index: 1; }
+.dv-block-name {
+  font-size: 0.7rem;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dv-block-time {
+  font-size: 0.55rem;
+  font-weight: 600;
+  opacity: 0.8;
+  font-variant-numeric: tabular-nums;
+}
+
+.dv-empty {
+  padding: 1.5rem 0.5rem;
+  text-align: center;
+  color: var(--muted2);
+  font-size: 0.78rem;
+}
+
+/* ── Small time-model bits ── */
+.event-time-chip {
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  padding: 0.15rem 0.35rem;
+  border-radius: 4px;
+  background: var(--surface3);
+  color: var(--muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.date-time-toggle {
+  background: none;
+  border: none;
+  color: var(--muted2);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  padding: 0.1rem 0;
+  text-align: left;
+  width: fit-content;
+}
+.date-time-toggle:hover { color: var(--accent); }
+.date-time-row {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+.date-time-row .t-input { flex: 1; min-width: 0; }
+.date-time-dash { color: var(--muted2); font-size: 0.7rem; }
+
+.dqa-time-row {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+.dqa-time-row .t-input { flex: 1; min-width: 0; }
+.dqa-time-row span { color: var(--muted2); font-size: 0.7rem; }
+
+.tomorrow-add .tmr-time { max-width: 108px; }

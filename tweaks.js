@@ -10,6 +10,7 @@ const DEFAULTS = /*EDITMODE-BEGIN*/{
   "theme": "amber",
   "fontPreset": "modern",
   "showQuicklinks": true,
+  "showDaystrip": true,
   "showLife": true,
   "showCurrently": true,
   "showGoals": true,
@@ -128,6 +129,7 @@ function applyState() {
   document.body.classList.toggle('no-rail', !state.showQuicklinks);
   const fab = $('qlinksFab');
   if (fab) fab.style.display = state.showQuicklinks ? '' : 'none';
+  toggleSection('daystrip', state.showDaystrip);
   toggleSection('life', state.showLife);
   toggleSection('currently', state.showCurrently);
   toggleSection('goals', state.showGoals);
@@ -399,6 +401,41 @@ function renderPanel() {
       </div>
 
       <div class="tweak-section">
+        <div class="tweak-section-title">Stickers</div>
+        <div class="tweak-note" style="margin-top:0">PNG cutouts you can pin to widget corners or float over the background. Drag them into place in arrange mode. Stored on this device only.</div>
+        <div class="tweak-bg-row" style="display:flex;gap:0.4rem;margin-top:0.5rem">
+          <button class="tweak-upload-btn" onclick="window.stickers.add()">+ Add sticker</button>
+          ${(window.stickers && window.stickers.list().length) ? `
+            <button class="tweak-upload-btn ${window.stickers.isArranging() ? 'active' : ''}" onclick="window.stickers.toggleArrange()">
+              ${window.stickers.isArranging() ? '✓ Done arranging' : 'Arrange stickers'}
+            </button>` : ''}
+        </div>
+        ${window.stickers ? window.stickers.list().map(st => {
+          const img = window.stickers.imgFor(st.id);
+          return `
+          <div class="sticker-row">
+            <div class="sticker-thumb" style="${img ? `background-image:url('${img}')` : ''}"></div>
+            <div class="sticker-controls">
+              <div class="sticker-ctl"><label>Size</label>
+                <input type="range" min="40" max="420" step="5" value="${st.size ?? 140}" class="tweak-slider"
+                       oninput="window.stickers.set('${st.id}','size',this.value)"/></div>
+              <div class="sticker-ctl"><label>Opacity</label>
+                <input type="range" min="10" max="100" value="${st.opacity ?? 100}" class="tweak-slider"
+                       oninput="window.stickers.set('${st.id}','opacity',this.value)"/></div>
+              <div class="sticker-ctl"><label>Tilt</label>
+                <input type="range" min="-180" max="180" value="${st.rot ?? 0}" class="tweak-slider"
+                       oninput="window.stickers.set('${st.id}','rot',this.value)"/></div>
+              <div class="sticker-layer-toggle">
+                <button class="${(st.layer||'above')==='above'?'active':''}" onclick="window.stickers.set('${st.id}','layer','above')">Over widgets</button>
+                <button class="${st.layer==='behind'?'active':''}" onclick="window.stickers.set('${st.id}','layer','behind')">Behind widgets</button>
+              </div>
+            </div>
+            <button class="sticker-del" title="Delete sticker" onclick="window.stickers.del('${st.id}')">×</button>
+          </div>`;
+        }).join('') : ''}
+      </div>
+
+      <div class="tweak-section">
         <div class="tweak-section-title">Density</div>
         <div class="tweak-row">
           <span class="tweak-label">Spacing</span>
@@ -413,6 +450,7 @@ function renderPanel() {
         <div class="tweak-section-title">Modules</div>
         ${[
           ['showQuicklinks','Side rail (Quick Links)'],
+          ['showDaystrip','7-day strip (Week Ahead)'],
           ['showLife','Life Checklist'],
           ['showCurrently','Currently Reading/Watching/Playing'],
           ['showGoals','Goals'],
@@ -483,7 +521,7 @@ function close() {
 
 function resetData() {
   if (!confirm('This will erase ALL dashboard data (habits, tasks, classes, dates, currently, health, people, backgrounds, etc.). Continue?')) return;
-  const keys = ['habitsConfig','habitHistory','plannerTasks','schoolClasses','importantDates','agendaEvents','health','healthHistory','healthLastSync','healthCollapsed','goals','currently','currentlyArchive','lifeItems','shoppingItems','people','qlinks','tweaksState','weatherCache','pageBg','headerBg','sideRailBg','customIcons','pomoState','clockFormat24','dashboard.blocks.layout.v3','dashboard.blocks.layout.v2','dashboard.blocks.layout.v1','dashboard.blocks.notes.v1','dashboard.blocks.mheights.v1','dashboard.blocks.tabheights.v1'];
+  const keys = ['habitsConfig','habitHistory','plannerTasks','schoolClasses','importantDates','agendaEvents','health','healthHistory','healthLastSync','healthCollapsed','goals','currently','currentlyArchive','lifeItems','shoppingItems','people','qlinks','tweaksState','weatherCache','pageBg','headerBg','sideRailBg','customIcons','pomoState','clockFormat24','stickers','dashboard.blocks.layout.v3','dashboard.blocks.layout.v2','dashboard.blocks.layout.v1','dashboard.blocks.notes.v1','dashboard.blocks.mheights.v1','dashboard.blocks.tabheights.v1'];
   keys.forEach(k => localStorage.removeItem(k));
   // also remove all card backgrounds
   Object.keys(localStorage).filter(k => k.startsWith('cardBg::')).forEach(k => localStorage.removeItem(k));
@@ -502,7 +540,7 @@ window.addEventListener('message', e => {
   if (d.type === '__deactivate_edit_mode') close();
 });
 
-window.tweaks = { open, close, set: setKey, setLive, resetData, uploadPageBg, uploadHeaderBg, clearPageBg, clearHeaderBg, uploadRailBg, clearRailBg, resetPageBgPosition, resetRailBgPosition };
+window.tweaks = { open, close, set: setKey, setLive, resetData, uploadPageBg, uploadHeaderBg, clearPageBg, clearHeaderBg, uploadRailBg, clearRailBg, resetPageBgPosition, resetRailBgPosition, refresh: renderPanel };
 
 window.addEventListener('load', async () => {
   try { await window.dashStore.ready; } catch (e) {}

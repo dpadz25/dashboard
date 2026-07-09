@@ -533,7 +533,51 @@ body.blocks-resizing-corner * { cursor: nwse-resize !important; }
   text-transform: uppercase;
   color: var(--bh-color);
 }
-.block-note .note-head svg { width: 12px; height: 12px; }
+.block-note .note-head svg { width: 12px; height: 12px; flex-shrink: 0; }
+
+/* Editable note title — real display text instead of the old fixed "Note"
+   chip. Click it to rename the note. */
+.block-note .note-title {
+  font-family: var(--font-d, inherit);
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  text-transform: none;
+  color: var(--text);
+  outline: none;
+  min-width: 2ch;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  border-radius: 5px;
+  padding: 0.05rem 0.3rem;
+  margin-left: -0.1rem;
+  transition: background 0.15s;
+}
+.block-note .note-title:hover  { background: var(--surface2); }
+.block-note .note-title:focus  { background: var(--surface2); box-shadow: 0 0 0 1px var(--border2); }
+.block-note .note-title:empty::before {
+  content: attr(data-placeholder);
+  color: var(--muted2);
+}
+
+/* Note over a background photo: title gets the display-text shadow, the
+   body gets a frosted panel so long text stays readable on any image. */
+.block-note[data-has-bg="1"] .note-title {
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.55), 0 2px 10px rgba(0,0,0,0.45);
+}
+.block-note[data-has-bg="1"] .note-title:hover,
+.block-note[data-has-bg="1"] .note-title:focus { background: rgba(0,0,0,0.35); }
+.block-note[data-has-bg="1"] .note-head svg { color: rgba(255,255,255,0.85); filter: drop-shadow(0 1px 2px rgba(0,0,0,0.5)); }
+.block-note[data-has-bg="1"] .note-body {
+  background: color-mix(in srgb, var(--card) var(--panel-opacity, 86%), transparent);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  border-radius: var(--r-sm, 10px);
+  padding: 0.55rem 0.7rem;
+}
+.block-note[data-has-bg="1"] .note-body:empty::before { color: var(--muted); }
+
 .block-note .note-del {
   margin-left: auto;
   width: 22px;
