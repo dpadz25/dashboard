@@ -134,8 +134,8 @@ body {
 body.no-rail { padding-left: 1.25rem; }
 
 @media (max-width: 720px) {
-  body { padding: 0.75rem 0.75rem calc(5rem + env(safe-area-inset-bottom, 0px)); }
-  body.no-rail { padding: 0.75rem 0.75rem calc(5rem + env(safe-area-inset-bottom, 0px)); }
+  body { padding: calc(0.75rem + env(safe-area-inset-top, 0px)) 0.75rem calc(5rem + env(safe-area-inset-bottom, 0px)); }
+  body.no-rail { padding: calc(0.75rem + env(safe-area-inset-top, 0px)) 0.75rem calc(5rem + env(safe-area-inset-bottom, 0px)); }
 }
 
 /* ── PAGE BACKGROUND IMAGE LAYER ─────────────────────────── */
@@ -2328,8 +2328,10 @@ button.days-pill:hover { filter: brightness(1.25); }
 /* ── RESPONSIVE ─────────────────────────────────────────────── */
 @media (max-width: 720px) {
   /* Keep the bottom clearance from the earlier phone rule: room for the
-     tweaks FAB + the iPhone home indicator below the last widget. */
-  body { padding: 0.75rem 0.75rem calc(5rem + env(safe-area-inset-bottom, 0px)); }
+     tweaks FAB + the iPhone home indicator below the last widget. Top
+     clearance keeps the header card, links FAB, etc. out from under the
+     iPhone status bar (clock/battery/wifi) in the home-screen app. */
+  body { padding: calc(0.75rem + env(safe-area-inset-top, 0px)) 0.75rem calc(5rem + env(safe-area-inset-bottom, 0px)); }
   /* The flex container is .header-card-content, not .header-card — stack it. */
   .header-card-content {
     flex-direction: column;
@@ -2364,11 +2366,12 @@ button.days-pill:hover { filter: brightness(1.25); }
     right: 0.75rem;
     left: 0.75rem;
     bottom: calc(4rem + env(safe-area-inset-bottom, 0px));
-    /* Cap the height to the VISIBLE viewport minus the bottom offset, so the
-       header/close button can never be pushed above the screen. dvh tracks
-       the real visible area on iOS; the vh line is the older-browser fallback. */
+    /* Cap the height to the VISIBLE viewport minus the bottom offset AND a
+       top-safe-area reserve, so the header/close button can never land
+       under the iPhone status bar. dvh tracks the real visible area on
+       iOS; the vh line is the older-browser fallback. */
     max-height: calc(100vh - 5rem);
-    max-height: calc(100dvh - 5rem - env(safe-area-inset-bottom, 0px));
+    max-height: calc(100dvh - 5rem - env(safe-area-inset-bottom, 0px) - env(safe-area-inset-top, 0px));
   }
   .modal { padding: 1.25rem; }
 }
@@ -2664,7 +2667,7 @@ button.days-pill:hover { filter: brightness(1.25); }
 .qlinks-fab {
   display: none;
   position: fixed;
-  top: 0.75rem;
+  top: calc(0.75rem + env(safe-area-inset-top, 0px));
   left: 0.75rem;
   z-index: 410;
   width: 38px;
