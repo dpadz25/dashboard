@@ -134,8 +134,8 @@ body {
 body.no-rail { padding-left: 1.25rem; }
 
 @media (max-width: 720px) {
-  body { padding: 0.75rem 0.75rem 5rem; }
-  body.no-rail { padding: 0.75rem 0.75rem 5rem; }
+  body { padding: 0.75rem 0.75rem calc(5rem + env(safe-area-inset-bottom, 0px)); }
+  body.no-rail { padding: 0.75rem 0.75rem calc(5rem + env(safe-area-inset-bottom, 0px)); }
 }
 
 /* ── PAGE BACKGROUND IMAGE LAYER ─────────────────────────── */
@@ -2327,7 +2327,9 @@ button.days-pill:hover { filter: brightness(1.25); }
 
 /* ── RESPONSIVE ─────────────────────────────────────────────── */
 @media (max-width: 720px) {
-  body { padding: 0.75rem; }
+  /* Keep the bottom clearance from the earlier phone rule: room for the
+     tweaks FAB + the iPhone home indicator below the last widget. */
+  body { padding: 0.75rem 0.75rem calc(5rem + env(safe-area-inset-bottom, 0px)); }
   /* The flex container is .header-card-content, not .header-card — stack it. */
   .header-card-content {
     flex-direction: column;
@@ -2357,7 +2359,17 @@ button.days-pill:hover { filter: brightness(1.25); }
   .quicklinks { gap: 0.3rem; }
   .qlink { padding: 0.4rem 0.55rem; font-size: 0.7rem; }
   .qlink .kbd { display: none; }
-  .tweaks-panel { width: calc(100vw - 1.5rem); right: 0.75rem; left: 0.75rem; bottom: 4rem; }
+  .tweaks-panel {
+    width: calc(100vw - 1.5rem);
+    right: 0.75rem;
+    left: 0.75rem;
+    bottom: calc(4rem + env(safe-area-inset-bottom, 0px));
+    /* Cap the height to the VISIBLE viewport minus the bottom offset, so the
+       header/close button can never be pushed above the screen. dvh tracks
+       the real visible area on iOS; the vh line is the older-browser fallback. */
+    max-height: calc(100vh - 5rem);
+    max-height: calc(100dvh - 5rem - env(safe-area-inset-bottom, 0px));
+  }
   .modal { padding: 1.25rem; }
 }
 
@@ -5597,12 +5609,24 @@ body.library-open { overflow: hidden; }
   padding: 0.55rem 0.3rem 0.45rem;
   border-radius: var(--r-sm);
   border: 1px solid var(--border);
-  background: var(--surface2);
+  /* Frosted glass, like the agenda week boxes over a photo: a soft top-left
+     sheen (the "reflection") over a translucent card-tinted panel. */
+  background:
+    linear-gradient(160deg, rgba(255,255,255,0.09) 0%, rgba(255,255,255,0.02) 42%, transparent 62%),
+    color-mix(in srgb, var(--card) var(--panel-opacity, 86%), transparent);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   cursor: pointer;
   font-family: inherit;
   transition: border-color var(--t-fast), background var(--t-fast), transform var(--t-fast);
 }
-.ds-day:hover { border-color: var(--border2); background: var(--surface3); transform: translateY(-1px); }
+.ds-day:hover {
+  border-color: var(--border2);
+  background:
+    linear-gradient(160deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.04) 42%, transparent 62%),
+    color-mix(in srgb, var(--card) var(--panel-opacity, 86%), transparent);
+  transform: translateY(-1px);
+}
 .ds-day.today { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
 
 .ds-lbl {
