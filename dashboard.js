@@ -13,12 +13,12 @@ function uid()  { return Math.random().toString(36).slice(2,10); }
 function esc(s) { return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function load(k, fb) { try { const v = JSON.parse(localStorage.getItem(k)); return v ?? fb; } catch { return fb; } }
 function save(k, v)  { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { console.warn('Storage error', e); } }
-function todayStr()  {
+function dateKey(d) {
   // Local date, not UTC — toISOString() would flip to tomorrow's date
   // during the evening in US time zones (habits, streaks, pomodoro).
-  const d = new Date();
   return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
 }
+function todayStr()  { return dateKey(new Date()); }
 // "14:30" → "2:30p" (empty/blank in → empty out)
 function fmtTime(t) {
   if (!t) return '';
@@ -245,8 +245,22 @@ function initWeather() {
         $('wText').textContent = text;
         save('weatherCache', { t: Date.now(), text });
       })
-      .catch(() => { $('wText').textContent = 'Unavailable'; });
-  }, () => { $('wText').textContent = 'Allow location'; });
+      .catch(() => { weatherRetryState('Unavailable · retry', 'Click to try again'); });
+  }, () => { weatherRetryState('Allow location · retry', 'Click to try again. If location is blocked, allow it for this site in your browser settings first.'); });
+}
+
+// Failed weather pill becomes a click-to-retry instead of a dead end.
+function weatherRetryState(label, tip) {
+  const pill = $('weatherPill'), el = $('wText');
+  if (!pill || !el) return;
+  el.textContent = label;
+  pill.style.cursor = 'pointer';
+  pill.title = tip;
+  pill.onclick = () => {
+    pill.onclick = null; pill.style.cursor = ''; pill.title = '';
+    el.textContent = 'Loading…';
+    initWeather();
+  };
 }
 
 // ─── SIDE RAIL (Quick Links) ──────────────────────────────────
@@ -574,12 +588,12 @@ function habitStreak(habitId) {
   const hist = getHabitHistory();
   let streak = 0;
   const d = new Date(); d.setHours(0,0,0,0);
-  const todayKey = d.toISOString().slice(0,10);
+  const todayKey = dateKey(d);
   if (!(hist[todayKey] && hist[todayKey][habitId])) {
     d.setDate(d.getDate() - 1);
   }
   for (let i = 0; i < 365; i++) {
-    const k = d.toISOString().slice(0,10);
+    const k = dateKey(d);
     if (hist[k] && hist[k][habitId]) { streak++; d.setDate(d.getDate() - 1); }
     else break;
   }
@@ -1162,23 +1176,14 @@ function addLife() {
 }
 
 function toggleLife(id) {
+  // Checked items stay (struck through, sink to bottom) like the shopping
+  // list — clearDoneLife() removes them. No more auto-delete on check.
   const items = getLife();
   const i = items.find(x => x.id === id);
   if (!i) return;
-  if (!i.done) {
-    i.done = true;
-    saveLife(items);
-    renderLife();
-    const node = document.querySelector(`#lifeList .life-item[data-id="${id}"]`);
-    if (node) node.classList.add('finishing');
-    setTimeout(() => {
-      saveLife(getLife().filter(x => x.id !== id));
-      renderLife();
-    }, 520);
-  } else {
-    saveLife(items.filter(x => x.id !== id));
-    renderLife();
-  }
+  i.done = !i.done;
+  saveLife(items);
+  renderLife();
 }
 
 function updateLife(id, text) {
@@ -1193,7 +1198,6 @@ function delLife(id) {
 }
 
 function clearDoneLife() {
-  // (Auto-delete on check is on; this clears any leftovers and is a no-op normally)
   const done = getLife().filter(i => i.done).length;
   if (!done) return;
   if (!confirm(`Clear ${done} completed item${done>1?'s':''}?`)) return;
@@ -1501,7 +1505,7 @@ function renderClassSchedule() {
 // ─── TOMORROW (evening tee-up) ───────────────────────
 function tomorrowKey() {
   const d = new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate() + 1);
-  return d.toISOString().slice(0,10);
+  return dateKey(d);
 }
 
 function renderTomorrow() {
@@ -1617,10 +1621,7 @@ function addTomorrowEvent() {
   renderTomorrow();
 }
 
-function copyHabitsToTomorrow() { /* placeholder — reserved for future */ }
-
 function openTomorrow()  { agendaView = 'tomorrow'; $$('.agenda-tab').forEach(t => t.classList.remove('active')); document.querySelectorAll('.agenda-tab').forEach(b => { if ((b.textContent || '').trim() === 'Tomorrow') b.classList.add('active'); }); renderAgenda(); if (window.blocks && window.blocks.applyTabHeight) window.blocks.applyTabHeight('agenda'); }
-function closeTomorrow() { /* placeholder */ }
 
 function getWeekDates() {
   const today = new Date(); today.setHours(0,0,0,0);
@@ -1665,7 +1666,7 @@ function renderWeekView() {
   const DAYS  = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
   strip.innerHTML = '';
   getWeekDates().forEach((d, i) => {
-    const dStr = d.toISOString().slice(0,10);
+    const dStr = dateKey(d);
     const isToday = d.getTime() === today.getTime();
     const isPast  = d < today;
     const dayTasks  = tasks.filter(t => t.dueDate === dStr);
@@ -1718,7 +1719,7 @@ function renderMonthView() {
   }
   for (let d = 1; d <= lastDay.getDate(); d++) {
     const thisDate = new Date(calYear, calMonth, d);
-    const dStr = thisDate.toISOString().slice(0,10);
+    const dStr = dateKey(thisDate);
     const isToday = thisDate.getTime() === today.getTime();
     const dayTasks = tasks.filter(t => t.dueDate === dStr);
     const dayEvents = items.filter(e => e.date === dStr);
@@ -1845,7 +1846,7 @@ function renderHabitHeat() {
   el.innerHTML = habits.map(h => {
     let doneCount = 0;
     const cells = weekDates.map(d => {
-      const ds = d.toISOString().slice(0,10);
+      const ds = dateKey(d);
       const done = hist[ds] && hist[ds][h.id];
       if (done) doneCount++;
       const isFuture = d > today;
@@ -2664,7 +2665,7 @@ function getLast7Dates() {
   const arr = [];
   for (let i = 6; i >= 0; i--) {
     const d = new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate() - i);
-    arr.push(d.toISOString().slice(0,10));
+    arr.push(dateKey(d));
   }
   return arr;
 }
@@ -2823,7 +2824,7 @@ window.dash = {
   pickCardImage, setCardBgProp, clearCardBg, toggleCardBgPopover, toggleRepositionMode, resetCardBgPosition, applyAllCardBgs, applyCardBg, injectCardBgButtons,
   // streaks / schedule / tomorrow
   renderClassSchedule, addScheduleBlock, delScheduleBlock, updateScheduleBlock,
-  renderTomorrow, openTomorrow, closeTomorrow, addTomorrowTask, addTomorrowEvent, copyHabitsToTomorrow,
+  renderTomorrow, openTomorrow, addTomorrowTask, addTomorrowEvent,
   habitStreak,
 };
 
