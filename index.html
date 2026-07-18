@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300;12..96,400;12..96,700;12..96,800&family=Inter:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=12">
+  <link rel="stylesheet" href="styles.css?v=13">
   <link rel="stylesheet" href="blocks.css?v=8">
   <link rel="stylesheet" href="widgets.css?v=7">
 
@@ -88,10 +88,18 @@
         </div>
         <div class="hdr-grp hdr-grp-when">
           <span class="date-line" id="dateLine"></span>
-          <button class="hdr-week-btn" id="weekBtn" type="button" onclick="dash.jumpToWeek()" title="Jump to this week's agenda">
-            <span class="hdr-week-num" id="weekNum">Week —</span>
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
-          </button>
+          <div class="hdr-when-actions">
+            <button class="icon-btn" onclick="dashSearch.open()" title="Search everything (/)" aria-label="Search">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            </button>
+            <button class="icon-btn" onclick="today.open()" title="Today view" aria-label="Today view">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="m9 16 2 2 4-4"/></svg>
+            </button>
+            <button class="hdr-week-btn" id="weekBtn" type="button" onclick="dash.jumpToWeek()" title="Jump to this week's agenda">
+              <span class="hdr-week-num" id="weekNum">Week —</span>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+            </button>
+          </div>
         </div>
       </div>
       <!-- ROW 2 — quote (left) · sync + weather (right) -->
@@ -148,6 +156,12 @@
             <option value="presentation">Presentation</option>
           </optgroup>
           <option value="priority">Priority</option>
+        </select>
+        <select class="t-select" id="taskRepeat" title="Repeat">
+          <option value="">No repeat</option>
+          <option value="daily">Repeats daily</option>
+          <option value="weekdays">Repeats weekdays</option>
+          <option value="weekly">Repeats weekly</option>
         </select>
         <button class="btn-add" onclick="dash.addTask()">Add</button>
       </div>
@@ -572,9 +586,23 @@
 <!-- ═══ LIBRARY (full-page Reading/Watching/Playing) ═════════ -->
 <div class="library-page" id="libraryPage"></div>
 
-<script src="firebase-sync.js?v=3"></script>
+<!-- ═══ TODAY / WEEKLY REVIEW (full-page) ═════════════════════ -->
+<div class="library-page" id="todayPage"></div>
+
+<!-- ═══ GLOBAL SEARCH ═════════════════════════════════════════ -->
+<div class="modal-overlay search-modal-overlay" id="searchModal">
+  <div class="modal search-modal">
+    <div class="modal-header">
+      <input class="t-input search-modal-input" id="searchInput" placeholder="Search tasks, events, goals, notes…" oninput="dashSearch.setQuery(this.value)"/>
+      <button class="modal-close" onclick="dashSearch.close()"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    </div>
+    <div class="search-results" id="searchResults"></div>
+  </div>
+</div>
+
+<script src="firebase-sync.js?v=4"></script>
 <script src="icons.js?v=2"></script>
-<script src="dashboard.js?v=13"></script>
+<script src="dashboard.js?v=14"></script>
 <script src="tweaks.js?v=6"></script>
 <script src="blocks.js?v=8"></script>
 <script src="widgets.js?v=3"></script>
@@ -582,6 +610,8 @@
 <script src="dragscroll.js?v=5"></script>
 <script src="stickers.js?v=1"></script>
 <script src="library.js?v=1"></script>
+<script src="today.js?v=1"></script>
+<script src="search.js?v=1"></script>
 <script src="daystrip.js?v=1"></script>
 <script src="notify.js?v=2"></script>
 <script>

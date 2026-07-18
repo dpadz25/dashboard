@@ -28,7 +28,18 @@ function fmtTime(t) {
   const hh = (h % 12) || 12;
   return m ? `${hh}:${String(m).padStart(2,'0')}${ampm}` : `${hh}${ampm}`;
 }
-window.dashUtil = { $, $$, uid, esc, load, save, todayStr, fmtTime };
+// Scroll a card into view and give it a brief highlight pulse — used by
+// search results to jump to a widget that isn't independently addressable.
+function scrollToCard(cardId) {
+  const card = document.querySelector(`[data-card-id="${cardId}"]`);
+  if (!card) return;
+  card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  card.classList.remove('search-flash'); void card.offsetWidth; // restart animation if re-triggered
+  card.classList.add('search-flash');
+  setTimeout(() => card.classList.remove('search-flash'), 1600);
+}
+
+window.dashUtil = { $, $$, uid, esc, load, save, todayStr, fmtTime, scrollToCard };
 
 /* ─── IMAGE STORE (IndexedDB) ──────────────────────────────────
    Big background photos are far too large for localStorage's ~5 MB
@@ -896,6 +907,39 @@ function getDaysPill(dueDate) {
 function getTasks() { return load('plannerTasks', []); }
 function saveTasks(t) { save('plannerTasks', t); }
 
+// ── Completion history (for the weekly review view) ──────────────
+// toggleTask() logs one entry here every time a task is completed,
+// since completed one-off tasks are otherwise deleted outright.
+function getTaskLog() { return load('taskCompletionLog', []); }
+function logTaskCompletion(t) {
+  // Age-pruned, not count-capped: a count cap would make old-but-still-
+  // valid entries "disappear" between saves, which the sync layer reads
+  // as a deletion and tombstones — age-pruning drops them the same way
+  // on every device instead, so nothing gets falsely tombstoned.
+  const cutoff = Date.now() - 90 * 24 * 60 * 60 * 1000;
+  const log = getTaskLog().filter(e => e.completedAt > cutoff);
+  log.unshift({ id: uid(), taskId: t.id, text: t.text, classId: t.classId || null, type: t.type || '', completedAt: Date.now() });
+  save('taskCompletionLog', log);
+}
+
+// ── Recurring tasks ────────────────────────────────────────────
+// 'daily' / 'weekdays' / 'weekly' advance the SAME task's due date
+// forward instead of deleting it, so it reappears unchecked next
+// time instead of needing to be re-added.
+function nextRepeatDate(dueDate, repeat) {
+  const base = dueDate ? new Date(dueDate + 'T00:00:00') : new Date();
+  base.setHours(0,0,0,0);
+  if (repeat === 'weekly') { base.setDate(base.getDate() + 7); return dateKey(base); }
+  // daily & weekdays both step by one day; weekdays additionally skips Sat/Sun.
+  base.setDate(base.getDate() + 1);
+  if (repeat === 'weekdays') {
+    while (base.getDay() === 0 || base.getDay() === 6) base.setDate(base.getDate() + 1);
+  }
+  return dateKey(base);
+}
+
+const REPEAT_LABELS = { daily: 'Daily', weekdays: 'Weekdays', weekly: 'Weekly' };
+
 function renderPlanner() {
   const el = $('plannerList');
   let tasks = getTasks();
@@ -941,6 +985,7 @@ function renderPlanner() {
       </button>
         ${classBadge}
         ${t.type ? `<span class="type-badge ${cat}">${esc(t.type)}</span>` : ''}
+        ${t.repeat ? `<span class="repeat-badge" title="Repeats: ${REPEAT_LABELS[t.repeat] || t.repeat}">↻</span>` : ''}
         ${pill
           ? `<button class="days-pill ${pill.cls}" onclick="window.dash.openDueMenu('${t.id}',event)" title="Change due date">${pill.label}</button>`
           : `<button class="days-pill add-date" onclick="window.dash.openDueMenu('${t.id}',event)" title="Set a due date">+ date</button>`}
@@ -1081,6 +1126,7 @@ function addTask() {
   // Default class = currently filtered class if user is on a class tab
   let classId = $('taskClass').value || null;
   if (!classId && activeTab.startsWith('class:')) classId = activeTab.slice(6);
+  const repeatEl = $('taskRepeat');
   tasks.unshift({
     id: uid(),
     text: name,
@@ -1089,10 +1135,12 @@ function addTask() {
     classId,
     done: false,
     status: 'todo',
+    repeat: (repeatEl && repeatEl.value) || '',
     createdAt: Date.now()
   });
   saveTasks(tasks);
   $('taskName').value = '';
+  if (repeatEl) repeatEl.value = '';
   renderPlanner(); renderAgenda();
 }
 
@@ -1101,6 +1149,16 @@ function toggleTask(id) {
   const t = tasks.find(t => t.id === id);
   if (!t) return;
   if (taskStatus(t) !== 'done') {
+    logTaskCompletion(t);
+    if (t.repeat) {
+      // Recurring: advance to the next occurrence instead of deleting it.
+      t.dueDate = nextRepeatDate(t.dueDate, t.repeat);
+      t.status = 'todo';
+      t.done = false;
+      saveTasks(tasks);
+      renderPlanner(); renderAgenda();
+      return;
+    }
     // Check the box: mark complete, briefly show it checked, then remove it.
     t.status = 'done';
     t.done = true;
@@ -2825,7 +2883,7 @@ window.dash = {
   // streaks / schedule / tomorrow
   renderClassSchedule, addScheduleBlock, delScheduleBlock, updateScheduleBlock,
   renderTomorrow, openTomorrow, addTomorrowTask, addTomorrowEvent,
-  habitStreak,
+  habitStreak, setHabitToday, getTaskLog,
 };
 
 // ─── AUTO-PRUNE OVERDUE DATES/EVENTS ──────────────────────────

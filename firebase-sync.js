@@ -35,7 +35,7 @@
     'qlinks', 'tweaksState', 'clockFormat24', 'pomoState', 'notifySettings',
     'dashboard.blocks.layout.v3', 'dashboard.blocks.notes.v1',
     'dashboard.blocks.mheights.v1', 'dashboard.blocks.tabheights.v1',
-    'healthCollapsed'
+    'healthCollapsed', 'taskCompletionLog'
   ]);
 
   // Keys that contain embedded images (data URLs) which need to be
@@ -57,7 +57,8 @@
      ─────────────────────────────────────────────────────────── */
   const ID_ARRAY_KEYS = new Set([
     'plannerTasks', 'schoolClasses', 'importantDates', 'agendaEvents',
-    'habitsConfig', 'currentlyArchive', 'lifeItems', 'shoppingItems', 'people'
+    'habitsConfig', 'currentlyArchive', 'lifeItems', 'shoppingItems', 'people',
+    'taskCompletionLog'
   ]);
   const BUCKET_KEYS = { goals: ['year','quarter','week'], currently: ['reading','watching','playing'] };
   const TOMB_PREFIX  = '__syncTombs::';

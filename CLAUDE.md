@@ -16,6 +16,13 @@ Plain HTML/CSS/JS, no build step.
   `firebase-sync.js`, or it won't sync. Images are the exception: they
   live in IndexedDB (`window.dashStore`) and stay device-local because
   they blow Firestore's 1MB doc limit.
+- List-shaped keys (tasks, events, dates, goals, lists, people, classes,
+  habits, currently, the completion log) sync via a per-item merge in
+  `firebase-sync.js`, not whole-array overwrite — see the "Per-item merge"
+  block at the top of that file. If a new key holds an array of
+  `{id, ...}` items (or a goals/currently-style bucket object), add it to
+  `ID_ARRAY_KEYS` (or `BUCKET_KEYS`) there too, or it'll fall back to
+  last-write-wins and can silently drop another device's edit.
 - The remote sometimes has commits pushed from another machine (Delan's
   Mac). Always fetch and compare before pushing.
 - New design exports land in Downloads (e.g. `Downloads\dashboard (1)`).
@@ -34,11 +41,24 @@ Plain HTML/CSS/JS, no build step.
 - `stickers.js` — scrapbook PNG overlays (free or pinned to card corners).
 - `library.js` — full-page Reading/Watching/Playing database view.
 - `daystrip.js` — 7-day carousel card + day view modal.
+- `today.js` — full-page "Today" / "This Week" overlay (condensed daily
+  summary + weekly review), opened from the header. Reuses `.library-page`
+  for the overlay chrome.
+- `search.js` — global search modal (header icon or `/`), searches across
+  tasks/events/dates/goals/lists/people/currently/notes and jumps to the
+  card that holds a result via `window.dashUtil.scrollToCard`.
 - `notify.js` + `sw.js` — PWA push notifications (see below).
 - `firebase-sync.js` — cloud sync. Never overwrite.
 
 ## localStorage data model (all synced unless noted)
-- `plannerTasks` — [{id, text, dueDate, type, classId, done, status}]
+- `plannerTasks` — [{id, text, dueDate, type, classId, done, status,
+  repeat?}] where `repeat` is `''`/`'daily'`/`'weekdays'`/`'weekly'`.
+  Completing a repeating task advances its own `dueDate` forward instead
+  of deleting it (see `nextRepeatDate` in dashboard.js).
+- `taskCompletionLog` — [{id, taskId, text, classId, type, completedAt}],
+  one entry per task completion (repeating or not), age-pruned at 90 days.
+  Feeds the "Done This Week" list in today.js — completed one-off tasks
+  are otherwise deleted outright, so this is the only record of them.
 - `schoolClasses` — [{id, name, color, slots:[{day, start, end, room}]}]
 - `agendaEvents` / `importantDates` — [{id, label, date, start?, end?}]
   (no `start` = all-day; times are 'HH:MM' 24h)
@@ -75,7 +95,7 @@ Plain HTML/CSS/JS, no build step.
 - Use the `dashboard-update` skill when merging a new design export.
   Design exports know nothing about the hosted-only files
   (`firebase-sync.js`, `stickers.js`, `library.js`, `daystrip.js`,
-  `notify.js`, `sw.js`, `manifest.json`, icons, `scripts/`,
-  `.github/`) — keep them all when merging.
+  `today.js`, `search.js`, `notify.js`, `sw.js`, `manifest.json`, icons,
+  `scripts/`, `.github/`) — keep them all when merging.
 - Follow the general rules in `E:\dev\CLAUDE.md` (plan first, confirm
   before pushing, no em dashes, etc).
