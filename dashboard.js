@@ -2883,7 +2883,7 @@ window.dash = {
   // streaks / schedule / tomorrow
   renderClassSchedule, addScheduleBlock, delScheduleBlock, updateScheduleBlock,
   renderTomorrow, openTomorrow, addTomorrowTask, addTomorrowEvent,
-  habitStreak, setHabitToday, getTaskLog,
+  habitStreak, setHabitToday, getTaskLog, getHabits,
 };
 
 // ─── AUTO-PRUNE OVERDUE DATES/EVENTS ──────────────────────────

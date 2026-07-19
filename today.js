@@ -91,7 +91,7 @@ function renderTodayView() {
     ...load('importantDates', []).map(e => ({ ...e, _star: true })),
   ].filter(e => e.date === key).sort((a,b) => (a.start||'').localeCompare(b.start||''));
 
-  const habits = load('habitsConfig', []);
+  const habits = window.dash.getHabits ? window.dash.getHabits() : load('habitsConfig', []);
   const habitState = (load('habitHistory', {})[key]) || {};
 
   const goals = load('goals', { year: [], quarter: [], week: [] });
@@ -172,7 +172,7 @@ function renderWeekView() {
   const carrying = load('plannerTasks', []).filter(t => !t.done && t.dueDate && t.dueDate <= weekEnd)
     .sort((a,b) => a.dueDate.localeCompare(b.dueDate));
 
-  const habits = load('habitsConfig', []);
+  const habits = window.dash.getHabits ? window.dash.getHabits() : load('habitsConfig', []);
   const habitHistory = load('habitHistory', {});
   const today = new Date(); today.setHours(0,0,0,0);
 
