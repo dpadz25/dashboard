@@ -2082,7 +2082,9 @@ button.days-pill:hover { filter: brightness(1.25); }
   display: none;
   align-items: center;
   justify-content: center;
-  padding: 1.25rem;
+  /* Safe-area padding so tall centered modals can't poke under the iPhone
+     status bar / Dynamic Island or the home indicator. 0 on desktop. */
+  padding: calc(1.25rem + env(safe-area-inset-top, 0px)) 1.25rem calc(1.25rem + env(safe-area-inset-bottom, 0px));
 }
 
 [data-theme="paper"] .modal-overlay { background: rgba(60,40,15,0.45); }
@@ -2097,6 +2099,9 @@ button.days-pill:hover { filter: brightness(1.25); }
   width: 100%;
   max-width: 520px;
   max-height: 92vh;
+  /* Resolve against the overlay's safe-area-padded content box, not the
+     raw viewport, so the modal stays clear of the status bar. */
+  max-height: 100%;
   overflow-y: auto;
   box-shadow: var(--shadow);
 }
@@ -2413,7 +2418,10 @@ button.days-pill:hover { filter: brightness(1.25); }
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding: 0.85rem 0.6rem;
+  /* Top/bottom safe-area padding keeps the brand row out from under the
+     iPhone status bar and the Edit-links row above the home indicator
+     when the drawer is open in the home-screen app. env() is 0 on desktop. */
+  padding: calc(0.85rem + env(safe-area-inset-top, 0px)) 0.6rem calc(0.85rem + env(safe-area-inset-bottom, 0px));
   overflow-y: auto;
   overflow-x: hidden;
   height: 100%;
@@ -5450,7 +5458,7 @@ body.library-open { overflow: hidden; }
 .library-inner {
   max-width: 1180px;
   margin: 0 auto;
-  padding: 1.5rem 1.25rem 4rem;
+  padding: calc(1.5rem + env(safe-area-inset-top, 0px)) 1.25rem 4rem;
   display: flex;
   flex-direction: column;
   gap: 1rem;
@@ -5614,7 +5622,7 @@ body.library-open { overflow: hidden; }
 .today-inner {
   max-width: 720px;
   margin: 0 auto;
-  padding: 1.5rem 1.25rem 4rem;
+  padding: calc(1.5rem + env(safe-area-inset-top, 0px)) 1.25rem 4rem;
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
