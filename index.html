@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300;12..96,400;12..96,700;12..96,800&family=Inter:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=14">
+  <link rel="stylesheet" href="styles.css?v=15">
   <link rel="stylesheet" href="blocks.css?v=8">
   <link rel="stylesheet" href="widgets.css?v=7">
 
@@ -278,6 +278,77 @@
       <div style="display:flex;gap:0.5rem;margin-top:0.75rem">
         <input class="t-input" id="newHabitLabel" placeholder="New habit name…" style="flex:1" onkeydown="if(event.key==='Enter')dash.addHabit()"/>
         <button class="btn-add" onclick="dash.addHabit()">Add</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ DAILIES (Routines) ═══════════════════════════════ -->
+  <section class="card block fade-in s4" data-card-id="dailies" data-screen-label="04b Dailies" data-default-span="2">
+    <div class="sec-label-row">
+      <div class="habits-header-left">
+        <div class="sec-label accent" style="margin-bottom:0">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v8"/><path d="m4.93 10.93 1.41 1.41"/><path d="M2 18h2"/><path d="M20 18h2"/><path d="m19.07 10.93-1.41 1.41"/><path d="M22 22H2"/><path d="M8 6 12 2l4 4"/><path d="M16 18a4 4 0 0 0-8 0"/></svg>
+          Dailies
+        </div>
+        <div class="ring-wrap">
+          <svg width="44" height="44" viewBox="0 0 44 44">
+            <circle cx="22" cy="22" r="17" fill="none" stroke="var(--border)" stroke-width="3"/>
+            <circle cx="22" cy="22" r="17" fill="none" stroke="var(--accent)" stroke-width="3"
+              stroke-dasharray="106.81" stroke-dashoffset="106.81"
+              stroke-linecap="round" id="dailyRing" style="transition:stroke-dashoffset 0.6s var(--ease)"/>
+          </svg>
+          <div class="ring-pct daily-ring-pct" id="dailyPct">0%</div>
+        </div>
+      </div>
+      <button class="icon-btn" id="editDailyBtn" onclick="dash.toggleDailyEdit()" title="Edit dailies">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+      </button>
+    </div>
+    <div class="daily-group" data-group="morning">
+      <div class="daily-group-label">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+        Morning <span class="daily-group-pct" id="daily-morning-pct"></span>
+      </div>
+      <div class="habits-grid" id="daily-morning-list"></div>
+    </div>
+    <div class="daily-group" data-group="afternoon">
+      <div class="daily-group-label">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 8h1a4 4 0 1 1 0 8h-1M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"/><line x1="6" x2="6" y1="2" y2="4"/><line x1="10" x2="10" y1="2" y2="4"/><line x1="14" x2="14" y1="2" y2="4"/></svg>
+        Afternoon <span class="daily-group-pct" id="daily-afternoon-pct"></span>
+      </div>
+      <div class="habits-grid" id="daily-afternoon-list"></div>
+    </div>
+    <div class="daily-group" data-group="evening">
+      <div class="daily-group-label">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+        Evening <span class="daily-group-pct" id="daily-evening-pct"></span>
+      </div>
+      <div class="habits-grid" id="daily-evening-list"></div>
+    </div>
+    <div class="habits-edit-panel" id="dailyEditPanel">
+      <div class="daily-edit-group">
+        <div class="daily-group-label" style="margin-bottom:0.25rem">Morning</div>
+        <div id="dailyEditRows-morning"></div>
+        <div style="display:flex;gap:0.5rem;margin-top:0.5rem">
+          <input class="t-input" id="newDailyLabel-morning" placeholder="New morning item…" style="flex:1" onkeydown="if(event.key==='Enter')dash.addDailyItem('morning')"/>
+          <button class="btn-add" onclick="dash.addDailyItem('morning')">Add</button>
+        </div>
+      </div>
+      <div class="daily-edit-group">
+        <div class="daily-group-label" style="margin-bottom:0.25rem">Afternoon</div>
+        <div id="dailyEditRows-afternoon"></div>
+        <div style="display:flex;gap:0.5rem;margin-top:0.5rem">
+          <input class="t-input" id="newDailyLabel-afternoon" placeholder="New afternoon item…" style="flex:1" onkeydown="if(event.key==='Enter')dash.addDailyItem('afternoon')"/>
+          <button class="btn-add" onclick="dash.addDailyItem('afternoon')">Add</button>
+        </div>
+      </div>
+      <div class="daily-edit-group">
+        <div class="daily-group-label" style="margin-bottom:0.25rem">Evening</div>
+        <div id="dailyEditRows-evening"></div>
+        <div style="display:flex;gap:0.5rem;margin-top:0.5rem">
+          <input class="t-input" id="newDailyLabel-evening" placeholder="New evening item…" style="flex:1" onkeydown="if(event.key==='Enter')dash.addDailyItem('evening')"/>
+          <button class="btn-add" onclick="dash.addDailyItem('evening')">Add</button>
+        </div>
       </div>
     </div>
   </section>
@@ -600,9 +671,9 @@
   </div>
 </div>
 
-<script src="firebase-sync.js?v=4"></script>
+<script src="firebase-sync.js?v=5"></script>
 <script src="icons.js?v=2"></script>
-<script src="dashboard.js?v=15"></script>
+<script src="dashboard.js?v=16"></script>
 <script src="tweaks.js?v=6"></script>
 <script src="blocks.js?v=8"></script>
 <script src="widgets.js?v=3"></script>

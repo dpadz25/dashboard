@@ -30,7 +30,8 @@
      ─────────────────────────────────────────────────────────── */
   const SYNCED_KEYS = new Set([
     'plannerTasks', 'schoolClasses', 'importantDates', 'agendaEvents',
-    'habitsConfig', 'habitHistory', 'goals', 'currently', 'currentlyArchive',
+    'habitsConfig', 'habitHistory', 'dailiesConfig', 'dailiesHistory',
+    'goals', 'currently', 'currentlyArchive',
     'lifeItems', 'shoppingItems', 'people', 'health', 'healthHistory', 'healthLastSync',
     'qlinks', 'tweaksState', 'clockFormat24', 'pomoState', 'notifySettings',
     'dashboard.blocks.layout.v3', 'dashboard.blocks.notes.v1',
@@ -57,14 +58,17 @@
      ─────────────────────────────────────────────────────────── */
   const ID_ARRAY_KEYS = new Set([
     'plannerTasks', 'schoolClasses', 'importantDates', 'agendaEvents',
-    'habitsConfig', 'currentlyArchive', 'lifeItems', 'shoppingItems', 'people',
+    'habitsConfig', 'dailiesConfig', 'currentlyArchive', 'lifeItems', 'shoppingItems', 'people',
     'taskCompletionLog'
   ]);
   const BUCKET_KEYS = { goals: ['year','quarter','week'], currently: ['reading','watching','playing'] };
   const TOMB_PREFIX  = '__syncTombs::';
   const TOMB_MAX_AGE = 60 * 24 * 60 * 60 * 1000; // keep deletion records 60 days
 
-  function isMergeKey(k) { return ID_ARRAY_KEYS.has(k) || !!BUCKET_KEYS[k] || k === 'habitHistory'; }
+  // dailiesHistory shares habitHistory's shape (date-keyed {itemId:bool}), so
+  // it rides the same merge path everywhere habitHistory is special-cased.
+  function isDayHistoryKey(k) { return k === 'habitHistory' || k === 'dailiesHistory'; }
+  function isMergeKey(k) { return ID_ARRAY_KEYS.has(k) || !!BUCKET_KEYS[k] || isDayHistoryKey(k); }
   function parseJSON(raw) { try { return raw == null ? null : JSON.parse(raw); } catch (_) { return null; } }
 
   // Order-independent stringify so two devices agree on "same content"
@@ -104,7 +108,7 @@
   // The arrays of items inside a key's value (goals/currently keep
   // several; habitHistory is handled separately).
   function listArrays(key, parsed) {
-    if (key === 'habitHistory') return null;
+    if (isDayHistoryKey(key)) return null;
     if (BUCKET_KEYS[key]) return BUCKET_KEYS[key].map(function (b) { return (parsed && Array.isArray(parsed[b])) ? parsed[b] : []; });
     return [Array.isArray(parsed) ? parsed : []];
   }
@@ -115,7 +119,7 @@
   function stampAndTrack(key, prevRaw, nextRaw) {
     try {
       var prev = parseJSON(prevRaw), next = parseJSON(nextRaw);
-      if (key === 'habitHistory') {
+      if (isDayHistoryKey(key)) {
         if (!next || typeof next !== 'object') return nextRaw;
         var p = (prev && typeof prev === 'object') ? prev : {};
         Object.keys(next).forEach(function (d) {
@@ -195,7 +199,7 @@
     var tombs = setTombs(key, mergeTombs(getTombs(key), remoteTombs));
     var dead = {}; tombs.forEach(function (t) { dead[t.id] = 1; });
     var local = parseJSON(localRaw), remote = parseJSON(remoteRaw), merged;
-    if (key === 'habitHistory') merged = mergeHabitHistory(local, remote);
+    if (isDayHistoryKey(key)) merged = mergeHabitHistory(local, remote);
     else if (BUCKET_KEYS[key]) {
       merged = {};
       BUCKET_KEYS[key].forEach(function (b) {

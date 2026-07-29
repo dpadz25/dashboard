@@ -752,6 +752,56 @@ body::after {
   display: block;
 }
 
+/* ── DAILIES (grouped routines) ─────────────────────────────── */
+.daily-ring-pct { color: var(--accent); }
+
+.daily-group { margin-top: 1rem; }
+.daily-group:first-of-type { margin-top: 0.25rem; }
+
+.daily-group-label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 0.5rem;
+}
+.daily-group-label svg { width: 13px; height: 13px; }
+
+.daily-group-pct {
+  margin-left: auto;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text-s);
+  opacity: 0.75;
+}
+
+/* Per-time-of-day accents: morning=amber, afternoon=blue, evening=purple */
+.daily-group[data-group="morning"] .daily-group-label { color: var(--accent); }
+.daily-group[data-group="morning"] .habit-item.done { border-color: var(--accent-s); background: color-mix(in srgb, var(--surface2) 78%, var(--accent) 22%); }
+.daily-group[data-group="morning"] .habit-item.done .habit-icon { color: var(--accent); background: var(--accent-dim); }
+.daily-group[data-group="morning"] .habit-item.done .habit-label { color: var(--accent); }
+.daily-group[data-group="morning"] .habit-item.done .hcheck { background: var(--accent); border-color: var(--accent); }
+
+.daily-group[data-group="afternoon"] .daily-group-label { color: var(--blue); }
+.daily-group[data-group="afternoon"] .habit-item.done { border-color: var(--blue); background: color-mix(in srgb, var(--surface2) 78%, var(--blue) 22%); }
+.daily-group[data-group="afternoon"] .habit-item.done .habit-icon { color: var(--blue); background: var(--blue-dim); }
+.daily-group[data-group="afternoon"] .habit-item.done .habit-label { color: var(--blue); }
+.daily-group[data-group="afternoon"] .habit-item.done .hcheck { background: var(--blue); border-color: var(--blue); }
+
+.daily-group[data-group="evening"] .daily-group-label { color: var(--purple); }
+.daily-group[data-group="evening"] .habit-item.done { border-color: var(--purple); background: color-mix(in srgb, var(--surface2) 78%, var(--purple) 22%); }
+.daily-group[data-group="evening"] .habit-item.done .habit-icon { color: var(--purple); background: var(--purple-dim); }
+.daily-group[data-group="evening"] .habit-item.done .habit-label { color: var(--purple); }
+.daily-group[data-group="evening"] .habit-item.done .hcheck { background: var(--purple); border-color: var(--purple); }
+
+.daily-edit-group { margin-bottom: 1rem; }
+.daily-edit-group:last-of-type { margin-bottom: 0; }
+.daily-edit-group .daily-group-label { color: var(--muted); }
+
 .habits-edit-panel {
   display: none;
   margin-top: 1rem;

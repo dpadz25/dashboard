@@ -716,6 +716,122 @@ function addHabit() {
   renderHabits(); renderHabitEditRows(); renderHabitHeat();
 }
 
+// ─── DAILIES ──────────────────────────────────────────────────
+const DAILY_GROUPS = [
+  { key:'morning',   label:'Morning',   icon:'sun'    },
+  { key:'afternoon', label:'Afternoon', icon:'coffee' },
+  { key:'evening',   label:'Evening',   icon:'moon'   },
+];
+
+const DEFAULT_DAILIES = [
+  { id:'dm1', label:'Make bed',   icon:'sun',    group:'morning'   },
+  { id:'dm2', label:'Stretch',    icon:'leaf',   group:'morning'   },
+  { id:'da1', label:'Eat lunch',  icon:'utensils', group:'afternoon' },
+  { id:'da2', label:'Walk',       icon:'heart',  group:'afternoon' },
+  { id:'de1', label:'Journal',    icon:'book',   group:'evening'   },
+  { id:'de2', label:'Wind down',  icon:'moon',   group:'evening'   },
+];
+
+function getDailies()         { return load('dailiesConfig', DEFAULT_DAILIES); }
+function saveDailiesConfig(d) { save('dailiesConfig', d); }
+function getDailyHistory()    { return load('dailiesHistory', {}); }
+function saveDailyHistory(h)  { save('dailiesHistory', h); }
+function getTodayDailyState() { return getDailyHistory()[todayStr()] || {}; }
+function setDailyToday(id, done) {
+  const hist = getDailyHistory();
+  const k = todayStr();
+  if (!hist[k]) hist[k] = {};
+  hist[k][id] = done;
+  saveDailyHistory(hist);
+}
+
+function renderDailies() {
+  const items = getDailies();
+  const state = getTodayDailyState();
+  DAILY_GROUPS.forEach(g => {
+    const list = $(`daily-${g.key}-list`);
+    if (!list) return;
+    const groupItems = items.filter(i => i.group === g.key);
+    list.innerHTML = '';
+    groupItems.forEach(it => {
+      const done = !!state[it.id];
+      const el = document.createElement('div');
+      el.className = `habit-item${done ? ' done' : ''}`;
+      el.innerHTML = `
+        <div class="hcheck"></div>
+        <div class="habit-icon">${iconRender(it.icon)}</div>
+        <div class="habit-label">${esc(it.label)}</div>`;
+      el.onclick = () => { setDailyToday(it.id, !state[it.id]); renderDailies(); };
+      list.appendChild(el);
+    });
+    const doneCount = groupItems.filter(i => !!state[i.id]).length;
+    const pctEl = $(`daily-${g.key}-pct`);
+    if (pctEl) pctEl.textContent = groupItems.length ? `${doneCount}/${groupItems.length}` : '';
+  });
+  const total = items.length;
+  const doneTotal = items.filter(i => !!state[i.id]).length;
+  if ($('dailyRing')) $('dailyRing').style.strokeDashoffset = total ? CIRCUM - (doneTotal / total) * CIRCUM : CIRCUM;
+  if ($('dailyPct')) $('dailyPct').textContent = (total ? Math.round(doneTotal / total * 100) : 0) + '%';
+}
+
+let dailyEditOpen = false;
+function toggleDailyEdit() {
+  dailyEditOpen = !dailyEditOpen;
+  $('dailyEditPanel').classList.toggle('open', dailyEditOpen);
+  $('editDailyBtn').classList.toggle('active', dailyEditOpen);
+  if (dailyEditOpen) renderDailyEditRows();
+}
+
+function renderDailyEditRows() {
+  const items = getDailies();
+  DAILY_GROUPS.forEach(g => {
+    const rows = $(`dailyEditRows-${g.key}`);
+    if (!rows) return;
+    rows.innerHTML = '';
+    items.filter(i => i.group === g.key).forEach(it => {
+      const row = document.createElement('div');
+      row.className = 'habit-edit-row';
+      row.innerHTML = `
+        <div class="habit-edit-icon-wrap" id="wrap-${it.id}">
+          <div class="habit-edit-icon-btn" onclick="window.dash.toggleIconPicker('${it.id}')">${iconRender(it.icon)}</div>
+          <div class="icon-picker-grid" id="grid-${it.id}">
+            ${ICON_KEYS.map(k=>`<div class="icon-option${k===it.icon?' selected':''}" onclick="window.dash.selectDailyIcon('${it.id}','${k}')" title="${k}">${ICONS[k]}</div>`).join('')}
+          </div>
+        </div>
+        <input class="t-input" style="flex:1" value="${esc(it.label)}" onchange="window.dash.updateDailyLabel('${it.id}',this.value)"/>
+        <button class="del-btn" style="opacity:1;padding:4px 8px" onclick="window.dash.deleteDailyItem('${it.id}')">${ICONS.trash}</button>`;
+      rows.appendChild(row);
+    });
+  });
+}
+
+function selectDailyIcon(id, iconKey) {
+  const items = getDailies();
+  const it = items.find(i => i.id === id);
+  if (it) { it.icon = iconKey; saveDailiesConfig(items); renderDailies(); renderDailyEditRows(); }
+  const grid = $(`grid-${id}`);
+  if (grid) grid.classList.remove('open');
+}
+function updateDailyLabel(id, label) {
+  const items = getDailies();
+  const it = items.find(i => i.id === id);
+  if (it) { it.label = label.trim() || it.label; saveDailiesConfig(items); renderDailies(); }
+}
+function deleteDailyItem(id) {
+  saveDailiesConfig(getDailies().filter(i => i.id !== id));
+  renderDailies(); renderDailyEditRows();
+}
+function addDailyItem(group) {
+  const inp = $(`newDailyLabel-${group}`);
+  const label = inp.value.trim();
+  if (!label) return;
+  const items = getDailies();
+  items.push({ id: uid(), label, icon: 'star', group });
+  saveDailiesConfig(items);
+  inp.value = '';
+  renderDailies(); renderDailyEditRows();
+}
+
 document.addEventListener('click', e => {
   if (!e.target.closest('.habit-edit-icon-wrap'))
     $$('.icon-picker-grid').forEach(g => g.classList.remove('open'));
@@ -2864,6 +2980,7 @@ window.dash = {
   openIconPicker, closeIconPicker, pickLinkIcon, uploadLinkIcon,
   pickSideRailBg, clearSideRailBg, applySideRailBg, openLink,
   renderHabits, toggleHabitEdit, addHabit, deleteHabit, toggleIconPicker, selectIcon, updateHabitLabel, uploadHabitIcon,
+  renderDailies, toggleDailyEdit, addDailyItem, deleteDailyItem, updateDailyLabel, selectDailyIcon, setDailyToday, getDailies,
   renderPlanner, renderPlannerTabs, renderTaskClassSelect, addTask, toggleTask, delTask, switchTab,
   openStatusMenu, closeStatusMenu, setTaskStatus,
   openDueMenu, closeDueMenu, saveDueDate, clearDueDate,
@@ -2916,6 +3033,7 @@ window.dash.boot = function () {
   renderQlinks();
   applySideRailBg();
   renderHabits();
+  renderDailies();
   renderPlannerTabs();
   renderTaskClassSelect();
   renderPlanner();
@@ -2934,7 +3052,7 @@ window.dash.boot = function () {
   initTabCarousel();
 
   const msToMidnight = (() => { const n=new Date(), m=new Date(n); m.setHours(24,0,0,0); return m-n; })();
-  setTimeout(() => { pruneOverdue(); initHeader(); renderHabits(); renderAgenda(); renderDates(); renderHealth(); }, msToMidnight + 1000);
+  setTimeout(() => { pruneOverdue(); initHeader(); renderHabits(); renderDailies(); renderAgenda(); renderDates(); renderHealth(); }, msToMidnight + 1000);
 };
 
 })();
