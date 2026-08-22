@@ -1239,15 +1239,16 @@ function addTask() {
   const name = $('taskName').value.trim();
   if (!name) return;
   const tasks = getTasks();
+  const isPriority = activeTab === 'priority';
   // Default class = currently filtered class if user is on a class tab
-  let classId = $('taskClass').value || null;
+  let classId = isPriority ? null : ($('taskClass').value || null);
   if (!classId && activeTab.startsWith('class:')) classId = activeTab.slice(6);
   const repeatEl = $('taskRepeat');
   tasks.unshift({
     id: uid(),
     text: name,
     dueDate: $('taskDue').value || null,
-    type: $('taskType').value,
+    type: isPriority ? 'priority' : $('taskType').value,
     classId,
     done: false,
     status: 'todo',
@@ -1310,7 +1311,26 @@ function switchTab(tab, el) {
   if (el) el.classList.add('active');
   renderPlanner();
   renderTaskClassSelect();
+  updateTaskFormForTab();
+  setTaskDueDefault();
   refreshTabbedBg('planner');
+}
+
+// Priority tab only ever holds priority-typed tasks, so the class/type
+// pickers are redundant there — hide them and auto-tag on add instead.
+function updateTaskFormForTab() {
+  const isPriority = activeTab === 'priority';
+  const classSel = $('taskClass');
+  const typeSel  = $('taskType');
+  if (classSel) classSel.style.display = isPriority ? 'none' : '';
+  if (typeSel)  typeSel.style.display  = isPriority ? 'none' : '';
+}
+
+// Convenience: default the due-date field to today on load/tab switch,
+// while leaving it fully editable for the user.
+function setTaskDueDefault() {
+  const due = $('taskDue');
+  if (due) due.value = todayStr();
 }
 
 // ─── LIFE CHECKLIST ───────────────────────────────────────────
@@ -3037,6 +3057,8 @@ window.dash.boot = function () {
   renderPlannerTabs();
   renderTaskClassSelect();
   renderPlanner();
+  updateTaskFormForTab();
+  setTaskDueDefault();
   renderLife();
   renderShopping();
   renderCurrentlyTabs();
