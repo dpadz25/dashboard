@@ -2832,7 +2832,48 @@ button.days-pill:hover { filter: brightness(1.25); }
 }
 
 /* ── SHOPPING LIST ──────────────────────────────────────────── */
-.shopping-list { display: flex; flex-direction: column; gap: 0.35rem; max-height: 380px; overflow-y: auto; }
+.shop-add-form { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 0.75rem; }
+
+.shopping-list { display: flex; flex-direction: column; gap: 0.85rem; max-height: 420px; overflow-y: auto; }
+
+.shop-cat-group { display: flex; flex-direction: column; gap: 0.35rem; }
+
+.shop-cat-header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  cursor: pointer;
+  user-select: none;
+  padding: 0.15rem 0.1rem;
+  color: var(--cat-color);
+}
+.shop-cat-icon { width: 13px; height: 13px; stroke: var(--cat-color); flex-shrink: 0; }
+.shop-cat-label {
+  font-family: var(--font-b);
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.shop-cat-count {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--muted);
+  background: var(--surface2);
+  border-radius: 999px;
+  padding: 0.05rem 0.4rem;
+}
+.shop-cat-chev {
+  width: 13px;
+  height: 13px;
+  stroke: var(--muted);
+  margin-left: auto;
+  transition: transform var(--t-fast);
+  flex-shrink: 0;
+}
+.shop-cat-chev.collapsed { transform: rotate(-90deg); }
+
+.shop-cat-items { display: flex; flex-direction: column; gap: 0.35rem; }
 
 .shop-item {
   display: flex;
@@ -3943,12 +3984,14 @@ button.days-pill:hover { filter: brightness(1.25); }
   color: var(--text-s);
 }
 .card[data-has-bg="1"] .month-nav,
-.card[data-has-bg="1"] .cal-grid-header {
+.card[data-has-bg="1"] .cal-grid-header,
+.card[data-has-bg="1"] .shop-cat-header {
   background: color-mix(in srgb, var(--card) 84%, transparent);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
   border-radius: var(--r-sm);
 }
+.card[data-has-bg="1"] .shop-cat-header { padding: 0.3rem 0.5rem; }
 .card[data-has-bg="1"] .cal-grid-header { padding: 0.25rem 0; }
 .card[data-has-bg="1"] .carousel-controls {
   background: color-mix(in srgb, var(--card) 80%, transparent);

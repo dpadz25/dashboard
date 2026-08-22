@@ -1400,8 +1400,33 @@ function clearDoneLife() {
 }
 
 // ─── SHOPPING LIST ────────────────────────────────────────────
+// Fixed category set (not user-editable, unlike classes/habits) — keeps
+// the add form simple and the grouping predictable across devices.
+const SHOP_CATEGORIES = [
+  { id: 'food',        label: 'Food & Groceries',     color: 'green',  icon: '<circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>' },
+  { id: 'toiletries',  label: 'Toiletries & Care',    color: 'blue',   icon: '<path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/>' },
+  { id: 'household',   label: 'Household & Utilities', color: 'accent', icon: '<path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>' },
+  { id: 'electronics', label: 'Electronics & Tech',   color: 'purple', icon: '<rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 14h3M1 9h3M1 14h3"/>' },
+  { id: 'online',      label: 'Online Orders',        color: 'teal',   icon: '<circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>' },
+  { id: 'other',       label: 'Other',                color: 'muted',  icon: '<path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r="1.5"/>' },
+];
 function getShopping()  { return load('shoppingItems', []); }
 function saveShopping(l) { save('shoppingItems', l); }
+
+function renderShopCategorySelect() {
+  const sel = $('shopCategory');
+  if (!sel) return;
+  sel.innerHTML = SHOP_CATEGORIES.map(c => `<option value="${c.id}">${esc(c.label)}</option>`).join('');
+}
+
+// Collapsed category groups are a view preference, not data — kept in
+// memory only (resets on reload) so it doesn't need a synced storage key.
+const collapsedShopCats = new Set();
+function toggleShopCategoryGroup(catId) {
+  if (collapsedShopCats.has(catId)) collapsedShopCats.delete(catId);
+  else collapsedShopCats.add(catId);
+  renderShopping();
+}
 
 function renderShopping() {
   const el = $('shoppingList');
@@ -1411,19 +1436,39 @@ function renderShopping() {
     el.innerHTML = `<div class="life-empty">list's empty — add what you need.</div>`;
     return;
   }
-  // Unchecked stay on top; checked items sink to the bottom.
-  const sorted = [...items].sort((a,b) => (a.done?1:0) - (b.done?1:0));
   el.innerHTML = '';
-  sorted.forEach(item => {
-    const div = document.createElement('div');
-    div.className = 'shop-item' + (item.done ? ' done' : '');
-    div.dataset.id = item.id;
-    div.innerHTML = `
-      <div class="shop-check${item.done?' checked':''}" onclick="window.dash.toggleShopping('${item.id}')"></div>
-      <input class="shop-txt" value="${esc(item.text)}" onchange="window.dash.updateShopping('${item.id}',this.value)" onkeydown="if(event.key==='Enter')this.blur()"/>
-      <button class="del-btn" onclick="window.dash.delShopping('${item.id}')">×</button>`;
-    el.appendChild(div);
+  SHOP_CATEGORIES.forEach(cat => {
+    const inCat = items.filter(i => (i.category || 'other') === cat.id);
+    if (!inCat.length) return;
+    // Unchecked stay on top; checked items sink to the bottom, within each category.
+    inCat.sort((a,b) => (a.done?1:0) - (b.done?1:0));
+    const openCount = inCat.filter(i => !i.done).length;
+    const collapsed = collapsedShopCats.has(cat.id);
+
+    const group = document.createElement('div');
+    group.className = 'shop-cat-group';
+    group.innerHTML = `
+      <div class="shop-cat-header" style="--cat-color:var(--${cat.color})" onclick="window.dash.toggleShopCategoryGroup('${cat.id}')">
+        <svg class="shop-cat-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${cat.icon}</svg>
+        <span class="shop-cat-label">${esc(cat.label)}</span>
+        <span class="shop-cat-count">${openCount}</span>
+        <svg class="shop-cat-chev${collapsed ? ' collapsed' : ''}" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+      </div>
+      <div class="shop-cat-items"${collapsed ? ' style="display:none"' : ''}></div>`;
+    const itemsEl = group.querySelector('.shop-cat-items');
+    inCat.forEach(item => {
+      const div = document.createElement('div');
+      div.className = 'shop-item' + (item.done ? ' done' : '');
+      div.dataset.id = item.id;
+      div.innerHTML = `
+        <div class="shop-check${item.done?' checked':''}" onclick="window.dash.toggleShopping('${item.id}')"></div>
+        <input class="shop-txt" value="${esc(item.text)}" onchange="window.dash.updateShopping('${item.id}',this.value)" onkeydown="if(event.key==='Enter')this.blur()"/>
+        <button class="del-btn" onclick="window.dash.delShopping('${item.id}')">×</button>`;
+      itemsEl.appendChild(div);
+    });
+    el.appendChild(group);
   });
+  if (!el.children.length) el.innerHTML = `<div class="life-empty">list's empty — add what you need.</div>`;
 }
 
 function addShopping() {
@@ -1431,7 +1476,9 @@ function addShopping() {
   const text = inp.value.trim();
   if (!text) return;
   const items = getShopping();
-  items.unshift({ id: uid(), text, done: false, t: Date.now() });
+  const catSel = $('shopCategory');
+  const category = (catSel && catSel.value) || 'other';
+  items.unshift({ id: uid(), text, category, done: false, t: Date.now() });
   saveShopping(items);
   inp.value = '';
   renderShopping();
@@ -3010,7 +3057,7 @@ window.dash = {
   renderDates, addDate, delDate, toggleDateTimeRow,
   closeDayQuickAdd, submitDayQuickAdd,
   renderLife, addLife, toggleLife, updateLife, delLife, clearDoneLife,
-  renderShopping, addShopping, toggleShopping, updateShopping, delShopping, clearDoneShopping,
+  renderShopping, addShopping, toggleShopping, updateShopping, delShopping, clearDoneShopping, toggleShopCategoryGroup,
   renderGoals, switchGoalScope, addGoal, delGoal, cycleGoal,
   renderCurrently, renderCurrentlyTabs, switchCurKind, curPrev, curNext, curGoTo, curAdd, updateCur, cycleCurProgress, finishCur, pickCurImage,
   renderHealth, openHealthModal, closeHealthModal, syncHealth, openManualHealth, closeManualHealth, saveManualHealth, toggleHealth,
@@ -3060,6 +3107,7 @@ window.dash.boot = function () {
   updateTaskFormForTab();
   setTaskDueDefault();
   renderLife();
+  renderShopCategorySelect();
   renderShopping();
   renderCurrentlyTabs();
   renderAgenda();

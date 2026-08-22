@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300;12..96,400;12..96,700;12..96,800&family=Inter:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=15">
+  <link rel="stylesheet" href="styles.css?v=16">
   <link rel="stylesheet" href="blocks.css?v=8">
   <link rel="stylesheet" href="widgets.css?v=7">
 
@@ -382,9 +382,12 @@
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
         </button>
       </div>
-      <div style="display:flex;gap:0.375rem;margin-bottom:0.75rem">
-        <input class="t-input" id="shopInput" placeholder="add an item…" style="flex:1" onkeydown="if(event.key==='Enter')dash.addShopping()"/>
-        <button class="btn-add" onclick="dash.addShopping()">Add</button>
+      <div class="shop-add-form">
+        <input class="t-input" id="shopInput" placeholder="add an item…" onkeydown="if(event.key==='Enter')dash.addShopping()"/>
+        <div class="row2">
+          <select class="t-select" id="shopCategory"></select>
+          <button class="btn-add" onclick="dash.addShopping()">Add</button>
+        </div>
       </div>
       <div class="shopping-list" id="shoppingList"></div>
     </div>
@@ -673,7 +676,7 @@
 
 <script src="firebase-sync.js?v=5"></script>
 <script src="icons.js?v=2"></script>
-<script src="dashboard.js?v=17"></script>
+<script src="dashboard.js?v=18"></script>
 <script src="tweaks.js?v=6"></script>
 <script src="blocks.js?v=8"></script>
 <script src="widgets.js?v=3"></script>
