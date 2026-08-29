@@ -950,6 +950,13 @@ function renderPlannerTabs() {
   allBtn.onclick = e => switchTab('all', e.currentTarget);
   tabsEl.appendChild(allBtn);
 
+  const weekBtn = document.createElement('button');
+  weekBtn.className = 'tab planner-tab' + (activeTab === 'week' ? ' active' : '');
+  weekBtn.textContent = 'This Week';
+  weekBtn.title = 'Every task due in the next 7 days';
+  weekBtn.onclick = e => switchTab('week', e.currentTarget);
+  tabsEl.appendChild(weekBtn);
+
   classes.forEach(c => {
     const b = document.createElement('button');
     b.className = 'tab planner-tab class-tab' + (activeTab === 'class:'+c.id ? ' active' : '');
@@ -1061,6 +1068,12 @@ function renderPlanner() {
   let tasks = getTasks();
 
   if (activeTab === 'priority') tasks = tasks.filter(t => PRIORITY_TYPES.includes((t.type||'').toLowerCase()));
+  else if (activeTab === 'week') {
+    const horizon = new Date(); horizon.setHours(0,0,0,0);
+    horizon.setDate(horizon.getDate() + 7);
+    const k7 = dateKey(horizon);
+    tasks = tasks.filter(t => !t.done && t.dueDate && t.dueDate <= k7);
+  }
   else if (activeTab.startsWith('class:')) {
     const cid = activeTab.slice(6);
     tasks = tasks.filter(t => t.classId === cid);
@@ -1074,7 +1087,13 @@ function renderPlanner() {
     return a.dueDate.localeCompare(b.dueDate);
   });
 
-  if (!tasks.length) { el.innerHTML = `<div class="empty">Nothing here yet — add your first task above.</div>`; return; }
+  if (!tasks.length) {
+    const msg = activeTab === 'week'
+      ? 'Nothing due in the next 7 days.'
+      : 'Nothing here yet — add your first task above.';
+    el.innerHTML = `<div class="empty">${msg}</div>`;
+    return;
+  }
   el.innerHTML = '';
 
   tasks.forEach(t => {
@@ -1318,12 +1337,15 @@ function switchTab(tab, el) {
 
 // Priority tab only ever holds priority-typed tasks, so the class/type
 // pickers are redundant there — hide them and auto-tag on add instead.
+// The "This Week" tab is a read-only view, so the whole add form hides.
 function updateTaskFormForTab() {
   const isPriority = activeTab === 'priority';
   const classSel = $('taskClass');
   const typeSel  = $('taskType');
   if (classSel) classSel.style.display = isPriority ? 'none' : '';
   if (typeSel)  typeSel.style.display  = isPriority ? 'none' : '';
+  const form = document.querySelector('.task-add-form');
+  if (form) form.style.display = activeTab === 'week' ? 'none' : '';
 }
 
 // Convenience: default the due-date field to today on load/tab switch,
@@ -2528,6 +2550,7 @@ function tabLabelFor(id, tab) {
   if (id === 'currently') return ({reading:'Reading',watching:'Watching',playing:'Playing'})[tab] || tab;
   if (id === 'planner') {
     if (tab === 'all') return 'All tasks';
+    if (tab === 'week') return 'This Week';
     if (tab === 'priority') return 'Priority';
     if (tab.startsWith('class:')) {
       const c = getClass(tab.slice(6));
