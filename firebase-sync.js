@@ -214,6 +214,22 @@
   let user      = null;   // currently signed-in user (or null)
   let unsub     = null;   // real-time listener unsubscribe function
   let ready     = false;  // true after initial pull is done
+  let lastError = null;   // last sync failure (shown on the pill so it isn't silent)
+
+  // Record a sync failure and show it on the header pill. Firestore
+  // permission errors ("Missing or insufficient permissions") mean the
+  // security rules are blocking this account — the data never leaves the
+  // device even though sign-in succeeded.
+  function syncError(where, e) {
+    lastError = { where: where, code: (e && e.code) || '', msg: (e && e.message) || String(e) };
+    console.error('[sync] ' + where + ' failed', e);
+    renderSyncUI();
+  }
+  function clearSyncError() {
+    if (!lastError) return;
+    lastError = null;
+    renderSyncUI();
+  }
 
   // Track keys we just wrote so we can ignore our own echoes
   // coming back from the real-time listener.
@@ -310,9 +326,10 @@
         rerender();
       }
       ready = true;
+      clearSyncError();
       flushPending(); // send any edits made while the pull was in flight
       listen();       // start real-time listener
-    }).catch(function (e) { console.error('[sync] pull failed', e); });
+    }).catch(function (e) { syncError('pull', e); });
   }
 
   // Push queued early writes now that sync is ready. Push the CURRENT
@@ -410,7 +427,7 @@
         batch.set(c.doc(key), docPayload(key, raw));
       }
     });
-    batch.commit().catch(function (e) { console.error('[sync] pushAll failed', e); });
+    batch.commit().then(clearSyncError).catch(function (e) { syncError('pushAll', e); });
   }
 
   // Push a single key (called every time localStorage.setItem is used)
@@ -426,7 +443,8 @@
     setTimeout(function () { recentWrites.delete(key); }, 3000);
 
     userCol().doc(key).set(docPayload(key, raw))
-      .catch(function (e) { console.error('[sync] push failed', key, e); });
+      .then(clearSyncError)
+      .catch(function (e) { syncError('push (' + key + ')', e); });
   }
 
   // The Firestore doc for a key: data + timestamp, plus deletion
@@ -492,7 +510,8 @@
         if (applyRemote(key, data.d, parseJSON(data.x))) changed = true;
       });
       if (changed) rerender();
-    }, function (err) { console.error('[sync] listen error', err); });
+      clearSyncError();
+    }, function (err) { syncError('listen', err); });
   }
 
   /* ══════════════════════════════════════════════════════════════
@@ -556,7 +575,14 @@
       return;
     }
 
-    if (user) {
+    if (user && lastError) {
+      var hint = /permission/i.test(lastError.msg)
+        ? 'Firestore security rules are blocking this account — data stays on this device. Fix the rules in the Firebase console.'
+        : lastError.msg;
+      btn.innerHTML = '<span class="sync-dot error"></span> Sync error';
+      btn.title = 'Sync failing at: ' + lastError.where + '\n' + hint + '\n\nClick to sign out.';
+      btn.onclick = signOut;
+    } else if (user) {
       btn.innerHTML = '<span class="sync-dot"></span> Synced';
       btn.title = 'Signed in as ' + (user.email || 'Google user') + ' — click to sign out';
       btn.onclick = signOut;
