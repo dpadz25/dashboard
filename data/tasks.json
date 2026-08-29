@@ -1,31 +1,21 @@
 [
   {
-    "id": "b6u163ok",
-    "title": "email nuu",
-    "dueDate": "2026-08-21",
-    "category": "Practicum",
-    "type": "assignment",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "xmxs143h",
-    "title": "Meeting today at 6",
-    "dueDate": "2026-08-25",
-    "category": "Practicum",
-    "type": "assignment",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
     "id": "4zq1jjbh",
     "title": "clean house before sunday to prepare for jo's arrival",
     "dueDate": "2026-08-30",
     "category": "General",
     "type": "priority",
     "priority": true,
+    "completed": false,
+    "repeat": ""
+  },
+  {
+    "id": "b6u163ok",
+    "title": "email nuu",
+    "dueDate": "2026-08-31",
+    "category": "Practicum",
+    "type": "assignment",
+    "priority": false,
     "completed": false,
     "repeat": ""
   },
@@ -40,8 +30,8 @@
     "repeat": ""
   },
   {
-    "id": "zmbwovtz",
-    "title": "watch videos and read",
+    "id": "ctbagg42",
+    "title": "Journal Entry, Week 2",
     "dueDate": "2026-09-02",
     "category": "Dev. Psych",
     "type": "assignment",
@@ -50,11 +40,31 @@
     "repeat": ""
   },
   {
-    "id": "ctbagg42",
-    "title": "Journal Entry, Week 2",
+    "id": "m8mdn801",
+    "title": "Week 2, Video, How Childhood Trauma Affects Health Across a Lifetime (Nadine Burke Harris)",
     "dueDate": "2026-09-02",
     "category": "Dev. Psych",
-    "type": "assignment",
+    "type": "reading",
+    "priority": false,
+    "completed": false,
+    "repeat": ""
+  },
+  {
+    "id": "ri3b9pq1",
+    "title": "Week 2, Video, InBrief, How Resilience Is Built",
+    "dueDate": "2026-09-02",
+    "category": "Dev. Psych",
+    "type": "reading",
+    "priority": false,
+    "completed": false,
+    "repeat": ""
+  },
+  {
+    "id": "wusjc9fb",
+    "title": "Week 2, Adverse Childhood Experiences (Blackboard file)",
+    "dueDate": "2026-09-02",
+    "category": "Dev. Psych",
+    "type": "reading",
     "priority": false,
     "completed": false,
     "repeat": ""
@@ -100,6 +110,36 @@
     "repeat": ""
   },
   {
+    "id": "9zquey04",
+    "title": "Week 3, DSM-5-TR ADHD criteria",
+    "dueDate": "2026-09-09",
+    "category": "Dev. Psych",
+    "type": "reading",
+    "priority": false,
+    "completed": false,
+    "repeat": ""
+  },
+  {
+    "id": "oen3o0s7",
+    "title": "Week 3, Klein et al. (2015), diagnosing ADHD in children in child protection services",
+    "dueDate": "2026-09-09",
+    "category": "Dev. Psych",
+    "type": "reading",
+    "priority": false,
+    "completed": false,
+    "repeat": ""
+  },
+  {
+    "id": "76w55hlk",
+    "title": "Week 3, Hornstra et al. (2023), which components of parent and teacher training work for ADHD",
+    "dueDate": "2026-09-09",
+    "category": "Dev. Psych",
+    "type": "reading",
+    "priority": false,
+    "completed": false,
+    "repeat": ""
+  },
+  {
     "id": "otggjf52",
     "title": "Read Ch. 13",
     "dueDate": "2026-09-10",
@@ -125,6 +165,36 @@
     "dueDate": "2026-09-16",
     "category": "Dev. Psych",
     "type": "assignment",
+    "priority": false,
+    "completed": false,
+    "repeat": ""
+  },
+  {
+    "id": "xgl651db",
+    "title": "Week 4, DSM-5-TR Conduct Disorder and ODD criteria",
+    "dueDate": "2026-09-16",
+    "category": "Dev. Psych",
+    "type": "reading",
+    "priority": false,
+    "completed": false,
+    "repeat": ""
+  },
+  {
+    "id": "bq316srw",
+    "title": "Week 4, Fadus et al. (2020), unconscious bias in diagnosis of disruptive behavior disorders and ADHD",
+    "dueDate": "2026-09-16",
+    "category": "Dev. Psych",
+    "type": "reading",
+    "priority": false,
+    "completed": false,
+    "repeat": ""
+  },
+  {
+    "id": "6uk9obg0",
+    "title": "Week 4, Konrad et al. (2022), sex differences in comorbidity and presentation in conduct disorder",
+    "dueDate": "2026-09-16",
+    "category": "Dev. Psych",
+    "type": "reading",
     "priority": false,
     "completed": false,
     "repeat": ""
@@ -165,6 +235,36 @@
     "dueDate": "2026-09-23",
     "category": "Dev. Psych",
     "type": "assignment",
+    "priority": false,
+    "completed": false,
+    "repeat": ""
+  },
+  {
+    "id": "y692o5hc",
+    "title": "Week 5, DSM-5-TR Anxiety Disorders criteria",
+    "dueDate": "2026-09-23",
+    "category": "Dev. Psych",
+    "type": "reading",
+    "priority": false,
+    "completed": false,
+    "repeat": ""
+  },
+  {
+    "id": "2tuwm43w",
+    "title": "Week 5, Grieshaber et al. (2024), early childhood anxiety disorders, continuity and predictors",
+    "dueDate": "2026-09-23",
+    "category": "Dev. Psych",
+    "type": "reading",
+    "priority": false,
+    "completed": false,
+    "repeat": ""
+  },
+  {
+    "id": "8vaq1avm",
+    "title": "Week 5, Baker, Hollywood, & Waite (2022), adolescents' lived experience of panic disorder",
+    "dueDate": "2026-09-23",
+    "category": "Dev. Psych",
+    "type": "reading",
     "priority": false,
     "completed": false,
     "repeat": ""
@@ -230,6 +330,46 @@
     "repeat": ""
   },
   {
+    "id": "1laxdkuv",
+    "title": "Week 7, DSM-5-TR Depressive Disorders criteria",
+    "dueDate": "2026-10-07",
+    "category": "Dev. Psych",
+    "type": "reading",
+    "priority": false,
+    "completed": false,
+    "repeat": ""
+  },
+  {
+    "id": "cf5pp9kr",
+    "title": "Week 7, Mechler et al. (2022), internet psychodynamic therapy vs CBT for adolescent depression",
+    "dueDate": "2026-10-07",
+    "category": "Dev. Psych",
+    "type": "reading",
+    "priority": false,
+    "completed": false,
+    "repeat": ""
+  },
+  {
+    "id": "ew9d7yxt",
+    "title": "Week 7, Kim (2021), life events as risk factors for depression and suicide",
+    "dueDate": "2026-10-07",
+    "category": "Dev. Psych",
+    "type": "reading",
+    "priority": false,
+    "completed": false,
+    "repeat": ""
+  },
+  {
+    "id": "hutn8p7q",
+    "title": "Week 7, Freeman (2016), DMDD in a community mental health clinic",
+    "dueDate": "2026-10-07",
+    "category": "Dev. Psych",
+    "type": "reading",
+    "priority": false,
+    "completed": false,
+    "repeat": ""
+  },
+  {
     "id": "a3c86spo",
     "title": "Read Ch. 18",
     "dueDate": "2026-10-08",
@@ -270,6 +410,36 @@
     "repeat": ""
   },
   {
+    "id": "8auffcri",
+    "title": "Week 8, DSM-5-TR Bipolar Disorders criteria",
+    "dueDate": "2026-10-14",
+    "category": "Dev. Psych",
+    "type": "reading",
+    "priority": false,
+    "completed": false,
+    "repeat": ""
+  },
+  {
+    "id": "58nl3urx",
+    "title": "Week 8, Van Meter et al. (2021), subthreshold manic symptoms differentiating bipolar from unipolar depression",
+    "dueDate": "2026-10-14",
+    "category": "Dev. Psych",
+    "type": "reading",
+    "priority": false,
+    "completed": false,
+    "repeat": ""
+  },
+  {
+    "id": "w6wogcj8",
+    "title": "Week 8, Nicholas (2017), self-management in young adults with bipolar disorder",
+    "dueDate": "2026-10-14",
+    "category": "Dev. Psych",
+    "type": "reading",
+    "priority": false,
+    "completed": false,
+    "repeat": ""
+  },
+  {
     "id": "a5r25t02",
     "title": "Read Ch. 21",
     "dueDate": "2026-10-15",
@@ -295,6 +465,36 @@
     "dueDate": "2026-10-21",
     "category": "Dev. Psych",
     "type": "assignment",
+    "priority": false,
+    "completed": false,
+    "repeat": ""
+  },
+  {
+    "id": "gqmvlz5c",
+    "title": "Week 9, DSM-5-TR PTSD criteria",
+    "dueDate": "2026-10-21",
+    "category": "Dev. Psych",
+    "type": "reading",
+    "priority": false,
+    "completed": false,
+    "repeat": ""
+  },
+  {
+    "id": "a2qkkz35",
+    "title": "Week 9, Powers et al. (2016), childhood trauma, PTSD, and psychosis",
+    "dueDate": "2026-10-21",
+    "category": "Dev. Psych",
+    "type": "reading",
+    "priority": false,
+    "completed": false,
+    "repeat": ""
+  },
+  {
+    "id": "e9x4ulr3",
+    "title": "Week 9, Brockie et al. (2015), ACEs and PTSD, depression, poly-drug use in Native American adolescents",
+    "dueDate": "2026-10-21",
+    "category": "Dev. Psych",
+    "type": "reading",
     "priority": false,
     "completed": false,
     "repeat": ""
@@ -340,6 +540,26 @@
     "repeat": ""
   },
   {
+    "id": "5ks1xv1s",
+    "title": "Week 10, DSM-5-TR ASD and Early Onset Schizophrenia criteria",
+    "dueDate": "2026-10-28",
+    "category": "Dev. Psych",
+    "type": "reading",
+    "priority": false,
+    "completed": false,
+    "repeat": ""
+  },
+  {
+    "id": "xzsn5ybu",
+    "title": "Week 10, Salinger et al. (2018), family communication with teens at clinical high-risk for psychosis or bipolar",
+    "dueDate": "2026-10-28",
+    "category": "Dev. Psych",
+    "type": "reading",
+    "priority": false,
+    "completed": false,
+    "repeat": ""
+  },
+  {
     "id": "hd04iwjt",
     "title": "Read Ch. 22 & 23",
     "dueDate": "2026-10-29",
@@ -365,6 +585,36 @@
     "dueDate": "2026-11-04",
     "category": "Dev. Psych",
     "type": "assignment",
+    "priority": false,
+    "completed": false,
+    "repeat": ""
+  },
+  {
+    "id": "hsp77xfh",
+    "title": "Week 11, DSM-5-TR Eating Disorders and Personality Disorders criteria",
+    "dueDate": "2026-11-04",
+    "category": "Dev. Psych",
+    "type": "reading",
+    "priority": false,
+    "completed": false,
+    "repeat": ""
+  },
+  {
+    "id": "0j6wn4ga",
+    "title": "Week 11, Frieiro et al. (2022), self-esteem and socialisation in social networks and adolescent eating disorders",
+    "dueDate": "2026-11-04",
+    "category": "Dev. Psych",
+    "type": "reading",
+    "priority": false,
+    "completed": false,
+    "repeat": ""
+  },
+  {
+    "id": "ysyzxqnm",
+    "title": "Week 11, Bo & Lind (2023), personality disorder and adolescents",
+    "dueDate": "2026-11-04",
+    "category": "Dev. Psych",
+    "type": "reading",
     "priority": false,
     "completed": false,
     "repeat": ""
