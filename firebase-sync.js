@@ -215,6 +215,7 @@
   let unsub     = null;   // real-time listener unsubscribe function
   let ready     = false;  // true after initial pull is done
   let lastError = null;   // last sync failure (shown on the pill so it isn't silent)
+  let bannerTimer = null; // fires the persistent-failure banner after a grace period
 
   // Record a sync failure and show it on the header pill. Firestore
   // permission errors ("Missing or insufficient permissions") mean the
@@ -224,11 +225,44 @@
     lastError = { where: where, code: (e && e.code) || '', msg: (e && e.message) || String(e) };
     console.error('[sync] ' + where + ' failed', e);
     renderSyncUI();
+    // A one-off blip (flaky wifi) shouldn't nag. Only show the banner if
+    // sync is still broken 60s later.
+    if (!bannerTimer) bannerTimer = setTimeout(showSyncBanner, 60000);
   }
   function clearSyncError() {
+    if (bannerTimer) { clearTimeout(bannerTimer); bannerTimer = null; }
+    hideSyncBanner();
     if (!lastError) return;
     lastError = null;
     renderSyncUI();
+  }
+
+  // Small fixed strip along the bottom edge — easy to miss the header
+  // pill, harder to miss this. Clears itself when sync recovers.
+  function showSyncBanner() {
+    bannerTimer = null;
+    if (!lastError) return;
+    var b = document.getElementById('syncBanner');
+    if (!b) {
+      b = document.createElement('div');
+      b.id = 'syncBanner';
+      b.style.cssText =
+        'position:fixed;left:50%;bottom:10px;transform:translateX(-50%);z-index:9999;' +
+        'display:flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;' +
+        'font:500 11px/1.3 var(--font-b,sans-serif);color:#fff;background:rgba(220,38,38,0.92);' +
+        'box-shadow:0 2px 10px rgba(0,0,0,0.25);cursor:pointer;max-width:90vw;';
+      b.title = 'Click to dismiss';
+      b.onclick = function () { b.remove(); };
+      document.body.appendChild(b);
+    }
+    var perm = /permission/i.test(lastError.msg);
+    b.textContent = perm
+      ? 'Sync is down — changes are saving on this device only (Firestore rules)'
+      : 'Sync is down — changes are saving on this device only';
+  }
+  function hideSyncBanner() {
+    var b = document.getElementById('syncBanner');
+    if (b) b.remove();
   }
 
   // Track keys we just wrote so we can ignore our own echoes
