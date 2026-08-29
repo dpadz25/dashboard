@@ -10,22 +10,12 @@
     "repeat": ""
   },
   {
-    "id": "ysfb8h0h",
-    "title": "gym",
-    "dueDate": "2026-08-26",
-    "category": "General",
-    "type": "priority",
-    "priority": true,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "r8igmq2c",
-    "title": "doordash today",
-    "dueDate": "2026-08-26",
-    "category": "General",
-    "type": "priority",
-    "priority": true,
+    "id": "xmxs143h",
+    "title": "Meeting today at 6",
+    "dueDate": "2026-08-25",
+    "category": "Practicum",
+    "type": "assignment",
+    "priority": false,
     "completed": false,
     "repeat": ""
   },
