@@ -78,13 +78,25 @@
     opts = opts || {};
     return fetch('https://api.github.com/repos/' + OWNER + '/' + REPO + path, {
       method: opts.method || 'GET',
+      cache: 'no-store',
       headers: {
         'Authorization': 'Bearer ' + token,
         'Accept': 'application/vnd.github+json',
-        'X-GitHub-Api-Version': '2022-11-28'
+        'X-GitHub-Api-Version': '2022-11-28',
+        'If-None-Match': ''
       },
       body: opts.body ? JSON.stringify(opts.body) : undefined
     });
+  }
+
+  // GET the current SHA of PATH, bypassing any cached contents-API response.
+  async function currentSha(token) {
+    var head = await api('/contents/' + PATH + '?ref=' + BRANCH +
+      '&_=' + Date.now(), {}, token);
+    if (head.status === 200) return { sha: (await head.json()).sha };
+    if (head.status === 404) return { sha: null };
+    if (head.status === 401) return { unauthorized: true };
+    throw new Error('GET ' + PATH + ' -> ' + head.status);
   }
 
   function setBtn(text, disabled) {
@@ -111,37 +123,46 @@
 
     try {
       // Look up the current file SHA (needed to update an existing file).
-      var sha = null;
-      var head = await api('/contents/' + PATH + '?ref=' + BRANCH, {}, token);
-      if (head.status === 200) {
-        sha = (await head.json()).sha;
-      } else if (head.status === 401) {
+      var cur = await currentSha(token);
+      if (cur.unauthorized) {
         localStorage.removeItem(TOKEN_KEY);
         resetBtn('Bad token');
         if (getToken(true)) run();
         return;
-      } else if (head.status !== 404) {
-        throw new Error('GET ' + PATH + ' -> ' + head.status);
       }
+      var sha = cur.sha;
 
-      var put = await api('/contents/' + PATH, {
-        method: 'PUT',
-        body: {
-          message: 'Sync planner -> tasks.json (' + payload.length + ' tasks)',
-          content: content,
-          branch: BRANCH,
-          sha: sha || undefined
+      // PUT, retrying on 409 — a stale SHA means the file moved between our
+      // GET and PUT (cached contents response, or another device synced).
+      var put, msg;
+      for (var attempt = 0; attempt < 4; attempt++) {
+        put = await api('/contents/' + PATH, {
+          method: 'PUT',
+          body: {
+            message: 'Sync planner -> tasks.json (' + payload.length + ' tasks)',
+            content: content,
+            branch: BRANCH,
+            sha: sha || undefined
+          }
+        }, token);
+
+        if (put.status === 401) {
+          localStorage.removeItem(TOKEN_KEY);
+          resetBtn('Bad token');
+          return;
         }
-      }, token);
+        if (put.ok) break;
 
-      if (put.status === 401) {
-        localStorage.removeItem(TOKEN_KEY);
-        resetBtn('Bad token');
-        return;
-      }
-      if (!put.ok) {
-        var msg = '';
+        msg = '';
         try { msg = (await put.json()).message || ''; } catch (e) {}
+
+        if (put.status === 409 && attempt < 3) {
+          await new Promise(function (r) { setTimeout(r, 400 * (attempt + 1)); });
+          var again = await currentSha(token);
+          if (again.unauthorized) { resetBtn('Bad token'); return; }
+          sha = again.sha;
+          continue;
+        }
         throw new Error('PUT ' + put.status + (msg ? ' — ' + msg : ''));
       }
 
