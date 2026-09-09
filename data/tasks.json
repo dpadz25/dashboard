@@ -80,6 +80,16 @@
     "repeat": ""
   },
   {
+    "id": "4xies6tm",
+    "title": "complete case example",
+    "dueDate": "2026-09-15",
+    "category": "clinical practicum 1",
+    "type": "assignment",
+    "priority": false,
+    "completed": false,
+    "repeat": ""
+  },
+  {
     "id": "i9mw6xw6",
     "title": "Module 2 quiz (Assessment & case formulation)",
     "dueDate": "2026-09-15",
