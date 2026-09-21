@@ -1,205 +1,5 @@
 [
   {
-    "id": "1ipo86rp",
-    "title": "Journal Entry, Week 3",
-    "dueDate": "2026-09-09",
-    "category": "Dev. Psych",
-    "type": "assignment",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "9zquey04",
-    "title": "Week 3, DSM-5-TR ADHD criteria",
-    "dueDate": "2026-09-09",
-    "category": "Dev. Psych",
-    "type": "reading",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "oen3o0s7",
-    "title": "Week 3, Klein et al. (2015), diagnosing ADHD in children in child protection services",
-    "dueDate": "2026-09-09",
-    "category": "Dev. Psych",
-    "type": "reading",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "76w55hlk",
-    "title": "Week 3, Hornstra et al. (2023), which components of parent and teacher training work for ADHD",
-    "dueDate": "2026-09-09",
-    "category": "Dev. Psych",
-    "type": "reading",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "otggjf52",
-    "title": "Read Ch. 13",
-    "dueDate": "2026-09-10",
-    "category": "Dev. Psych",
-    "type": "reading",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "itbom7d1",
-    "title": "I have posted chapter 8 of the DBT workbook in the google drive in the clinical training folder under the subfolder DBT.  Please preview the reading (for Monday the 14th meeting, unless otherwise specified). We will critically discuss and evaluate the skill exercises mentioned.",
-    "dueDate": "2026-09-14",
-    "category": "Practicum",
-    "type": "assignment",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "y0jdcknn",
-    "title": "Read Ch. 2",
-    "dueDate": "2026-09-14",
-    "category": "Assessment 1",
-    "type": "reading",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "e387s94z",
-    "title": "Pre-class Survey 2: Colonization, Race & Ethnicity",
-    "dueDate": "2026-09-14",
-    "category": "cultural issues",
-    "type": "discussion",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "4xies6tm",
-    "title": "complete case example",
-    "dueDate": "2026-09-15",
-    "category": "clinical practicum 1",
-    "type": "assignment",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "i9mw6xw6",
-    "title": "Module 2 quiz (Assessment & case formulation)",
-    "dueDate": "2026-09-15",
-    "category": "clinical practicum 1",
-    "type": "quiz",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "ee97hmem",
-    "title": "Practicum Journal 1 (500-800 words, 10 pts) - date assigned individually",
-    "dueDate": "2026-09-15",
-    "category": "clinical practicum 1",
-    "type": "assignment",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "vobydzw8",
-    "title": "Journal Entry, Week 4",
-    "dueDate": "2026-09-16",
-    "category": "Dev. Psych",
-    "type": "assignment",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "xgl651db",
-    "title": "Week 4, DSM-5-TR Conduct Disorder and ODD criteria",
-    "dueDate": "2026-09-16",
-    "category": "Dev. Psych",
-    "type": "reading",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "bq316srw",
-    "title": "Week 4, Fadus et al. (2020), unconscious bias in diagnosis of disruptive behavior disorders and ADHD",
-    "dueDate": "2026-09-16",
-    "category": "Dev. Psych",
-    "type": "reading",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "6uk9obg0",
-    "title": "Week 4, Konrad et al. (2022), sex differences in comorbidity and presentation in conduct disorder",
-    "dueDate": "2026-09-16",
-    "category": "Dev. Psych",
-    "type": "reading",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "xcj2bado",
-    "title": "Read Ch. 14",
-    "dueDate": "2026-09-17",
-    "category": "Dev. Psych",
-    "type": "reading",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "nxtmjudn",
-    "title": "Reflective Journal 1 (Weeks 1-3, 20 pts)",
-    "dueDate": "2026-09-19",
-    "category": "cultural issues",
-    "type": "assignment",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "q34lh1et",
-    "title": "Read Ch. 3",
-    "dueDate": "2026-09-21",
-    "category": "Assessment 1",
-    "type": "reading",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "ofgnae0s",
-    "title": "EV Project, Topic Approval",
-    "dueDate": "2026-09-21",
-    "category": "Assessment 1",
-    "type": "project",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "7aw5ffht",
-    "title": "Pre-class Survey 3: Racism, Discrimination & Microaggression",
-    "dueDate": "2026-09-21",
-    "category": "cultural issues",
-    "type": "discussion",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
     "id": "ybsym4ra",
     "title": "Module 3 quiz (Depression / IPT formulation)",
     "dueDate": "2026-09-22",
@@ -285,6 +85,16 @@
     "dueDate": "2026-09-29",
     "category": "clinical practicum 1",
     "type": "quiz",
+    "priority": false,
+    "completed": false,
+    "repeat": ""
+  },
+  {
+    "id": "ee97hmem",
+    "title": "Practicum Journal 1 (500-800 words, 10 pts)",
+    "dueDate": "2026-09-29",
+    "category": "clinical practicum 1",
+    "type": "assignment",
     "priority": false,
     "completed": false,
     "repeat": ""
@@ -445,16 +255,6 @@
     "dueDate": "2026-10-13",
     "category": "clinical practicum 1",
     "type": "quiz",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "y5w81f0x",
-    "title": "Practicum Journal 2 (500-800 words, 10 pts) - date assigned individually",
-    "dueDate": "2026-10-13",
-    "category": "clinical practicum 1",
-    "type": "assignment",
     "priority": false,
     "completed": false,
     "repeat": ""
@@ -630,6 +430,16 @@
     "repeat": ""
   },
   {
+    "id": "y5w81f0x",
+    "title": "Practicum Journal 2 (500-800 words, 10 pts)",
+    "dueDate": "2026-10-27",
+    "category": "clinical practicum 1",
+    "type": "assignment",
+    "priority": false,
+    "completed": false,
+    "repeat": ""
+  },
+  {
     "id": "y69z23rt",
     "title": "Journal Entry, Week 10",
     "dueDate": "2026-10-28",
@@ -685,6 +495,16 @@
     "dueDate": "2026-11-02",
     "category": "cultural issues",
     "type": "discussion",
+    "priority": false,
+    "completed": false,
+    "repeat": ""
+  },
+  {
+    "id": "rkdw635q",
+    "title": "FREE Trauma Certification Training w/ Dr. Kate Truitt",
+    "dueDate": "2026-11-03",
+    "category": "Practicum",
+    "type": "assignment",
     "priority": false,
     "completed": false,
     "repeat": ""
@@ -785,16 +605,6 @@
     "dueDate": "2026-11-10",
     "category": "clinical practicum 1",
     "type": "quiz",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "pwfn8y7w",
-    "title": "Practicum Journal 3 (500-800 words, 10 pts) - date assigned individually",
-    "dueDate": "2026-11-10",
-    "category": "clinical practicum 1",
-    "type": "assignment",
     "priority": false,
     "completed": false,
     "repeat": ""
@@ -995,6 +805,16 @@
     "dueDate": "2026-12-01",
     "category": "clinical practicum 1",
     "type": "quiz",
+    "priority": false,
+    "completed": false,
+    "repeat": ""
+  },
+  {
+    "id": "pwfn8y7w",
+    "title": "Practicum Journal 3 (500-800 words, 10 pts)",
+    "dueDate": "2026-12-01",
+    "category": "clinical practicum 1",
+    "type": "assignment",
     "priority": false,
     "completed": false,
     "repeat": ""
