@@ -476,11 +476,65 @@ function renderPanel() {
       </div>
 
       <div class="tweak-section">
+        <div class="tweak-section-title">This device's photos &amp; looks</div>
+        <div class="tweak-label" id="tweakPersistStatus" style="font-size:0.72rem;margin-bottom:0.45rem">Checking storage…</div>
+        <button class="tweak-upload-btn" onclick="window.tweaks.exportLooks()">Save backup file</button>
+        <button class="tweak-upload-btn" style="margin-top:0.4rem" onclick="document.getElementById('tweakImportLooks').click()">Restore from backup file</button>
+        <input type="file" id="tweakImportLooks" accept=".json,application/json" style="display:none" onchange="window.tweaks.importLooks(this.files[0]);this.value=''"/>
+      </div>
+
+      <div class="tweak-section">
         <button class="btn-ghost" style="width:100%" onclick="window.tweaks.resetData()">Reset all data…</button>
       </div>
     </div>
   `;
   makeDraggable($('tweaksHead'), panel);
+  showPersistStatus();
+}
+
+/* ─── Device-local looks backup ──────────────────────────────
+   Photos (IndexedDB) and a few look settings are device-local on
+   purpose, so each device keeps its own customization. They are not
+   in Firebase, so this file is the safety net if the browser ever
+   clears site storage. Synced keys are never touched here. */
+const LOCAL_LOOK_KEYS = ['stickers', 'customIcons'];
+function isLocalLookKey(k) { return LOCAL_LOOK_KEYS.includes(k) || k.startsWith('cardBg::'); }
+
+async function showPersistStatus() {
+  const el = $('tweakPersistStatus');
+  if (!el) return;
+  let ok = false;
+  try { ok = await window.dashStore.persisted; } catch (e) {}
+  el.textContent = ok
+    ? 'Protected: the browser will not auto-delete photos on this device.'
+    : 'Not protected yet. Bookmark or install the dashboard, and keep a backup file.';
+}
+
+async function exportLooks() {
+  try { await window.dashStore.ready; } catch (e) {}
+  const images = {};
+  window.dashStore.entries().forEach(([k, v]) => { images[k] = v; });
+  const local = {};
+  Object.keys(localStorage).filter(isLocalLookKey).forEach(k => { local[k] = localStorage.getItem(k); });
+  const data = { type: 'dashboard-looks', version: 1, exportedAt: new Date().toISOString(), images, local };
+  const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'dashboard-looks-' + new Date().toISOString().slice(0, 10) + '.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+}
+
+async function importLooks(file) {
+  if (!file) return;
+  let data;
+  try { data = JSON.parse(await file.text()); } catch (e) { alert('That file could not be read.'); return; }
+  if (!data || data.type !== 'dashboard-looks') { alert('That is not a dashboard looks backup.'); return; }
+  const n = Object.keys(data.images || {}).length;
+  if (!confirm('Restore ' + n + ' photo(s) and look settings on this device? Your tasks and synced data are not affected.')) return;
+  for (const [k, v] of Object.entries(data.images || {})) await window.dashStore.set(k, v);
+  Object.entries(data.local || {}).forEach(([k, v]) => { if (isLocalLookKey(k)) localStorage.setItem(k, v); });
+  location.reload();
 }
 
 function makeDraggable(handle, target) {
@@ -542,7 +596,7 @@ window.addEventListener('message', e => {
   if (d.type === '__deactivate_edit_mode') close();
 });
 
-window.tweaks = { open, close, set: setKey, setLive, resetData, uploadPageBg, uploadHeaderBg, clearPageBg, clearHeaderBg, uploadRailBg, clearRailBg, resetPageBgPosition, resetRailBgPosition, refresh: renderPanel };
+window.tweaks = { open, close, set: setKey, setLive, resetData, uploadPageBg, uploadHeaderBg, clearPageBg, clearHeaderBg, uploadRailBg, clearRailBg, resetPageBgPosition, resetRailBgPosition, exportLooks, importLooks, refresh: renderPanel };
 
 window.addEventListener('load', async () => {
   try { await window.dashStore.ready; } catch (e) {}

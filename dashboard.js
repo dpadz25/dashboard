@@ -163,7 +163,19 @@ const dashStore = (function () {
     } catch (e) { console.warn('image store load failed', e); }
     try { await migrateLegacy(); } catch (e) { console.warn('image migration failed', e); }
   })();
-  return { ready, getCached, set, del, clearAll };
+  // Ask the browser to mark this site's storage as persistent. Without it,
+  // Chrome treats IndexedDB + localStorage as "best effort" and can wipe
+  // them when the disk runs low, which is how device-local photos vanished.
+  // Chrome grants it silently for engaged / bookmarked / installed sites.
+  const persisted = (async () => {
+    try {
+      if (!navigator.storage || !navigator.storage.persist) return false;
+      if (await navigator.storage.persisted()) return true;
+      return await navigator.storage.persist();
+    } catch (e) { return false; }
+  })();
+  function entries() { return Array.from(cache.entries()); }
+  return { ready, persisted, getCached, set, del, clearAll, entries };
 })();
 window.dashStore = dashStore;
 
