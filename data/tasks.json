@@ -1,71 +1,11 @@
 [
   {
-    "id": "ybsym4ra",
-    "title": "Module 3 quiz (Depression / IPT formulation)",
-    "dueDate": "2026-09-22",
-    "category": "clinical practicum 1",
-    "type": "quiz",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "3hemmr9x",
-    "title": "Journal Entry, Week 5",
-    "dueDate": "2026-09-23",
-    "category": "Dev. Psych",
-    "type": "assignment",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "y692o5hc",
-    "title": "Week 5, DSM-5-TR Anxiety Disorders criteria",
-    "dueDate": "2026-09-23",
-    "category": "Dev. Psych",
-    "type": "reading",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "2tuwm43w",
-    "title": "Week 5, Grieshaber et al. (2024), early childhood anxiety disorders, continuity and predictors",
-    "dueDate": "2026-09-23",
-    "category": "Dev. Psych",
-    "type": "reading",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "8vaq1avm",
-    "title": "Week 5, Baker, Hollywood, & Waite (2022), adolescents' lived experience of panic disorder",
-    "dueDate": "2026-09-23",
-    "category": "Dev. Psych",
-    "type": "reading",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "m7stq451",
-    "title": "Quiz 1 (Ch 1-3)",
+    "id": "6y7onid1",
+    "title": "email for hours",
     "dueDate": "2026-09-24",
-    "category": "Assessment 1",
-    "type": "quiz",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "jcsxubzz",
-    "title": "Read Ch. 16 & 17",
-    "dueDate": "2026-09-24",
-    "category": "Dev. Psych",
-    "type": "reading",
-    "priority": false,
+    "category": "General",
+    "type": "priority",
+    "priority": true,
     "completed": false,
     "repeat": ""
   },
@@ -500,21 +440,21 @@
     "repeat": ""
   },
   {
-    "id": "rkdw635q",
-    "title": "FREE Trauma Certification Training w/ Dr. Kate Truitt",
-    "dueDate": "2026-11-03",
-    "category": "Practicum",
-    "type": "assignment",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
     "id": "8sx55ysc",
     "title": "Module 9 quiz (CBT formulation deep dive A)",
     "dueDate": "2026-11-03",
     "category": "clinical practicum 1",
     "type": "quiz",
+    "priority": false,
+    "completed": false,
+    "repeat": ""
+  },
+  {
+    "id": "rkdw635q",
+    "title": "FREE Trauma Certification Training w/ Dr. Kate Truitt",
+    "dueDate": "2026-11-03",
+    "category": "Practicum",
+    "type": "assignment",
     "priority": false,
     "completed": false,
     "repeat": ""
