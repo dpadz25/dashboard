@@ -624,6 +624,7 @@ function habitStreak(habitId) {
 }
 
 function renderHabits() {
+  if (editingTileKind === 'habit') return;  // inline rename open, see inlineRename()
   const habits = getHabits();
   const state  = getTodayHabitState();
   const grid   = $('habitsGrid');
@@ -636,7 +637,7 @@ function renderHabits() {
     el.innerHTML = `
       <div class="hcheck"></div>
       <div class="habit-icon">${iconRender(h.icon)}</div>
-      <div class="habit-label">${esc(h.label)}</div>
+      <div class="habit-label" onclick="window.dash.startTileRename('habit','${h.id}',event)" title="Click to rename">${esc(h.label)}</div>
       ${streak >= 2 ? `<div class="habit-streak" title="${streak}-day streak">\uD83D\uDD25 ${streak}</div>` : ''}`;
     el.onclick = () => { setHabitToday(h.id, !state[h.id]); renderHabits(); renderHabitHeat(); };
     grid.appendChild(el);
@@ -758,6 +759,7 @@ function setDailyToday(id, done) {
 }
 
 function renderDailies() {
+  if (editingTileKind === 'daily') return;  // inline rename open, see inlineRename()
   const items = getDailies();
   const state = getTodayDailyState();
   DAILY_GROUPS.forEach(g => {
@@ -772,7 +774,7 @@ function renderDailies() {
       el.innerHTML = `
         <div class="hcheck"></div>
         <div class="habit-icon">${iconRender(it.icon)}</div>
-        <div class="habit-label">${esc(it.label)}</div>`;
+        <div class="habit-label" onclick="window.dash.startTileRename('daily','${it.id}',event)" title="Click to rename">${esc(it.label)}</div>`;
       el.onclick = () => { setDailyToday(it.id, !state[it.id]); renderDailies(); };
       list.appendChild(el);
     });
@@ -1076,10 +1078,7 @@ function nextRepeatDate(dueDate, repeat) {
 const REPEAT_LABELS = { daily: 'Daily', weekdays: 'Weekdays', weekly: 'Weekly' };
 
 function renderPlanner() {
-  // An inline rename owns the DOM while it's open — a cloud sync or an
-  // agenda edit landing mid-typing would otherwise wipe the input out
-  // from under the cursor. Defer instead; startTaskRename's close runs it.
-  if (editingTaskId) { plannerRenderPending = true; return; }
+  if (editingTaskId) return;  // inline rename open, see inlineRename()
   const el = $('plannerList');
   let tasks = getTasks();
 
@@ -1336,32 +1335,25 @@ function toggleTask(id) {
 }
 
 // ── Inline rename ───────────────────────────────────────────────
-// Clicking a task's title swaps the text for a real input, reusing the
-// same .t-input styling the Manage classes modal uses for class names.
-// Enter or blur commits, Escape reverts. renderPlanner() is deferred
-// while one of these is open (see the guard at the top of it).
+// Clicking a task title or a habit/daily tile label swaps the text for a
+// real input, reusing the same .t-input styling the Manage classes modal
+// uses for class names. Enter or blur commits, Escape reverts. While one
+// is open, its widget's render function bails early (see the guards at
+// the top of renderPlanner / renderHabits / renderDailies) so a cloud
+// sync landing mid-typing can't wipe the input out from under the cursor.
 let editingTaskId = null;
-let plannerRenderPending = false;
+let editingTileKind = null;  // 'habit' | 'daily'
 
-function startTaskRename(id, ev) {
-  if (ev) ev.stopPropagation();
-  if (editingTaskId) return;
-  const span = document.querySelector(`#plannerList .task-item[data-id="${id}"] .task-txt`);
-  if (!span) return;
-  const t = getTasks().find(x => x.id === id);
-  if (!t) return;
-
+// Swap `el` for an input holding `value`. onClose(next) gets the trimmed
+// new text, or null when cancelled / blank / unchanged.
+function inlineRename(el, value, ev, extraClass, onClose) {
   // Put the caret where the click landed, so renaming feels like editing
   // text rather than replacing it. Falls back to select-all.
-  const caret = caretOffsetFromPoint(span, ev);
-  const original = t.text;
-
+  const caret = caretOffsetFromPoint(el, ev);
   const input = document.createElement('input');
-  input.className = 't-input task-txt-input';
-  input.value = original;
-  span.replaceWith(input);
-  editingTaskId = id;
-
+  input.className = 't-input ' + extraClass;
+  input.value = value;
+  el.replaceWith(input);
   input.focus();
   if (caret === null) input.select();
   else input.setSelectionRange(caret, caret);
@@ -1371,19 +1363,50 @@ function startTaskRename(id, ev) {
     if (closed) return;
     closed = true;
     const next = input.value.trim();
-    editingTaskId = null;
-    plannerRenderPending = false;
-    if (commit && next && next !== original) renameTask(id, next);
-    else { renderPlanner(); renderAgenda(); }
+    onClose(commit && next && next !== value ? next : null);
   };
   input.onkeydown = e => {
     if (e.key === 'Enter')  { e.preventDefault(); close(true); }
     if (e.key === 'Escape') { e.preventDefault(); close(false); }
   };
   input.onblur = () => close(true);
-  // The row's own click handlers (checkbox, status pill) shouldn't fire
-  // from clicks inside the input.
+  // The row/tile's own click handlers (checkbox, habit toggle) shouldn't
+  // fire from clicks inside the input.
   input.onclick = e => e.stopPropagation();
+}
+
+function startTaskRename(id, ev) {
+  if (ev) ev.stopPropagation();
+  if (editingTaskId) return;
+  const span = document.querySelector(`#plannerList .task-item[data-id="${id}"] .task-txt`);
+  const t = getTasks().find(x => x.id === id);
+  if (!span || !t) return;
+  editingTaskId = id;
+  inlineRename(span, t.text, ev, 'task-txt-input', next => {
+    editingTaskId = null;
+    if (next) renameTask(id, next);
+    else { renderPlanner(); renderAgenda(); }
+  });
+}
+
+// kind is 'habit' or 'daily'; both render .habit-item tiles.
+function startTileRename(kind, id, ev) {
+  if (ev) ev.stopPropagation();
+  if (editingTileKind) return;
+  const label = ev && ev.currentTarget;
+  const item = (kind === 'habit' ? getHabits() : getDailies()).find(x => x.id === id);
+  if (!label || !item) return;
+  editingTileKind = kind;
+  inlineRename(label, item.label, ev, 'habit-label-input', next => {
+    editingTileKind = null;
+    if (kind === 'habit') {
+      if (next) updateHabitLabel(id, next); else renderHabits();
+      if (habitEditOpen) renderHabitEditRows();
+    } else {
+      if (next) updateDailyLabel(id, next); else renderDailies();
+      if (dailyEditOpen) renderDailyEditRows();
+    }
+  });
 }
 
 // Character offset of a click inside a single-text-node element.
@@ -3166,7 +3189,7 @@ window.dash = {
   renderHabits, toggleHabitEdit, addHabit, deleteHabit, toggleIconPicker, selectIcon, updateHabitLabel, uploadHabitIcon,
   renderDailies, toggleDailyEdit, addDailyItem, deleteDailyItem, updateDailyLabel, selectDailyIcon, setDailyToday, getDailies,
   renderPlanner, renderPlannerTabs, renderTaskClassSelect, addTask, toggleTask, delTask, switchTab,
-  startTaskRename, renameTask,
+  startTaskRename, renameTask, startTileRename,
   openStatusMenu, closeStatusMenu, setTaskStatus,
   openDueMenu, closeDueMenu, saveDueDate, clearDueDate,
   openClassesModal, closeClassesModal, addClass, updateClass, deleteClass, removeClassTab,

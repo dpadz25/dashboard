@@ -693,6 +693,28 @@ body::after {
 
 .habit-item.done .habit-label { color: var(--green); }
 
+/* Click-to-rename on tile labels, same dotted-underline cue as
+   .task-txt. The label is only as wide as its text, so clicks on the
+   icon or the rest of the tile still toggle the habit. */
+.habit-label {
+  cursor: text;
+  text-decoration-line: underline;
+  text-decoration-style: dotted;
+  text-decoration-color: transparent;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+.habit-label:hover { text-decoration-color: currentColor; }
+.habit-item .habit-label-input {
+  width: 100%;
+  min-width: 0;
+  font-size: 0.625rem;
+  font-weight: 600;
+  text-align: center;
+  padding: 0.125rem 0.25rem;
+  margin: -0.1875rem 0;
+}
+
 /* Streak chip — fire emoji + day count */
 .habit-streak {
   font-family: var(--font-d);
