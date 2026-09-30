@@ -956,11 +956,20 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); cur
 
 /* ── PLANNER ────────────────────────────────────────────────── */
 .task-add-form {
-  display: grid;
-  grid-template-columns: 1fr auto auto auto;
+  display: flex;
+  flex-direction: column;
   gap: 0.375rem;
   margin-bottom: 0.875rem;
 }
+/* One slim quick-add line (Shopping List style) plus a ⋯ toggle. The
+   date/class/type/repeat row stays collapsed until the toggle opens it. */
+.task-quick-row { display: flex; gap: 0.375rem; align-items: center; }
+.task-quick-row #taskName { flex: 1; min-width: 0; }
+.task-quick-row .icon-btn { width: 34px; height: 34px; }
+.task-add-details { display: none; flex-wrap: wrap; gap: 0.375rem; }
+.task-add-details.open { display: flex; }
+.task-add-details > * { flex: 1 1 8rem; min-width: 0; }
+.task-add-details .btn-add { flex: 0 0 auto; margin-left: auto; }
 
 .task-list { display: flex; flex-direction: column; gap: 0.3125rem; }
 
@@ -2455,8 +2464,6 @@ button.days-pill:hover { filter: brightness(1.25); }
   .header-right .weather-pill { order: 2; }
   .header-right .hdr-week-btn { order: 3; margin-left: auto; }
   .habits-grid { grid-template-columns: repeat(3, 1fr); }
-  .task-add-form { grid-template-columns: 1fr 1fr; }
-  .task-add-form .t-input:first-child { grid-column: 1/-1; }
   .quicklinks { gap: 0.3rem; }
   .qlink { padding: 0.4rem 0.55rem; font-size: 0.7rem; }
   .qlink .kbd { display: none; }
@@ -4927,16 +4934,6 @@ body[data-has-bg="1"]::before {
   .sec-label-row > .icon-btn,
   .sec-label-row > button:not(.sec-label),
   .sec-label-row > div:last-child { margin-left: auto; }
-}
-
-/* ── Planner add-form: the 4-column grid is too tight on a phone.
-   Reflow to name on top, then date/class/type/add wrapping below. ── */
-@media (max-width: 720px) {
-  .task-add-form {
-    grid-template-columns: 1fr 1fr;
-  }
-  .task-add-form #taskName { grid-column: 1 / -1; }
-  .task-add-form .btn-add  { grid-column: 1 / -1; }
 }
 
 /* ── Slightly tighter cards + bigger touch targets on phones ── */

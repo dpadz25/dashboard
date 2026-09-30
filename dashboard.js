@@ -1454,15 +1454,33 @@ function switchTab(tab, el) {
 
 // Priority tab only ever holds priority-typed tasks, so the class/type
 // pickers are redundant there — hide them and auto-tag on add instead.
-// The "This Week" tab is a read-only view, so the whole add form hides.
+// The quick-add placeholder names where a new task will land, since the
+// details row (date/class/type/repeat) is collapsed by default.
 function updateTaskFormForTab() {
   const isPriority = activeTab === 'priority';
   const classSel = $('taskClass');
   const typeSel  = $('taskType');
   if (classSel) classSel.style.display = isPriority ? 'none' : '';
   if (typeSel)  typeSel.style.display  = isPriority ? 'none' : '';
-  const form = document.querySelector('.task-add-form');
-  if (form) form.style.display = activeTab === 'week' ? 'none' : '';
+  const name = $('taskName');
+  if (!name) return;
+  let where = '';
+  if (isPriority) where = ' to Priority';
+  else if (activeTab.startsWith('class:')) {
+    const c = getClasses().find(x => x.id === activeTab.slice(6));
+    if (c) where = ' to ' + c.name;
+  }
+  name.placeholder = '+ add task' + where + '…';
+}
+
+// The ⋯ button beside quick-add reveals the full date/class/type/repeat
+// row. Collapsed, a new task just uses those fields' defaults.
+function toggleTaskDetails(force) {
+  const box = $('taskAddDetails'), btn = $('taskMoreBtn');
+  if (!box) return;
+  const open = typeof force === 'boolean' ? force : !box.classList.contains('open');
+  box.classList.toggle('open', open);
+  if (btn) { btn.classList.toggle('active', open); btn.setAttribute('aria-expanded', open); }
 }
 
 // Convenience: default the due-date field to today on load/tab switch,
@@ -3189,7 +3207,7 @@ window.dash = {
   renderHabits, toggleHabitEdit, addHabit, deleteHabit, toggleIconPicker, selectIcon, updateHabitLabel, uploadHabitIcon,
   renderDailies, toggleDailyEdit, addDailyItem, deleteDailyItem, updateDailyLabel, selectDailyIcon, setDailyToday, getDailies,
   renderPlanner, renderPlannerTabs, renderTaskClassSelect, addTask, toggleTask, delTask, switchTab,
-  startTaskRename, renameTask, startTileRename,
+  startTaskRename, renameTask, startTileRename, toggleTaskDetails,
   openStatusMenu, closeStatusMenu, setTaskStatus,
   openDueMenu, closeDueMenu, saveDueDate, clearDueDate,
   openClassesModal, closeClassesModal, addClass, updateClass, deleteClass, removeClassTab,
