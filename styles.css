@@ -985,10 +985,32 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); cur
   flex: 1;
   font-size: 0.8125rem;
   font-weight: 500;
-  cursor: pointer;
+  cursor: text;
   line-height: 1.4;
   word-break: break-word;
   color: var(--text);
+  /* Faint dotted underline on hover, so the title reads as editable
+     without needing a pencil icon. Underline (not border-bottom) so the
+     line tracks the text, not the full width of the flex child. */
+  text-decoration-line: underline;
+  text-decoration-style: dotted;
+  text-decoration-color: transparent;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  transition: text-decoration-color var(--t-fast);
+}
+.task-txt:hover { text-decoration-color: var(--muted2); }
+
+/* Inline rename field — same .t-input chrome as the Manage classes
+   modal, sized down so swapping it in doesn't change the row height. */
+.task-txt-input {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.4;
+  padding: 0.125rem 0.375rem;
+  margin: -0.1875rem 0;
 }
 
 .task-item.completed .task-txt { color: var(--green); }

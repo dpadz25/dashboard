@@ -1076,6 +1076,10 @@ function nextRepeatDate(dueDate, repeat) {
 const REPEAT_LABELS = { daily: 'Daily', weekdays: 'Weekdays', weekly: 'Weekly' };
 
 function renderPlanner() {
+  // An inline rename owns the DOM while it's open — a cloud sync or an
+  // agenda edit landing mid-typing would otherwise wipe the input out
+  // from under the cursor. Defer instead; startTaskRename's close runs it.
+  if (editingTaskId) { plannerRenderPending = true; return; }
   const el = $('plannerList');
   let tasks = getTasks();
 
@@ -1123,7 +1127,7 @@ function renderPlanner() {
     const meta = STATUS_META[st];
     div.innerHTML = `
       <div class="tcheck${done ? ' checked' : ''}" onclick="window.dash.toggleTask('${t.id}')" title="Tap to complete &amp; clear"></div>
-      <span class="task-txt" onclick="window.dash.toggleTask('${t.id}')">${esc(t.text)}</span>
+      <span class="task-txt" onclick="window.dash.startTaskRename('${t.id}',event)" title="Click to rename">${esc(t.text)}</span>
       <span class="task-meta">
       <button class="status-pill st-${st}" onclick="window.dash.openStatusMenu('${t.id}',event)" title="Change status">
         <span class="status-dot"></span>
@@ -1329,6 +1333,84 @@ function toggleTask(id) {
     saveTasks(getTasks().filter(x => x.id !== id));
     renderPlanner(); renderAgenda();
   }
+}
+
+// ── Inline rename ───────────────────────────────────────────────
+// Clicking a task's title swaps the text for a real input, reusing the
+// same .t-input styling the Manage classes modal uses for class names.
+// Enter or blur commits, Escape reverts. renderPlanner() is deferred
+// while one of these is open (see the guard at the top of it).
+let editingTaskId = null;
+let plannerRenderPending = false;
+
+function startTaskRename(id, ev) {
+  if (ev) ev.stopPropagation();
+  if (editingTaskId) return;
+  const span = document.querySelector(`#plannerList .task-item[data-id="${id}"] .task-txt`);
+  if (!span) return;
+  const t = getTasks().find(x => x.id === id);
+  if (!t) return;
+
+  // Put the caret where the click landed, so renaming feels like editing
+  // text rather than replacing it. Falls back to select-all.
+  const caret = caretOffsetFromPoint(span, ev);
+  const original = t.text;
+
+  const input = document.createElement('input');
+  input.className = 't-input task-txt-input';
+  input.value = original;
+  span.replaceWith(input);
+  editingTaskId = id;
+
+  input.focus();
+  if (caret === null) input.select();
+  else input.setSelectionRange(caret, caret);
+
+  let closed = false;
+  const close = commit => {
+    if (closed) return;
+    closed = true;
+    const next = input.value.trim();
+    editingTaskId = null;
+    plannerRenderPending = false;
+    if (commit && next && next !== original) renameTask(id, next);
+    else { renderPlanner(); renderAgenda(); }
+  };
+  input.onkeydown = e => {
+    if (e.key === 'Enter')  { e.preventDefault(); close(true); }
+    if (e.key === 'Escape') { e.preventDefault(); close(false); }
+  };
+  input.onblur = () => close(true);
+  // The row's own click handlers (checkbox, status pill) shouldn't fire
+  // from clicks inside the input.
+  input.onclick = e => e.stopPropagation();
+}
+
+// Character offset of a click inside a single-text-node element.
+// Returns null when the browser can't resolve one, meaning "select all".
+function caretOffsetFromPoint(el, ev) {
+  if (!ev || ev.clientX == null) return null;
+  try {
+    let node = null, offset = 0;
+    if (document.caretRangeFromPoint) {
+      const r = document.caretRangeFromPoint(ev.clientX, ev.clientY);
+      if (r) { node = r.startContainer; offset = r.startOffset; }
+    } else if (document.caretPositionFromPoint) {
+      const p = document.caretPositionFromPoint(ev.clientX, ev.clientY);
+      if (p) { node = p.offsetNode; offset = p.offset; }
+    }
+    if (node && node.nodeType === 3 && el.contains(node)) return offset;
+  } catch (e) { /* unsupported — fall through to select-all */ }
+  return null;
+}
+
+function renameTask(id, text) {
+  const tasks = getTasks();
+  const t = tasks.find(x => x.id === id);
+  // The task may have been deleted on another device mid-rename; still
+  // re-render so the orphaned input doesn't linger.
+  if (t) { t.text = text; saveTasks(tasks); }
+  renderPlanner(); renderAgenda();
 }
 
 function delTask(id) {
@@ -3084,6 +3166,7 @@ window.dash = {
   renderHabits, toggleHabitEdit, addHabit, deleteHabit, toggleIconPicker, selectIcon, updateHabitLabel, uploadHabitIcon,
   renderDailies, toggleDailyEdit, addDailyItem, deleteDailyItem, updateDailyLabel, selectDailyIcon, setDailyToday, getDailies,
   renderPlanner, renderPlannerTabs, renderTaskClassSelect, addTask, toggleTask, delTask, switchTab,
+  startTaskRename, renameTask,
   openStatusMenu, closeStatusMenu, setTaskStatus,
   openDueMenu, closeDueMenu, saveDueDate, clearDueDate,
   openClassesModal, closeClassesModal, addClass, updateClass, deleteClass, removeClassTab,
