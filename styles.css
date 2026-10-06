@@ -4420,8 +4420,12 @@ button.days-pill:hover { filter: brightness(1.25); }
     opacity: 1;
     margin-left: auto;
     font-size: 1.35rem;
-    padding: 0 0.15rem;
+    /* 44px tap target without changing the row's look */
+    padding: 0.7rem 0.9rem;
+    margin: -0.7rem -0.6rem -0.7rem auto;
   }
+  .task-item .tcheck { position: relative; }
+  .task-item .tcheck::before { content: ''; position: absolute; inset: -13px; }
   /* Second row: all the meta chips, left-aligned and comfortably sized. */
   .task-item .task-meta {
     display: flex;

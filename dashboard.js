@@ -1077,6 +1077,17 @@ function nextRepeatDate(dueDate, repeat) {
 
 const REPEAT_LABELS = { daily: 'Daily', weekdays: 'Weekdays', weekly: 'Weekly' };
 
+// Hover text for a due-date pill, e.g. "Due Fri, Oct 2 · click to change".
+// The pill itself only shows relative time (2d, Today), so this is the
+// one place the actual date is visible without opening the menu.
+function dueTitle(dueDate) {
+  const [y, m, d] = dueDate.split('-').map(Number);
+  const date = new Date(y, m - 1, d);
+  const opts = { weekday: 'short', month: 'short', day: 'numeric' };
+  if (y !== new Date().getFullYear()) opts.year = 'numeric';
+  return `Due ${date.toLocaleDateString(undefined, opts)} · click to change`;
+}
+
 function renderPlanner() {
   if (editingTaskId) return;  // inline rename open, see inlineRename()
   const el = $('plannerList');
@@ -1137,7 +1148,7 @@ function renderPlanner() {
         ${t.type ? `<span class="type-badge ${cat}">${esc(t.type)}</span>` : ''}
         ${t.repeat ? `<span class="repeat-badge" title="Repeats: ${REPEAT_LABELS[t.repeat] || t.repeat}">↻</span>` : ''}
         ${pill
-          ? `<button class="days-pill ${pill.cls}" onclick="window.dash.openDueMenu('${t.id}',event)" title="Change due date">${pill.label}</button>`
+          ? `<button class="days-pill ${pill.cls}" onclick="window.dash.openDueMenu('${t.id}',event)" title="${dueTitle(t.dueDate)}">${pill.label}</button>`
           : `<button class="days-pill add-date" onclick="window.dash.openDueMenu('${t.id}',event)" title="Set a due date">+ date</button>`}
       </span>
       <button class="del-btn" onclick="window.dash.delTask('${t.id}')">×</button>`;
@@ -1310,22 +1321,18 @@ function toggleTask(id) {
       renderPlanner(); renderAgenda();
       return;
     }
-    // Check the box: mark complete, briefly show it checked, then remove it.
-    t.status = 'done';
-    t.done = true;
-    saveTasks(tasks);
+    // Check the box: remove it from storage right away (so a backgrounded
+    // phone tab can't leave it stuck as "done"), then play the exit animation.
+    saveTasks(tasks.filter(x => x.id !== id));
+    renderAgenda();
     const node = document.querySelector(`#plannerList .task-item[data-id="${id}"]`);
     const check = node && node.querySelector('.tcheck');
     if (check) check.classList.add('checked');
     if (node) {
       node.classList.add('finishing');
-      setTimeout(() => {
-        saveTasks(getTasks().filter(x => x.id !== id));
-        renderPlanner(); renderAgenda();
-      }, 480);
+      setTimeout(() => { renderPlanner(); }, 480);
     } else {
-      saveTasks(getTasks().filter(x => x.id !== id));
-      renderPlanner(); renderAgenda();
+      renderPlanner();
     }
   } else {
     // Already done (e.g. set via status menu): unchecking clears it immediately.
