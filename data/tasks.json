@@ -1,8 +1,28 @@
 [
   {
+    "id": "nc2upcua",
+    "title": "ask dr alex and dr mcnulty about accuring my hours",
+    "dueDate": "2026-09-29",
+    "category": "Practicum",
+    "type": "assignment",
+    "priority": false,
+    "completed": false,
+    "repeat": ""
+  },
+  {
+    "id": "y5u87sp5",
+    "title": "group , psycho edu, create the material",
+    "dueDate": "2026-09-29",
+    "category": "Practicum",
+    "type": "assignment",
+    "priority": false,
+    "completed": false,
+    "repeat": ""
+  },
+  {
     "id": "6y7onid1",
     "title": "email for hours",
-    "dueDate": "2026-09-24",
+    "dueDate": "2026-10-01",
     "category": "General",
     "type": "priority",
     "priority": true,
@@ -10,73 +30,13 @@
     "repeat": ""
   },
   {
-    "id": "nwj0phzq",
-    "title": "Pre-class Survey 4: Identity Development",
-    "dueDate": "2026-09-28",
-    "category": "cultural issues",
-    "type": "discussion",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "yxlgstto",
-    "title": "Module 4 quiz (GAD / CBT formulation)",
-    "dueDate": "2026-09-29",
-    "category": "clinical practicum 1",
-    "type": "quiz",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "ee97hmem",
-    "title": "Practicum Journal 1 (500-800 words, 10 pts)",
-    "dueDate": "2026-09-29",
-    "category": "clinical practicum 1",
-    "type": "assignment",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "v6tddssz",
-    "title": "Journal Entry, Week 6",
-    "dueDate": "2026-09-30",
-    "category": "Dev. Psych",
-    "type": "assignment",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "4r1pokqy",
-    "title": "Exam I",
+    "id": "5p64etnq",
+    "title": "shave",
     "dueDate": "2026-10-01",
-    "category": "Dev. Psych",
-    "type": "exam",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "tna88ddp",
-    "title": "Read Ch. 4",
-    "dueDate": "2026-10-05",
-    "category": "Assessment 1",
-    "type": "reading",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "pjfhbn9s",
-    "title": "Pre-class Survey 5: Gender & Gender Identity",
-    "dueDate": "2026-10-05",
-    "category": "cultural issues",
-    "type": "discussion",
-    "priority": false,
-    "completed": false,
+    "category": "General",
+    "type": "priority",
+    "priority": true,
+    "completed": true,
     "repeat": ""
   },
   {
@@ -454,6 +414,16 @@
     "title": "FREE Trauma Certification Training w/ Dr. Kate Truitt",
     "dueDate": "2026-11-03",
     "category": "Practicum",
+    "type": "assignment",
+    "priority": false,
+    "completed": false,
+    "repeat": ""
+  },
+  {
+    "id": "zwiiea8f",
+    "title": "case presentation",
+    "dueDate": "2026-11-03",
+    "category": "clinical practicum 1",
     "type": "assignment",
     "priority": false,
     "completed": false,
