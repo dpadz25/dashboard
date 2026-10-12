@@ -297,6 +297,8 @@ function resetRailBgPosition() {
 function renderPanel() {
   const panel = $('tweaksPanel');
   if (!panel) return;
+  const _oldBody = panel.querySelector('.tweaks-body');
+  const _keepScroll = _oldBody ? _oldBody.scrollTop : 0;
 
   const themes = [
     { id:'sky',   name:'Sky (new)',    colors:['#2f3d56','#fbf7ef','#b8501e','#df9f7b'] },
@@ -509,6 +511,9 @@ function renderPanel() {
   `;
   makeDraggable($('tweaksHead'), panel);
   showPersistStatus();
+  // Rebuilding the panel resets its scroll; put it back where the user was.
+  const _newBody = panel.querySelector('.tweaks-body');
+  if (_newBody && _keepScroll) _newBody.scrollTop = _keepScroll;
 }
 
 /* ─── Device-local looks backup ──────────────────────────────

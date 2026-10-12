@@ -264,3 +264,16 @@ body.stickers-arranging .block.sticker-target { outline: 0 !important; box-shado
 .hh-grid.no-enter .hh-name, .hh-grid.no-enter .hh-cell:not(.pop) { animation: none; }
 @media (max-width: 560px) { .hh-grid { grid-template-columns: 72px repeat(7, minmax(0, 1fr)); gap: 5px; } .hh-name { font-size: .82rem; gap: 6px; } .hh-name i { width: 9px; height: 9px; } .hh-cell { height: 34px; border-radius: 9px; } .hh-day { font-size: .66rem; } }
 @media (prefers-reduced-motion: reduce) { .tmr-row, .hh-name, .hh-cell, #agenda-week, #agenda-tomorrow, #agenda-habits { animation: none !important; } }
+
+/* The rail's brand row stays pinned at the top, so it can never be scrolled out of view or clipped,
+   whatever the browser zoom or window height. Only the links below it scroll. */
+:is([data-theme="sky"],[data-theme="forest"]) .side-rail-inner { padding-top: 0; scroll-padding-top: 64px; overscroll-behavior: contain; }
+:is([data-theme="sky"],[data-theme="forest"]) .side-rail-brand {
+  position: sticky; top: 0; z-index: 3; flex: none;
+  padding: 16px 4px 10px; margin: 0 0 4px;
+  background: inherit;
+}
+[data-theme="sky"] .side-rail-brand { background: #f7f0e4; }
+[data-theme="forest"] .side-rail-brand { background: #1d3b2a; }
+.side-rail { max-height: 100dvh; }
+@media (min-width: 861px) { .side-rail { max-height: calc(100dvh / 0.8); } }
