@@ -425,16 +425,21 @@ function buildHours(w) {
     for (let i = 0; i < Math.min(rows.length, 20) && hr < 0; i++) {
       const head = (rows[i] || []).map((x) => String(x).trim().toLowerCase());
       const c = head.findIndex((x) => x.startsWith('categor') || x.endsWith('category')), k0 = head.findIndex((x) => x.startsWith('hour')), k = k0 >= 0 ? k0 : head.findIndex((x) => /\bhours?\b/.test(x) && !/log/.test(x));
-      if (c >= 0 && k >= 0) { hr = i; ci = c; hi = k; }
+      // Google leaves the label blank on number and date columns, so when only Category is named,
+      // the Hours column is the numeric one right beside it (on the left).
+      const nums = (col) => rows.slice(i + 1, i + 11).filter((r) => parseFloat((r || [])[col]) > 0).length;
+      const kk = k >= 0 ? k : (c > 0 && nums(c - 1) > 0 ? c - 1 : -1);
+      if (c >= 0 && kk >= 0) { hr = i; ci = c; hi = kk; }
     }
     if (hr < 0) { msg('Could not find Category and Hours columns. Add the Hours Log tab to the link (open that tab and copy the address) and try again. First cells I saw: ' + rows.slice(0, 6).map((r) => (r || []).filter(Boolean).slice(0, 3).join(' | ').slice(0, 40)).filter(Boolean).join(' / ')); return false; }
     const di = (rows[hr] || []).findIndex((x) => /(^|\s)date$/.test(String(x).trim().toLowerCase()));
+    const di2 = di >= 0 ? di : (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(String((rows[hr + 1] || [])[0] || '').trim()) ? 0 : -1);
     const isoDate = (v) => {
       const m = String(v || '').match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
       return m ? `${m[3]}-${m[1].padStart(2, '0')}-${m[2].padStart(2, '0')}` : todayStr();
     };
     const fresh = rows.slice(hr + 1).filter((r) => parseFloat(r[hi]) > 0 && String(r[ci] || '').trim())
-      .map((r) => ({ id: uid(), cat: catKey(r[ci]), h: parseFloat(r[hi]), d: di >= 0 ? isoDate(r[di]) : todayStr(), src: 'sheet' }));
+      .map((r) => ({ id: uid(), cat: catKey(r[ci]), h: parseFloat(r[hi]), d: di2 >= 0 ? isoDate(r[di2]) : todayStr(), src: 'sheet' }));
     h.entries = h.entries.filter((x) => x.src !== 'sheet' && x.src !== 'seed').concat(fresh);
     saveHours(h); render(); msg(`Imported ${fresh.length} rows.`);
     return true;
