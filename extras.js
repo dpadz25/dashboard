@@ -424,11 +424,11 @@ function buildHours(w) {
     let hr = -1, ci = -1, hi = -1;
     for (let i = 0; i < Math.min(rows.length, 20) && hr < 0; i++) {
       const head = (rows[i] || []).map((x) => String(x).trim().toLowerCase());
-      const c = head.findIndex((x) => x.startsWith('categor')), k = head.findIndex((x) => x.startsWith('hour'));
+      const c = head.findIndex((x) => x.startsWith('categor') || x.endsWith('category')), k0 = head.findIndex((x) => x.startsWith('hour')), k = k0 >= 0 ? k0 : head.findIndex((x) => /\bhours?\b/.test(x) && !/log/.test(x));
       if (c >= 0 && k >= 0) { hr = i; ci = c; hi = k; }
     }
-    if (hr < 0) { msg('Could not find Category and Hours columns. Add the Hours Log tab to the link (open that tab and copy the address) and try again.'); return false; }
-    const di = (rows[hr] || []).findIndex((x) => String(x).trim().toLowerCase() === 'date');
+    if (hr < 0) { msg('Could not find Category and Hours columns. Add the Hours Log tab to the link (open that tab and copy the address) and try again. First cells I saw: ' + rows.slice(0, 6).map((r) => (r || []).filter(Boolean).slice(0, 3).join(' | ').slice(0, 40)).filter(Boolean).join(' / ')); return false; }
+    const di = (rows[hr] || []).findIndex((x) => /(^|\s)date$/.test(String(x).trim().toLowerCase()));
     const isoDate = (v) => {
       const m = String(v || '').match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
       return m ? `${m[3]}-${m[1].padStart(2, '0')}-${m[2].padStart(2, '0')}` : todayStr();
@@ -447,8 +447,8 @@ function buildHours(w) {
     if (!m) return [url];
     const base = `https://docs.google.com/spreadsheets/d/${m[1]}`;
     const list = [];
-    if (!/[?#&]gid=/.test(url)) list.push(`${base}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent('Hours Log')}`);
-    list.push(`${base}/gviz/tq?tqx=out:csv&gid=${g}`, `${base}/export?format=csv&gid=${g}`);
+    if (!/[?#&]gid=/.test(url)) list.push(`${base}/gviz/tq?tqx=out:csv&headers=0&sheet=${encodeURIComponent('Hours Log')}`);
+    list.push(`${base}/gviz/tq?tqx=out:csv&headers=0&gid=${g}`, `${base}/export?format=csv&gid=${g}`);
     return list;
   };
   const loadXlsx = () => window.XLSX ? Promise.resolve(window.XLSX) : new Promise((res, rej) => {
