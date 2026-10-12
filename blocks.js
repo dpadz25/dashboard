@@ -1,34 +1,36 @@
 /* ──────────────────────────────────────────────────────────────
-   BLOCKS — Notion-style column grid: drag-to-stack, edge-resize, + insert
+   BLOCKS — free 12-column grid: drag anywhere, snap-to-cell resize, + insert
    ────────────────────────────────────────────────────────────────
-   LAYOUT MODEL (nested):
-     #blocks .blocks            → vertical flex of rows
-        .brow                   → horizontal flex of columns
-           .bcol  (--col-frac)  → vertical STACK of widgets
-              .card.block       → a widget (width 100% of its column)
-
-   Because each column is its own vertical stack, widgets can sit flush
-   above/beneath one another in the same column. Columns live side-by-side
-   in a row and never overlap (flexbox). Dragging reveals faint grid guides
-   and a bold snap indicator; on drop the widget snaps to a grid slot.
+   LAYOUT MODEL:
+     #blocks is a 12-column CSS grid on desktop. Each card has a cell
+     position and size: { id, x, y, w, h } where x and w are columns (0-11)
+     and y and h are rows of 10px. Cards float up to close gaps, and when you
+     drag or resize one the others shuffle out of the way. h is null for a
+     card that sizes itself to its content (the default), or a number once
+     you have resized it by hand. On phones the same cards simply stack in
+     reading order. All pointer maths is done in CSS pixels so it stays
+     exact even when the page is scaled (the 80% default).
    ────────────────────────────────────────────────────────────── */
 (function () {
   'use strict';
 
-  const STORAGE_LAYOUT_V3 = 'dashboard.blocks.layout.v3';   // nested rows/cols
+  const STORAGE_LAYOUT_V4 = 'dashboard.blocks.layout.v4';   // free grid items
+  const STORAGE_LAYOUT_V3 = 'dashboard.blocks.layout.v3';   // legacy nested rows/cols
   const STORAGE_LAYOUT_V2 = 'dashboard.blocks.layout.v2';   // legacy flat fracs
   const STORAGE_LAYOUT_V1 = 'dashboard.blocks.layout.v1';   // legacy span 1|2
   const STORAGE_NOTES     = 'dashboard.blocks.notes.v1';
   const STORAGE_MHEIGHTS  = 'dashboard.blocks.mheights.v1'; // phone-only crop heights, kept apart from desktop --bh
   const STORAGE_TABH      = 'dashboard.blocks.tabheights.v1'; // per-tab heights for tabbed cards (agenda): { "id::tab": {d,m} }
 
-  const MIN_FRAC   = 0.12;  // smallest column width (~12% of row)
+  const MIN_FRAC   = 0.12;
   const MAX_FRAC   = 1;
   const MIN_HEIGHT = 40;    // px — free vertical resize floor
   const COMPACT_H  = 92;    // px — below this, trim padding so widgets can go truly compact
-  const GAP        = 16;    // matches CSS gap: 1rem
-  const EDGE_ZONE  = 0.30;  // outer 30% of a column → "make a new column"
-  const MIN_COL_W  = 120;
+  const GAP        = 16;    // px — space between cards (column gap and bottom margin)
+  const COLS       = 12;    // grid columns
+  const UNIT       = 10;    // px — height of one grid row
+  const MIN_W      = 2;     // narrowest card, in columns
+  const MIN_H      = 4;     // shortest card, in rows
 
   // Six-dot grip icon, drawn as an SVG so it scales crisply.
   const HANDLE_SVG = `
@@ -79,37 +81,31 @@
   function boot() {
     container = document.getElementById('blocks');
     if (!container) return;
-
-    // Seed default fraction from data-default-span (only if not already set)
-    container.querySelectorAll('.block').forEach((b) => {
-      if (!b.style.getPropertyValue('--frac')) {
-        const def = b.dataset.defaultSpan === '1' ? 0.5 : 1;
-        b.style.setProperty('--frac', String(def));
-      }
-    });
+    container.classList.add('is-grid');
 
     restoreNotes();                 // recreate user-inserted note blocks first
-    buildStructure(loadLayout());   // wrap blocks into rows/columns
+    items = reconcile(loadItems());
+    container.querySelectorAll('.block').forEach((b) => { injectHandles(b); ro.observe(b); });
 
-    container.querySelectorAll('.block').forEach((b) => { injectHandles(b); syncFixed(b); });
-
-    // Notes are recreated HERE, after dash.boot() already injected the
-    // background buttons into the built-in cards — run it again so notes
-    // get the same photo controls (and their saved backgrounds re-apply).
+    // Background-image buttons for notes and anything created after dash.boot().
     if (window.dash && window.dash.injectCardBgButtons) {
       window.dash.injectCardBgButtons();
       window.dash.applyAllCardBgs();
     }
 
-    applyMScale();                  // restore any phone-only resize scales
-    applyTabHeight('agenda');       // restore the agenda's per-tab height (desktop + phone)
+    applyMScale();                  // restore any phone-only crop heights
+    items.forEach((it) => { const b = blockOf(it.id); if (b) tabHeightInto(b, it); });
+    relayout({ animate: false });
+    syncDomOrder();
+    saveLayout();
 
-    // Re-fit on viewport changes: widths (and thus natural heights) shift
-    // between phone/desktop and on rotation, so recompute the scales.
+    const mq = window.matchMedia('(min-width: 881px)');
+    const onMq = () => { if (mq.matches) relayout({ animate: false }); else { syncDomOrder(); applyMScale(); } };
+    if (mq.addEventListener) mq.addEventListener('change', onMq); else mq.addListener(onMq);
     let _mscaleRaf = null;
     window.addEventListener('resize', () => {
       cancelAnimationFrame(_mscaleRaf);
-      _mscaleRaf = requestAnimationFrame(applyMScale);
+      _mscaleRaf = requestAnimationFrame(() => { applyMScale(); scheduleRelayout(); });
     });
 
     document.addEventListener('mousemove', onMouseMove);
@@ -150,7 +146,7 @@
   }
 
 
-  /* ── LAYOUT LOAD / MIGRATION ────────────────────────────── */
+  /* ── LAYOUT LOAD (legacy) ───────────────────────────────── */
   // Returns an array of rows: [{ cols: [{ frac, items:[{id,h}] }] }] or null.
   function loadLayout() {
     // v3 — nested
@@ -210,50 +206,191 @@
     return packFlat(flat);
   }
 
-  /* ── BUILD DOM STRUCTURE ────────────────────────────────── */
-  function buildStructure(layout) {
-    const byId = {};
-    container.querySelectorAll('.block').forEach((b) => { byId[b.dataset.cardId] = b; });
-    if (!layout) layout = defaultLayout();
 
-    // Detach every block, then clear any existing rows.
-    Object.values(byId).forEach((b) => b.remove());
-    container.querySelectorAll('.brow').forEach((r) => r.remove());
+  /* ── GRID MODEL ─────────────────────────────────────────── */
+  let items = [];                       // [{ id, x, y, w, h, f }]  f = height fixed by the user
+  const isDesktop = () => window.matchMedia('(min-width: 881px)').matches;
+  const blockOf = (id) => container && container.querySelector('.block[data-card-id="' + (window.CSS && CSS.escape ? CSS.escape(id) : id) + '"]');
+  const itemOf = (id) => items.find((i) => i.id === id);
+  const isVisible = (b) => !!b && getComputedStyle(b).display !== 'none';
 
-    const used = new Set();
+  // The page may be scaled with CSS zoom (the 80% default). Pointer coordinates and
+  // getBoundingClientRect are in screen pixels, but layout values (px) are CSS pixels.
+  function zoomFactor() {
+    const w = container.offsetWidth;
+    return w ? container.getBoundingClientRect().width / w : 1;
+  }
+  function colGeom() {
+    const W = container.offsetWidth;
+    const colW = (W - GAP * (COLS - 1)) / COLS;
+    return { W, colW, step: colW + GAP };
+  }
 
-    layout.forEach((row) => {
-      const cols = (row.cols || []).filter((c) => c && (c.items || []).some((it) => byId[it.id]));
+  /* Saved layouts → grid items. v4 is read as-is; the older row/column layout is converted once. */
+  function loadItems() {
+    try {
+      const v4 = JSON.parse(localStorage.getItem(STORAGE_LAYOUT_V4) || 'null');
+      if (v4 && Array.isArray(v4.items)) return v4.items.map(cleanItem).filter(Boolean);
+    } catch (_) {}
+    return convertRows(loadLayout() || defaultLayout());
+  }
+  function cleanItem(i) {
+    if (!i || !i.id) return null;
+    const w = Math.max(MIN_W, Math.min(COLS, Math.round(+i.w) || COLS));
+    const x = Math.max(0, Math.min(COLS - w, Math.round(+i.x) || 0));
+    const h = i.h ? Math.max(MIN_H, Math.round(+i.h)) : null;
+    return { id: i.id, x, y: Number.isFinite(+i.y) ? +i.y : 0, w, h, f: !!h };
+  }
+  function convertRows(rows) {
+    const out = [];
+    rows.forEach((row, ri) => {
+      const cols = (row.cols || []).filter((c) => c && (c.items || []).length);
       if (!cols.length) return;
-      const rowEl = el('div', 'brow');
-      cols.forEach((col) => {
-        const items = (col.items || []).filter((it) => byId[it.id]);
-        if (!items.length) return;
-        const colEl = el('div', 'bcol');
-        colEl.style.setProperty('--col-frac', String(clampFrac(col.frac || 1)));
-        items.forEach((it) => {
-          const b = byId[it.id];
-          if (it.h && it.h >= MIN_HEIGHT) b.style.setProperty('--bh', it.h + 'px');
-          colEl.appendChild(b);
-          used.add(it.id);
-        });
-        rowEl.appendChild(colEl);
+      const fr = cols.map((c) => Math.max(MIN_FRAC, c.frac || 1 / cols.length));
+      const sum = fr.reduce((a, b) => a + b, 0);
+      const raw = fr.map((f) => (f / sum) * COLS);
+      const ws = raw.map((r) => Math.max(MIN_W, Math.floor(r)));
+      let tot = ws.reduce((a, b) => a + b, 0);
+      const order = raw.map((r, i) => [r - Math.floor(r), i]).sort((a, b) => b[0] - a[0]);
+      for (let k = 0; tot < COLS; k = (k + 1) % order.length) { ws[order[k][1]]++; tot++; }
+      for (let k = 0; tot > COLS; k = (k + 1) % ws.length) { if (ws[k] > MIN_W) { ws[k]--; tot--; } }
+      let x = 0;
+      cols.forEach((c, ci) => {
+        c.items.forEach((it, k) => out.push({ id: it.id, x, y: ri * 1000 + k, w: ws[ci], h: it.h ? Math.max(MIN_H, Math.ceil((it.h + GAP) / UNIT)) : null, f: !!it.h }));
+        x += ws[ci];
       });
-      if (rowEl.children.length) container.appendChild(rowEl);
+    });
+    return out;
+  }
+  // Keep exactly the cards that exist; give any new card a home at the bottom.
+  function reconcile(list) {
+    const present = [...container.querySelectorAll('.block[data-card-id]')];
+    const ids = new Set(present.map((b) => b.dataset.cardId));
+    const out = list.filter((i) => ids.has(i.id));
+    const have = new Set(out.map((i) => i.id));
+    present.forEach((b) => {
+      if (have.has(b.dataset.cardId)) return;
+      const w = b.dataset.defaultSpan === '1' ? 6 : COLS;
+      out.push({ id: b.dataset.cardId, x: 0, y: 1e6 + out.length, w, h: null, f: false });
+    });
+    return out;
+  }
+
+  /* Layout: every visible card floats up until it rests on another card or the top edge.
+     Cards are visited top to bottom, so the one dragged or resized (given sort priority on a
+     tie) keeps its place and the rest flow around it. */
+  function pack(priorityId) {
+    const vis = items.filter((i) => i.vis);
+    vis.sort((a, b) => a.y - b.y || a.x - b.x || (b.id === priorityId) - (a.id === priorityId));
+    const placed = [];
+    vis.forEach((it) => {
+      const cands = [0].concat(placed.map((p) => p.y + p.h)).sort((a, b) => a - b);
+      let at = cands[cands.length - 1];
+      for (const y of cands) {
+        if (!placed.some((p) => p.x < it.x + it.w && it.x < p.x + p.w && p.y < y + it.h && y < p.y + p.h)) { at = y; break; }
+      }
+      it.y = at;
+      placed.push(it);
+    });
+  }
+
+  let relayoutRaf = null;
+  function scheduleRelayout() {
+    if (relayoutRaf) return;
+    relayoutRaf = requestAnimationFrame(() => { relayoutRaf = null; if (!dragState && !resizeState) relayout({ animate: true }); });
+  }
+  const ro = (typeof ResizeObserver !== 'undefined') ? new ResizeObserver(() => scheduleRelayout()) : { observe() {}, unobserve() {} };
+
+  // Measure self-sizing cards, pack, and write the positions into CSS.
+  function relayout(opts) {
+    if (!container) return;
+    opts = opts || {};
+    const desktop = isDesktop();
+    const z = zoomFactor();
+    const before = new Map();
+    // Measuring briefly collapses the grid; hold its height so the page does not jump.
+    const keepH = container.offsetHeight;
+    if (desktop) container.style.minHeight = keepH + 'px';
+    if (opts.animate && desktop) container.querySelectorAll(':scope > .block').forEach((b) => before.set(b, b.getBoundingClientRect()));
+
+    items.forEach((it) => {
+      const b = blockOf(it.id);
+      it.vis = isVisible(b);
+      if (!b || !it.vis) return;
+      b.style.setProperty('--gc', (it.x + 1) + ' / span ' + it.w);
+      if (!desktop) return;
+      if (it.f) { b.style.setProperty('--gr', 'auto / span ' + it.h); }
+      else {
+        b.style.removeProperty('--bh');
+        b.classList.remove('block--fixed', 'block--compact');
+        b.style.setProperty('--gr', 'auto / span 1');           // measure the natural height
+        it.h = Math.max(MIN_H, Math.ceil((b.getBoundingClientRect().height / z + GAP) / UNIT));
+      }
+    });
+    if (!desktop) { container.style.minHeight = ''; return; }
+
+    pack(opts.priorityId);
+
+    items.forEach((it) => {
+      const b = blockOf(it.id);
+      if (!b || !it.vis) return;
+      b.style.setProperty('--gc', (it.x + 1) + ' / span ' + it.w);
+      b.style.setProperty('--gr', (it.y + 1) + ' / span ' + it.h);
+      if (it.f) {
+        b.style.setProperty('--bh', (it.h * UNIT - GAP) + 'px');
+        syncFixed(b);
+      }
     });
 
-    // Any block not covered by the saved layout (new card / new note) → own row.
-    Object.keys(byId).forEach((id) => {
-      if (used.has(id)) return;
-      const b = byId[id];
-      const f = parseFloat(b.style.getPropertyValue('--frac')) || 1;
-      const rowEl = el('div', 'brow');
-      const colEl = el('div', 'bcol');
-      colEl.style.setProperty('--col-frac', String(clampFrac(f)));
-      colEl.appendChild(b);
-      rowEl.appendChild(colEl);
-      container.appendChild(rowEl);
+    container.style.minHeight = '';
+    if (opts.animate) {
+      before.forEach((r0, b) => {
+        if (b.classList.contains('is-dragging')) return;
+        const r1 = b.getBoundingClientRect();
+        const dx = (r0.left - r1.left) / z, dy = (r0.top - r1.top) / z;
+        if (Math.abs(dx) < 1 && Math.abs(dy) < 1) return;
+        b.style.transition = 'none';
+        b.style.translate = dx + 'px ' + dy + 'px';
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+          b.style.transition = '';
+          b.style.translate = '';
+        }));
+      });
+    }
+    if (dragState || resizeState) paintGuides();
+  }
+
+  // The DOM order only matters on phones (cards stack in reading order).
+  function syncDomOrder() {
+    if (!container) return;
+    items.slice().sort((a, b) => a.y - b.y || a.x - b.x).forEach((it) => {
+      const b = blockOf(it.id);
+      if (b && b.parentElement === container) container.appendChild(b);
     });
+    container.querySelectorAll(':scope > .block-grid-guides').forEach((g) => g.remove());
+  }
+
+  function bottomOf(x0, x1) {
+    return items.filter((i) => i.vis).reduce((m, i) => (i.x < x1 && x0 < i.x + i.w ? Math.max(m, i.y + i.h) : m), 0);
+  }
+
+  function saveLayout() {
+    if (!container) return;
+    const out = items.map((it) => {
+      const b = blockOf(it.id);
+      return { id: it.id, x: it.x, y: it.y, w: it.w, h: (it.f && !(b && tabHKey(b))) ? it.h : null };
+    });
+    try { localStorage.setItem(STORAGE_LAYOUT_V4, JSON.stringify({ v: 4, items: out })); } catch (_) {}
+  }
+
+  // Tabbed cards (the agenda) keep a height per tab; apply the one for the current tab.
+  function tabHeightInto(block, it) {
+    const key = tabHKey(block);
+    if (!key) return;
+    const o = loadTabH();
+    const h = o[key] ? o[key].d : null;
+    if (h && h >= MIN_HEIGHT) { it.f = true; it.h = Math.max(MIN_H, Math.ceil((h + GAP) / UNIT)); }
+    else { it.f = false; }
   }
 
   // Toggle the fixed-height class so CSS clips overflow & tucks handles in.
@@ -278,7 +415,7 @@
     // full-size siblings outside the scaled wrapper.
     ensureScaleWrap(block);
 
-    const dragH = el('button', 'block-handle', { type: 'button', title: 'Drag to move / stack' });
+    const dragH = el('button', 'block-handle', { type: 'button', title: 'Drag to move' });
     dragH.innerHTML = HANDLE_SVG;
     dragH.addEventListener('mousedown', (e) => startDrag(e, block));
 
@@ -286,11 +423,12 @@
     grip.innerHTML = GRIP_SVG;
     grip.addEventListener('mousedown', (e) => startResize(e, block, 'corner'));
 
-    const edge = el('div', 'block-edge-resize', { title: 'Drag to change column width' });
+    const edge = el('div', 'block-edge-resize', { title: 'Drag to change width' });
     edge.addEventListener('mousedown', (e) => startResize(e, block, 'edge'));
 
-    const edgeBottom = el('div', 'block-edge-resize-bottom', { title: 'Drag to change height' });
+    const edgeBottom = el('div', 'block-edge-resize-bottom', { title: 'Drag to change height (double-click to fit content)' });
     edgeBottom.addEventListener('mousedown', (e) => startResize(e, block, 'bottom'));
+    edgeBottom.addEventListener('dblclick', (e) => { e.preventDefault(); e.stopPropagation(); resetHeight(block); });
 
     // Phone-only pull tab: always-available vertical resize slider for touch.
     const mcrop = el('div', 'block-mcrop-handle', { title: 'Drag to resize · double-tap to reset' });
@@ -378,19 +516,14 @@
     if (!container) return;
     const block = container.querySelector('.block[data-card-id="' + cardId + '"]');
     if (!block) return;
-    const phone = !window.matchMedia('(min-width: 881px)').matches;
-    if (phone) {
+    if (!isDesktop()) {
       const t = loadedPhoneHeight(block);
       if (t && t >= MIN_HEIGHT) applyScale(block, t);
       else clearScale(block);
-    } else {
-      const key = tabHKey(block);
-      const o = loadTabH();
-      const h = key && o[key] ? o[key].d : null;
-      if (h && h >= MIN_HEIGHT) block.style.setProperty('--bh', Math.round(h) + 'px');
-      else block.style.removeProperty('--bh');
-      syncFixed(block);
+      return;
     }
+    const it = itemOf(cardId);
+    if (it) { tabHeightInto(block, it); relayout({ animate: true }); saveLayout(); }
   }
   /* ── PHONE RESIZE (scale-to-fit) ──────────────────────────
      The wrapper holds the widget's content; scaling it shrinks the whole
@@ -581,43 +714,60 @@
     });
   }
 
+  /* ── GUIDES: the 12 columns, with the ones the active card covers lit up ── */
+  function paintGuides() {
+    const s = dragState || resizeState;
+    if (!s) return;
+    let layer = container.querySelector(':scope > .block-grid-guides');
+    if (!layer) {
+      layer = el('div', 'block-grid-guides');
+      for (let i = 0; i < COLS; i++) layer.appendChild(el('div', 'grid-col'));
+      container.appendChild(layer);
+    }
+    const g = colGeom();
+    const it = s.item;
+    [...layer.children].forEach((c, i) => {
+      c.style.left = (i * g.step) + 'px';
+      c.style.width = g.colW + 'px';
+      c.classList.toggle('on', it && i >= it.x && i < it.x + it.w);
+    });
+  }
+  function removeGuides() { container.querySelectorAll(':scope > .block-grid-guides').forEach((n) => n.remove()); }
+
   /* ── DRAG ───────────────────────────────────────────────── */
   function startDrag(e, block) {
-    if (e.button !== 0) return;
+    if (e.button !== 0 || !isDesktop()) return;
     e.preventDefault();
     e.stopPropagation();
     if (resizeState) return;
+    const item = itemOf(block.dataset.cardId);
+    if (!item) return;
 
+    const z = zoomFactor();
     const rect = block.getBoundingClientRect();
-
     const ghost = block.cloneNode(true);
     ghost.classList.add('block-ghost');
     ghost.classList.remove('is-dragging', 'fade-in', 's1', 's2', 's3', 's4', 's5', 's6', 's7');
     ghost.removeAttribute('id');
-    ghost.style.width  = rect.width  + 'px';
-    ghost.style.height = rect.height + 'px';
-    ghost.style.left   = rect.left   + 'px';
-    ghost.style.top    = rect.top    + 'px';
-    ghost.querySelectorAll('.block-handle, .block-resize-grip, .block-edge-resize, .block-edge-resize-bottom, .block-insert')
+    ghost.style.cssText = '';
+    ghost.style.width  = (rect.width / z) + 'px';
+    ghost.style.height = (rect.height / z) + 'px';
+    ghost.style.left   = (rect.left / z) + 'px';
+    ghost.style.top    = (rect.top / z) + 'px';
+    ghost.querySelectorAll('.block-handle, .block-resize-grip, .block-edge-resize, .block-edge-resize-bottom, .block-insert, .x-chrome')
       .forEach((n) => n.remove());
     document.body.appendChild(ghost);
 
-    const indicator = el('div', 'block-drop-line');
-    container.appendChild(indicator);
-
     dragState = {
-      block, ghost, indicator,
-      guides:  null,
-      offsetX: e.clientX - rect.left,
-      offsetY: e.clientY - rect.top,
-      lastX:   e.clientX,
-      lastY:   e.clientY,
-      target:  null,
+      block, item, ghost, z,
+      snapshot: JSON.stringify(items),
+      offX: (e.clientX - rect.left) / z,
+      offY: (e.clientY - rect.top) / z,
+      lastX: e.clientX, lastY: e.clientY,
+      moved: false,
     };
-
     block.classList.add('is-dragging');
     document.body.classList.add('blocks-dragging');
-    buildGuides();
     updateDragVisuals(e.clientX, e.clientY);
     startAutoScroll();
   }
@@ -625,396 +775,133 @@
   function updateDragVisuals(x, y) {
     const s = dragState;
     if (!s) return;
-    s.ghost.style.left = (x - s.offsetX) + 'px';
-    s.ghost.style.top  = (y - s.offsetY) + 'px';
+    const z = s.z;
+    s.ghost.style.left = (x / z - s.offX) + 'px';
+    s.ghost.style.top  = (y / z - s.offY) + 'px';
 
-    const t = computeTarget(x, y);
-    s.target = t;
-    paintIndicator(t);
-  }
-
-  // ── Geometry of the live grid (excludes nothing; flags the dragged block) ──
-  function rowsGeom() {
-    return [...container.querySelectorAll(':scope > .brow')].map((rowEl) => {
-      const cols = [...rowEl.querySelectorAll(':scope > .bcol')].map((colEl) => {
-        const blocks = [...colEl.querySelectorAll(':scope > .block')].map((b) => ({
-          el: b, rect: b.getBoundingClientRect(), dragged: dragState && b === dragState.block,
-        }));
-        return { el: colEl, rect: colEl.getBoundingClientRect(), blocks };
-      });
-      return { el: rowEl, rect: rowEl.getBoundingClientRect(), cols };
-    });
-  }
-
-  // Decide where a drop would land. Returns a descriptor used for both
-  // painting the snap indicator and committing the move.
-  function computeTarget(x, y) {
-    const rows = rowsGeom();
+    // Which cell is the top-left corner of the card hovering over?
+    const g = colGeom();
     const cRect = container.getBoundingClientRect();
-    if (!rows.length) return { type: 'empty' };
-
-    // Above the first row → new row at top.
-    if (y < rows[0].rect.top) {
-      return { type: 'newRow', index: 0, lineTop: rows[0].rect.top - cRect.top - GAP / 2 };
-    }
-    // Below the last row → new row at end.
-    const lastR = rows[rows.length - 1];
-    if (y > lastR.rect.bottom) {
-      return { type: 'newRow', index: rows.length, lineTop: lastR.rect.bottom - cRect.top + GAP / 2 };
-    }
-
-    // Find the row that contains y, or detect a gap between rows.
-    let ri = -1;
-    for (let i = 0; i < rows.length; i++) {
-      const r = rows[i].rect;
-      if (y >= r.top && y <= r.bottom) { ri = i; break; }
-      if (y < r.top) {
-        const prevBottom = rows[i - 1].rect.bottom;
-        return { type: 'newRow', index: i, lineTop: (prevBottom + r.top) / 2 - cRect.top };
-      }
-    }
-    if (ri < 0) ri = rows.length - 1;
-    const row = rows[ri];
-
-    // Nearest column by x (prefer the one that contains x).
-    let col = row.cols.find((c) => x >= c.rect.left && x <= c.rect.right) || null;
-    if (!col) {
-      let bd = Infinity;
-      for (const c of row.cols) {
-        const cx = (c.rect.left + c.rect.right) / 2;
-        const d = Math.abs(cx - x);
-        if (d < bd) { bd = d; col = c; }
-      }
-    }
-    if (!col) return { type: 'newRow', index: ri, lineTop: row.rect.top - cRect.top - GAP / 2 };
-
-    const colIdx = row.cols.indexOf(col);
-    const fx = (x - col.rect.left) / Math.max(1, col.rect.width);
-
-    // Near the left/right edge of the column → split off a NEW column.
-    if (fx < EDGE_ZONE) {
-      return {
-        type: 'col', rowEl: row.el, beforeCol: col.el,
-        lineLeft: col.rect.left - cRect.left - GAP / 2,
-        lineTop:  row.rect.top - cRect.top,
-        lineHeight: row.rect.height,
-      };
-    }
-    if (fx > 1 - EDGE_ZONE) {
-      const nextCol = row.cols[colIdx + 1];
-      return {
-        type: 'col', rowEl: row.el, beforeCol: nextCol ? nextCol.el : null,
-        lineLeft: col.rect.right - cRect.left + GAP / 2,
-        lineTop:  row.rect.top - cRect.top,
-        lineHeight: row.rect.height,
-      };
-    }
-
-    // Otherwise STACK inside this column (the vertical-stacking case).
-    const cand = col.blocks.filter((b) => !b.dragged);
-    if (!cand.length) {
-      return {
-        type: 'stack', colEl: col.el, beforeBlock: null,
-        lineLeft: col.rect.left - cRect.left, lineWidth: col.rect.width,
-        lineTop: col.rect.top - cRect.top + 4,
-      };
-    }
-    let before = null;
-    let lineY = null;
-    for (let i = 0; i < cand.length; i++) {
-      const b = cand[i];
-      const mid = b.rect.top + b.rect.height / 2;
-      if (y < mid) {
-        before = b.el;
-        lineY = (i === 0) ? b.rect.top - GAP / 2 : (cand[i - 1].rect.bottom + b.rect.top) / 2;
-        break;
-      }
-    }
-    if (before === null) {
-      const lastB = cand[cand.length - 1];
-      lineY = lastB.rect.bottom + GAP / 2;
-    }
-    return {
-      type: 'stack', colEl: col.el, beforeBlock: before,
-      lineLeft: col.rect.left - cRect.left, lineWidth: col.rect.width,
-      lineTop: lineY - cRect.top,
-    };
-  }
-
-  function paintIndicator(t) {
-    const ind = dragState && dragState.indicator;
-    if (!ind || !t) return;
-
-    if (t.type === 'col') {
-      ind.classList.add('vertical');
-      ind.style.left   = t.lineLeft + 'px';
-      ind.style.top    = t.lineTop + 'px';
-      ind.style.height = t.lineHeight + 'px';
-      ind.style.width  = '';
-    } else if (t.type === 'stack') {
-      ind.classList.remove('vertical');
-      ind.style.left   = t.lineLeft + 'px';
-      ind.style.top    = t.lineTop + 'px';
-      ind.style.width  = t.lineWidth + 'px';
-      ind.style.height = '';
-    } else if (t.type === 'newRow') {
-      ind.classList.remove('vertical');
-      ind.style.left   = '0px';
-      ind.style.top    = t.lineTop + 'px';
-      ind.style.width  = container.clientWidth + 'px';
-      ind.style.height = '';
-    } else {
-      ind.style.width = ind.style.height = '0px';
-    }
-  }
-
-  // Faint dashed grid lines (column + row boundaries) shown during a drag.
-  function buildGuides() {
-    removeGuides();
-    const layer = el('div', 'block-grid-guides');
-    const cRect = container.getBoundingClientRect();
-    const rows = [...container.querySelectorAll(':scope > .brow')];
-
-    rows.forEach((rowEl, i) => {
-      const rRect = rowEl.getBoundingClientRect();
-      // Row boundary (top of each row).
-      addLine(layer, 'h', 0, rRect.top - cRect.top - GAP / 2, container.clientWidth);
-      // Column boundaries inside the row (right edge of each column except the last).
-      const cols = [...rowEl.querySelectorAll(':scope > .bcol')];
-      cols.forEach((colEl, ci) => {
-        if (ci === cols.length - 1) return;
-        const cr = colEl.getBoundingClientRect();
-        addLine(layer, 'v', cr.right - cRect.left + GAP / 2, rRect.top - cRect.top, rRect.height);
-      });
-      // Bottom boundary after the final row.
-      if (i === rows.length - 1) {
-        addLine(layer, 'h', 0, rRect.bottom - cRect.top + GAP / 2, container.clientWidth);
-      }
-    });
-
-    container.appendChild(layer);
-    if (dragState) dragState.guides = layer;
-  }
-
-  function addLine(layer, dir, left, top, span) {
-    const d = el('div', 'grid-guide ' + dir);
-    d.style.left = left + 'px';
-    d.style.top  = top + 'px';
-    if (dir === 'v') d.style.height = span + 'px';
-    else             d.style.width  = span + 'px';
-    layer.appendChild(d);
-  }
-
-  function removeGuides() {
-    if (dragState && dragState.guides) { dragState.guides.remove(); dragState.guides = null; }
-    container.querySelectorAll('.block-grid-guides').forEach((g) => g.remove());
+    const px = (x - cRect.left) / z - s.offX;
+    const py = (y - cRect.top) / z - s.offY;
+    const it = s.item;
+    const nx = Math.max(0, Math.min(COLS - it.w, Math.round(px / g.step)));
+    const maxY = items.reduce((m, i) => (i.vis ? Math.max(m, i.y + i.h) : m), 0);
+    const ny = Math.max(0, Math.min(maxY, Math.round(py / UNIT)));
+    if (nx === it.x && ny === it.y && s.moved) { paintGuides(); return; }
+    s.moved = true;
+    it.x = nx; it.y = ny;
+    relayout({ animate: true, priorityId: it.id });
   }
 
   function finishDrag() {
     const s = dragState;
     if (!s) return;
-    applyDrop(s.target, s.block);
-
     s.ghost.remove();
-    s.indicator.remove();
     removeGuides();
     s.block.classList.remove('is-dragging');
     document.body.classList.remove('blocks-dragging');
     dragState = null;
     stopAutoScroll();
+    relayout({ animate: true });
     saveLayout();
   }
 
-  function applyDrop(t, block) {
-    if (!t || t.type === 'empty') return;
-
-    const oldCol = block.parentElement;                       // .bcol
-    const oldRow = oldCol ? oldCol.parentElement : null;      // .brow
-
-    if (t.type === 'newRow') {
-      const rowEl = el('div', 'brow');
-      const colEl = el('div', 'bcol');
-      colEl.style.setProperty('--col-frac', String(clampFrac(blockFrac(block, 1))));
-      block.remove();
-      colEl.appendChild(block);
-      rowEl.appendChild(colEl);
-      const rows = [...container.querySelectorAll(':scope > .brow')];
-      container.insertBefore(rowEl, rows[t.index] || null);
-    } else if (t.type === 'col') {
-      const colEl = el('div', 'bcol');
-      colEl.style.setProperty('--col-frac', String(clampFrac(blockFrac(block, 0.5))));
-      block.remove();
-      colEl.appendChild(block);
-      t.rowEl.insertBefore(colEl, t.beforeCol || null);
-    } else if (t.type === 'stack') {
-      if (t.beforeBlock === block) return;
-      block.remove();
-      t.colEl.insertBefore(block, t.beforeBlock || null);
-    }
-
-    cleanupEmpties(oldCol, oldRow);
-  }
-
-  // A reasonable width fraction to give a block that becomes its own column.
-  function blockFrac(block, fallback) {
-    const parentFrac = block.parentElement && block.parentElement.classList.contains('bcol')
-      ? parseFloat(block.parentElement.style.getPropertyValue('--col-frac'))
-      : NaN;
-    const own = parseFloat(block.style.getPropertyValue('--frac'));
-    return clampFrac(own || parentFrac || fallback);
-  }
-
-  function cleanupEmpties(oldCol, oldRow) {
-    if (oldCol && oldCol.isConnected && !oldCol.querySelector(':scope > .block')) oldCol.remove();
-    if (oldRow && oldRow.isConnected && !oldRow.querySelector(':scope > .bcol')) oldRow.remove();
-  }
-
   /* ── RESIZE ─────────────────────────────────────────────── */
-  // mode: 'edge'   → column width only (right edge drag)
-  //       'bottom' → block height only (bottom edge drag)
-  //       'corner' → both (bottom-right corner grip)
+  // mode: 'edge'   → width only (right edge)
+  //       'bottom' → height only (bottom edge)
+  //       'corner' → both (bottom-right grip)
   function startResize(e, block, mode) {
-    if (e.button !== 0) return;
+    if (e.button !== 0 || !isDesktop()) return;
     if (dragState) return;
     e.preventDefault();
     e.stopPropagation();
+    const item = itemOf(block.dataset.cardId);
+    if (!item) return;
 
-    const col   = block.parentElement;                 // .bcol
-    const row   = col ? col.parentElement : container;  // .brow
-
-    // A lone column can't trade width with a neighbour, so width resize is a
-    // no-op (the card's flex-grow re-expands it to fill the row). Ignore the
-    // right edge entirely and make the corner grip resize height only.
-    const soloCol = row && row.querySelectorAll(':scope > .bcol').length === 1;
-    if (soloCol) {
-      if (mode === 'edge')   return;
-      if (mode === 'corner') mode = 'bottom';
-    }
-
-    const cRect = (row || container).getBoundingClientRect();
-    const bRect = block.getBoundingClientRect();
-    const colRect = (col || block).getBoundingClientRect();
-
-    const vGuide = (mode === 'edge' || mode === 'corner') ? el('div', 'block-resize-guide') : null;
-    const hGuide = (mode === 'bottom' || mode === 'corner') ? el('div', 'block-resize-guide horizontal') : null;
-    if (vGuide) container.appendChild(vGuide);
-    if (hGuide) container.appendChild(hGuide);
-
+    const z = zoomFactor();
     const badge = el('div', 'block-resize-badge');
     document.body.appendChild(badge);
-
-    const startFrac = parseFloat(col && col.style.getPropertyValue('--col-frac')) ||
-                      (colRect.width + GAP) / (cRect.width + GAP);
-    const startBhStr = block.style.getPropertyValue('--bh');
-    const startBh = startBhStr ? parseFloat(startBhStr) : bRect.height;
-
-    // Switch to fixed-height immediately so the resize visibly shrinks content.
-    if (mode === 'bottom' || mode === 'corner') {
-      block.style.setProperty('--bh', Math.round(startBh) + 'px');
-      syncFixed(block);
-    }
-
     resizeState = {
-      block, col, row, mode, vGuide, hGuide, badge,
-      rowRect: cRect,
-      startColLeft: colRect.left,
-      startBlockTop: bRect.top,
-      startFrac, startBh,
-      currentFrac: startFrac,
-      currentBh:   startBh,
-      hadBh: !!startBhStr,
+      block, item, mode, badge, z,
+      start: { w: item.w, h: item.h, f: item.f },
+      grew: false,
     };
-
     block.classList.add('is-resizing');
     document.body.classList.add('blocks-resizing');
     if (mode === 'corner') document.body.classList.add('blocks-resizing-corner');
+    if (mode === 'bottom') document.body.classList.add('blocks-resizing-bottom');
     updateResize(e.clientX, e.clientY);
   }
 
   function updateResize(x, y) {
     const s = resizeState;
     if (!s) return;
-    const rowRect = s.rowRect;
-
-    // ── COLUMN WIDTH (edge or corner) ──────────────────────
-    if (s.mode === 'edge' || s.mode === 'corner') {
-      const desiredW = Math.max(MIN_COL_W, x - s.startColLeft);
-      let frac = (desiredW + GAP) / (rowRect.width + GAP);
-      frac = clampFrac(frac);
-      s.currentFrac = frac;
-      if (s.col) s.col.style.setProperty('--col-frac', frac.toFixed(4));
-    }
-
-    // ── BLOCK HEIGHT (bottom or corner) ────────────────────
-    if (s.mode === 'bottom' || s.mode === 'corner') {
-      const desiredH = Math.max(MIN_HEIGHT, y - s.startBlockTop);
-      s.currentBh = desiredH;
-      s.block.style.setProperty('--bh', Math.round(desiredH) + 'px');
-      syncFixed(s.block);
-    }
-
-    // Place guides on the block's current edges (after the layout reflowed).
+    const g = colGeom();
     const cRect = container.getBoundingClientRect();
-    const bRect = s.block.getBoundingClientRect();
-    if (s.vGuide) {
-      s.vGuide.style.left   = (bRect.right - cRect.left - 1) + 'px';
-      s.vGuide.style.top    = (bRect.top - cRect.top - 4) + 'px';
-      s.vGuide.style.height = (bRect.height + 8) + 'px';
+    const px = (x - cRect.left) / s.z;
+    const py = (y - cRect.top) / s.z;
+    const it = s.item;
+    let changed = false;
+    if (s.mode === 'edge' || s.mode === 'corner') {
+      const w = Math.max(MIN_W, Math.min(COLS - it.x, Math.round((px - it.x * g.step + GAP) / g.step)));
+      if (w !== it.w) { it.w = w; changed = true; }
     }
-    if (s.hGuide) {
-      s.hGuide.style.top    = (bRect.bottom - cRect.top - 1) + 'px';
-      s.hGuide.style.left   = (bRect.left - cRect.left - 4) + 'px';
-      s.hGuide.style.width  = (bRect.width + 8) + 'px';
+    if (s.mode === 'bottom' || s.mode === 'corner') {
+      const h = Math.max(MIN_H, Math.round((py - it.y * UNIT + GAP) / UNIT));
+      if (h !== it.h || !it.f) { it.h = h; it.f = true; changed = true; }
     }
-
-    s.badge.style.left = x + 'px';
-    s.badge.style.top  = y + 'px';
-    const pct = Math.round(s.currentFrac * 100);
-    if (s.mode === 'edge')      s.badge.textContent = pct + '% wide';
-    else if (s.mode === 'bottom') s.badge.textContent = Math.round(s.currentBh) + 'px tall';
-    else                        s.badge.textContent = pct + '% · ' + Math.round(s.currentBh) + 'px';
+    if (changed) relayout({ animate: false, priorityId: it.id });
+    else paintGuides();
+    paintGuides();
+    s.badge.style.left = (x / s.z) + 'px';
+    s.badge.style.top  = (y / s.z) + 'px';
+    const hpx = it.h * UNIT - GAP;
+    if (s.mode === 'edge') s.badge.textContent = it.w + ' of 12 columns';
+    else if (s.mode === 'bottom') s.badge.textContent = hpx + 'px tall';
+    else s.badge.textContent = it.w + ' of 12 · ' + hpx + 'px';
   }
 
   function finishResize() {
     const s = resizeState;
     if (!s) return;
-    saveLayout();
-    // Tabbed cards (the agenda) remember their height PER TAB on desktop, so
-    // each view (This Week, Month, …) keeps its own size.
-    const phone = !window.matchMedia('(min-width: 881px)').matches;
+    const phone = !isDesktop();
     if (!phone && (s.mode === 'bottom' || s.mode === 'corner')) {
       const key = tabHKey(s.block);
-      if (key) saveTabHeight(key, 'd', s.currentBh);
+      if (key) saveTabHeight(key, 'd', s.item.h * UNIT - GAP);
     }
-    if (s.vGuide) s.vGuide.remove();
-    if (s.hGuide) s.hGuide.remove();
     s.badge.remove();
+    removeGuides();
     s.block.classList.remove('is-resizing');
-    document.body.classList.remove('blocks-resizing');
-    document.body.classList.remove('blocks-resizing-corner');
+    document.body.classList.remove('blocks-resizing', 'blocks-resizing-corner', 'blocks-resizing-bottom');
     resizeState = null;
+    relayout({ animate: true });
+    saveLayout();
   }
 
-  /* ── INSERT (+) — stacks a note directly below in the same column ── */
+  // Double-click the bottom edge: let the card size itself to its content again.
+  function resetHeight(block) {
+    const it = itemOf(block.dataset.cardId);
+    if (!it) return;
+    const key = tabHKey(block);
+    if (key) saveTabHeight(key, 'd', null);
+    it.f = false;
+    relayout({ animate: true });
+    saveLayout();
+  }
+
+  /* ── INSERT (+) — a note directly below this card ── */
   let noteSeq = 0;
   function insertNoteAfter(e, anchor) {
     e.preventDefault();
     const id = 'note-' + Date.now().toString(36) + '-' + (noteSeq++).toString(36);
     const note = buildNote(id, '');
-    const col = anchor.parentElement && anchor.parentElement.classList.contains('bcol')
-      ? anchor.parentElement : null;
-    if (col) {
-      col.insertBefore(note, anchor.nextElementSibling || null);
-    } else {
-      const rowEl = el('div', 'brow');
-      const colEl = el('div', 'bcol');
-      colEl.style.setProperty('--col-frac', '1');
-      colEl.appendChild(note);
-      rowEl.appendChild(colEl);
-      container.appendChild(rowEl);
-    }
-    injectHandles(note);
+    container.appendChild(note);
+    const a = itemOf(anchor.dataset.cardId) || { x: 0, w: COLS, y: 0, h: 0 };
+    items.push({ id, x: a.x, y: a.y + a.h - 0.5, w: a.w, h: null, f: false });
+    injectHandles(note); ro.observe(note);
     if (window.dash && window.dash.injectCardBgButtons) window.dash.injectCardBgButtons();
+    relayout({ animate: true });
     saveLayout();
     saveNotes();
     requestAnimationFrame(() => {
@@ -1056,99 +943,57 @@
     div.querySelector('.note-del').addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
-      const col = div.parentElement;
-      const row = col ? col.parentElement : null;
-      div.remove();
-      cleanupEmpties(col, row);
-      saveLayout();
+      removeBlock(div);
       saveNotes();
     });
     return div;
   }
 
   /* ── CUSTOM WIDGETS (photo / hours / spotify) ─────────────
-     extras.js builds these cards. At boot they are already in the DOM
-     (buildStructure places them from the saved layout). Adding one later
-     drops it in a new row at the bottom. */
-  function addBlock(node) {
-    if (!container) return;
-    const rowEl = el('div', 'brow');
-    const colEl = el('div', 'bcol');
-    colEl.style.setProperty('--col-frac', '1');
-    node.style.setProperty('--frac', '1');
-    colEl.appendChild(node);
-    rowEl.appendChild(colEl);
-    container.appendChild(rowEl);
-    injectHandles(node);
-    if (window.dash && window.dash.injectCardBgButtons) {
-      window.dash.injectCardBgButtons();
-      window.dash.applyAllCardBgs();
-    }
-    saveLayout();
-    node.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  }
-  // Put nodes in a new column to the right of `anchor` (a card that sits alone
-  // in its row). Used once to seed the Up next + Hours cards beside the planner.
-  function addBeside(anchorId, nodes) {
-    const anchor = container && container.querySelector('.block[data-card-id="' + anchorId + '"]');
-    const col = anchor && anchor.parentElement;
-    const row = col && col.parentElement;
-    if (!col || !row || !row.classList.contains('brow') || row.querySelectorAll(':scope > .bcol').length !== 1) return false;
-    col.style.setProperty('--col-frac', '0.62');
-    const colEl = el('div', 'bcol');
-    colEl.style.setProperty('--col-frac', '0.38');
-    nodes.forEach((n) => { n.style.setProperty('--frac', '1'); colEl.appendChild(n); });
-    row.appendChild(colEl);
-    nodes.forEach((n) => injectHandles(n));
-    if (window.dash && window.dash.injectCardBgButtons) { window.dash.injectCardBgButtons(); window.dash.applyAllCardBgs(); }
-    saveLayout();
-    return true;
-  }
-  // Rebuild the whole grid from a rows array (same shape as the saved layout).
-  function applyLayout(rows) {
-    if (!container) return;
-    container.querySelectorAll('.block').forEach((n) => { n.style.removeProperty('--bh'); syncFixed(n); });
-    buildStructure(rows);
-    container.querySelectorAll('.block').forEach((n) => injectHandles(n));
-    if (window.dash && window.dash.injectCardBgButtons) { window.dash.injectCardBgButtons(); window.dash.applyAllCardBgs(); }
-    saveLayout();
-  }
-  // Add nodes as a new right-hand column of an existing row (existing columns shrink to make room).
-  function addColumn(row, nodes) {
-    if (!row) return false;
-    const cols = [...row.querySelectorAll(':scope > .bcol')];
-    cols.forEach((c) => { const f = parseFloat(c.style.getPropertyValue('--col-frac')) || (1 / Math.max(1, cols.length)); c.style.setProperty('--col-frac', String(Math.round(f * 70) / 100)); });
-    const colEl = el('div', 'bcol');
-    colEl.style.setProperty('--col-frac', '0.3');
-    nodes.forEach((n) => { n.style.setProperty('--frac', '1'); colEl.appendChild(n); });
-    row.appendChild(colEl);
-    nodes.forEach((n) => injectHandles(n));
-    if (window.dash && window.dash.injectCardBgButtons) { window.dash.injectCardBgButtons(); window.dash.applyAllCardBgs(); }
-    saveLayout();
-    return true;
-  }
-  // Drop a new card into the shortest column of the last multi-column band (keeps the page even).
-  function addShortest(node) {
+     extras.js builds these cards. A new card goes into the emptiest stretch of the page:
+     it is tried at three column positions and lands where the page is currently shortest. */
+  function addBlock(node, opts) {
     if (!container) return false;
-    const rows = [...container.querySelectorAll(':scope > .brow')].reverse();
-    const band = rows.find((r) => r.querySelectorAll(':scope > .bcol').length >= 3);
-    if (!band) return false;
-    const cols = [...band.querySelectorAll(':scope > .bcol')];
-    const target = cols.reduce((m, c) => (c.getBoundingClientRect().height < m.getBoundingClientRect().height ? c : m), cols[0]);
-    node.style.setProperty('--frac', '1');
-    target.appendChild(node);
-    injectHandles(node);
+    opts = opts || {};
+    const w = opts.w || 4;
+    container.appendChild(node);
+    const id = node.dataset.cardId;
+    let best = 0, bestY = Infinity;
+    for (let x = 0; x + w <= COLS; x += w) {
+      const y = bottomOf(x, x + w);
+      if (y < bestY) { bestY = y; best = x; }
+    }
+    items = items.filter((i) => i.id !== id);
+    items.push({ id, x: best, y: Math.max(0, bestY) - 0.5, w, h: null, f: false });
+    injectHandles(node); ro.observe(node);
     if (window.dash && window.dash.injectCardBgButtons) { window.dash.injectCardBgButtons(); window.dash.applyAllCardBgs(); }
+    relayout({ animate: false });
     saveLayout();
     node.scrollIntoView({ behavior: 'smooth', block: 'center' });
     return true;
+  }
+  // Replace the whole arrangement: list is [{ id, x, y, w, h? }]. Used by "Arrange cards neatly".
+  function applyGrid(list) {
+    if (!container) return;
+    items = reconcile((list || []).map(cleanItem).filter(Boolean));
+    items.forEach((it) => { it.f = !!it.h; });
+    container.querySelectorAll('.block').forEach((b) => { b.style.removeProperty('--bh'); b.classList.remove('block--fixed', 'block--compact'); injectHandles(b); ro.observe(b); });
+    items.forEach((it) => { const b = blockOf(it.id); if (b) tabHeightInto(b, it); });
+    if (window.dash && window.dash.injectCardBgButtons) { window.dash.injectCardBgButtons(); window.dash.applyAllCardBgs(); }
+    relayout({ animate: false });
+    syncDomOrder();
+    saveLayout();
   }
   function removeBlock(node) {
-    const col = node.parentElement;
-    const row = col ? col.parentElement : null;
+    items = items.filter((i) => i.id !== node.dataset.cardId);
+    ro.unobserve(node);
     node.remove();
-    cleanupEmpties(col, row);
+    relayout({ animate: true });
     saveLayout();
+  }
+  // Read-only snapshot of where everything is, for the default-layout planner.
+  function geometry() {
+    return items.map((i) => ({ id: i.id, x: i.x, y: i.y, w: i.w, h: i.h, vis: !!i.vis }));
   }
 
   /* ── AUTO-SCROLL during drag ────────────────────────────── */
@@ -1165,10 +1010,7 @@
       if (dy !== 0) {
         const before = window.scrollY;
         window.scrollBy(0, dy);
-        if (window.scrollY - before !== 0) {
-          buildGuides();
-          updateDragVisuals(dragState.lastX, dragState.lastY);
-        }
+        if (window.scrollY - before !== 0) updateDragVisuals(dragState.lastX, dragState.lastY);
       }
       scrollRAF = requestAnimationFrame(tick);
     };
@@ -1195,31 +1037,25 @@
   }
   function cancelInteractions() {
     if (dragState) {
-      dragState.ghost.remove();
-      dragState.indicator.remove();
+      const s = dragState;
+      s.ghost.remove();
       removeGuides();
-      dragState.block.classList.remove('is-dragging');
+      s.block.classList.remove('is-dragging');
       document.body.classList.remove('blocks-dragging');
+      try { items = JSON.parse(s.snapshot); } catch (_) {}
       dragState = null;
       stopAutoScroll();
+      relayout({ animate: true });
     }
     if (resizeState) {
       const s = resizeState;
-      if (s.col) s.col.style.setProperty('--col-frac', String(s.startFrac));
-      if (s.hadBh) {
-        s.block.style.setProperty('--bh', Math.round(s.startBh) + 'px');
-        syncFixed(s.block);
-      } else {
-        s.block.style.removeProperty('--bh');
-        s.block.classList.remove('block--fixed', 'block--compact');
-      }
-      if (s.vGuide) s.vGuide.remove();
-      if (s.hGuide) s.hGuide.remove();
+      s.item.w = s.start.w; s.item.h = s.start.h; s.item.f = s.start.f;
       s.badge.remove();
+      removeGuides();
       s.block.classList.remove('is-resizing');
-      document.body.classList.remove('blocks-resizing');
-      document.body.classList.remove('blocks-resizing-corner');
+      document.body.classList.remove('blocks-resizing', 'blocks-resizing-corner', 'blocks-resizing-bottom');
       resizeState = null;
+      relayout({ animate: true });
     }
   }
 
@@ -1258,23 +1094,7 @@
     }, { passive: false });
   }
 
-  /* ── PERSISTENCE ────────────────────────────────────────── */
-  function saveLayout() {
-    const rows = [...container.querySelectorAll(':scope > .brow')].map((rowEl) => ({
-      cols: [...rowEl.querySelectorAll(':scope > .bcol')].map((colEl) => ({
-        frac: round4(parseFloat(colEl.style.getPropertyValue('--col-frac')) || 1),
-        items: [...colEl.querySelectorAll(':scope > .block')].map((b) => {
-          const bhStr = b.style.getPropertyValue('--bh');
-          // Tabbed cards (agenda) manage their height per-tab, so don't bake
-          // the current tab's height into the structural layout.
-          const h = (!tabHKey(b) && bhStr) ? Math.round(parseFloat(bhStr)) : null;
-          return { id: b.dataset.cardId, h };
-        }),
-      })),
-    }));
-    try { localStorage.setItem(STORAGE_LAYOUT_V3, JSON.stringify({ rows })); } catch (_) {}
-  }
-
+  /* ── PERSISTENCE (notes) ────────────────────────────────── */
   function saveNotes() {
     const notes = [...container.querySelectorAll('.block-note')].map((n) => ({
       id: n.dataset.cardId,
@@ -1308,10 +1128,13 @@
   window.blocks = {
     boot,
     save: saveLayout,
-    addBlock, addBeside, addColumn, addShortest, applyLayout, removeBlock,
+    addBlock, addShortest: addBlock, applyGrid, removeBlock,
+    relayout: () => relayout({ animate: true }),
+    geometry,
     applyTabHeight,
     reset() {
       try {
+        localStorage.removeItem(STORAGE_LAYOUT_V4);
         localStorage.removeItem(STORAGE_LAYOUT_V3);
         localStorage.removeItem(STORAGE_LAYOUT_V2);
         localStorage.removeItem(STORAGE_LAYOUT_V1);

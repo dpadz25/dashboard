@@ -48,6 +48,7 @@ function applyPrefs() {
   document.querySelectorAll('.block[data-card-id]').forEach((b) => {
     b.classList.toggle('x-hidden', p.hidden.includes(b.dataset.cardId));
   });
+  if (window.blocks && window.blocks.relayout) window.blocks.relayout();
 }
 
 /* ── WIDGET LABELS ─────────────────────────────────────────── */
@@ -153,7 +154,7 @@ function addWidget(kind) {
   
   saveWidgets(getWidgets().concat(w));
   const node = mount(w);
-  if (!window.blocks.addShortest(node)) window.blocks.addBlock(node);
+  window.blocks.addBlock(node, { w: 4 });
   applyPrefs();
 }
 
@@ -880,15 +881,14 @@ function planRows(ids) {
     cols[i].push(id); hs[i] += cardHeight(id);
   });
   cols.forEach((c) => c.sort((x, y) => rank(x) - rank(y)));
-  const rows = [
-    { cols: [{ frac: 1, items: [{ id: 'daystrip', h: null }] }] },
-    { cols: [{ frac: 1, items: [{ id: 'header', h: null }] }] },
-    { cols: [{ frac: 0.63, items: wide.map((k) => ({ id: real(k), h: null })) }, { frac: 0.37, items: narrow.map((k) => ({ id: real(k), h: null })) }] },
-  ];
-  const third = [0.3333, 0.3334, 0.3333];
-  const bottom = cols.map((c, i) => ({ frac: third[i], items: c.map((id) => ({ id, h: null })) })).filter((c) => c.items.length);
-  if (bottom.length) rows.push({ cols: bottom });
-  return rows;
+  const out = [];
+  const put = (id, x, w, y) => out.push({ id, x, w, y, h: null });
+  put('daystrip', 0, 12, 0);
+  put('header', 0, 12, 1);
+  wide.forEach((k, i) => put(real(k), 0, 7, 1000 + i));
+  narrow.forEach((k, i) => put(real(k), 7, 5, 1000 + i));
+  cols.forEach((c, ci) => c.forEach((id, i) => put(id, ci * 4, 4, 2000 + i)));
+  return out;
 }
 function applyPaperLayout() {
   const need = (kind) => {
@@ -898,8 +898,8 @@ function applyPaperLayout() {
   };
   const ids = { '@next': need('next'), '@hours': need('hours'), '@spotify': need('spotify') };
   // Hidden cards keep their slot so showing them later does not reshuffle the page.
-  window.blocks.applyLayout(planRows(ids));
-  window.blocks.applyLayout(planRows(ids));
+  window.blocks.applyGrid(planRows(ids));
+  window.blocks.applyGrid(planRows(ids));
   const p = getPrefs();
   p.hidden = p.hidden.filter((id) => !Object.values(ids).includes(id));
   setPrefs(p);
@@ -959,7 +959,7 @@ function initUi() {
   // blocks.boot() runs after this (it waits for the image store), so wait for the grid.
   let tries = 0;
   const wait = setInterval(() => {
-    if (document.querySelector('#blocks > .brow')) { clearInterval(wait); seedLayout(); applyPrefs(); decorateBlocks(); restyleCards(); setInterval(decorateBlocks, 1500); }
+    if (document.querySelector('#blocks > .block-scale, #blocks.is-grid')) { clearInterval(wait); seedLayout(); applyPrefs(); decorateBlocks(); restyleCards(); setInterval(decorateBlocks, 1500); }
     else if (++tries > 100) clearInterval(wait);
   }, 100);
   applyPrefs();
