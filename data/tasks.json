@@ -1,121 +1,21 @@
 [
   {
-    "id": "nc2upcua",
-    "title": "ask dr alex and dr mcnulty about accuring my hours",
-    "dueDate": "2026-09-29",
-    "category": "Practicum",
+    "id": "b1mtse1u",
+    "title": "Test",
+    "dueDate": "2026-10-06",
+    "category": "clinical practicum 1",
     "type": "assignment",
     "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "y5u87sp5",
-    "title": "group , psycho edu, create the material",
-    "dueDate": "2026-09-29",
-    "category": "Practicum",
-    "type": "assignment",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "6y7onid1",
-    "title": "email for hours",
-    "dueDate": "2026-10-01",
-    "category": "General",
-    "type": "priority",
-    "priority": true,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "5p64etnq",
-    "title": "shave",
-    "dueDate": "2026-10-01",
-    "category": "General",
-    "type": "priority",
-    "priority": true,
     "completed": true,
     "repeat": ""
   },
   {
-    "id": "08yv5tmq",
-    "title": "Module 5 quiz (Panic disorder & agoraphobia)",
-    "dueDate": "2026-10-06",
-    "category": "clinical practicum 1",
-    "type": "quiz",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "fx10h6ns",
-    "title": "Journal Entry, Week 7",
-    "dueDate": "2026-10-07",
-    "category": "Dev. Psych",
-    "type": "assignment",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "1laxdkuv",
-    "title": "Week 7, DSM-5-TR Depressive Disorders criteria",
-    "dueDate": "2026-10-07",
-    "category": "Dev. Psych",
-    "type": "reading",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "cf5pp9kr",
-    "title": "Week 7, Mechler et al. (2022), internet psychodynamic therapy vs CBT for adolescent depression",
-    "dueDate": "2026-10-07",
-    "category": "Dev. Psych",
-    "type": "reading",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "ew9d7yxt",
-    "title": "Week 7, Kim (2021), life events as risk factors for depression and suicide",
-    "dueDate": "2026-10-07",
-    "category": "Dev. Psych",
-    "type": "reading",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "hutn8p7q",
-    "title": "Week 7, Freeman (2016), DMDD in a community mental health clinic",
-    "dueDate": "2026-10-07",
-    "category": "Dev. Psych",
-    "type": "reading",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "a3c86spo",
-    "title": "Read Ch. 18",
-    "dueDate": "2026-10-08",
-    "category": "Dev. Psych",
-    "type": "reading",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "aolndvtt",
-    "title": "Reflective Journal 2 (Weeks 4-6, 20 pts)",
-    "dueDate": "2026-10-10",
-    "category": "cultural issues",
-    "type": "assignment",
-    "priority": false,
+    "id": "98840apw",
+    "title": "Session Intake Ingrid 5:30 PM",
+    "dueDate": "2026-10-12",
+    "category": "General",
+    "type": "priority",
+    "priority": true,
     "completed": false,
     "repeat": ""
   },
@@ -380,6 +280,16 @@
     "repeat": ""
   },
   {
+    "id": "nc2upcua",
+    "title": "ask dr alex and dr mcnulty about accuring my hours",
+    "dueDate": "2026-10-30",
+    "category": "Practicum",
+    "type": "assignment",
+    "priority": false,
+    "completed": false,
+    "repeat": ""
+  },
+  {
     "id": "ut2a3k9a",
     "title": "Read Ch. 8",
     "dueDate": "2026-11-02",
@@ -400,11 +310,11 @@
     "repeat": ""
   },
   {
-    "id": "8sx55ysc",
-    "title": "Module 9 quiz (CBT formulation deep dive A)",
+    "id": "zwiiea8f",
+    "title": "case presentation",
     "dueDate": "2026-11-03",
     "category": "clinical practicum 1",
-    "type": "quiz",
+    "type": "assignment",
     "priority": false,
     "completed": false,
     "repeat": ""
@@ -420,11 +330,11 @@
     "repeat": ""
   },
   {
-    "id": "zwiiea8f",
-    "title": "case presentation",
+    "id": "8sx55ysc",
+    "title": "Module 9 quiz (CBT formulation deep dive A)",
     "dueDate": "2026-11-03",
     "category": "clinical practicum 1",
-    "type": "assignment",
+    "type": "quiz",
     "priority": false,
     "completed": false,
     "repeat": ""
