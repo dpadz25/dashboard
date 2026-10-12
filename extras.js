@@ -473,7 +473,7 @@ function buildHours(w) {
         return;
       } catch (err) { /* try next */ }
     }
-    msg('Google will not hand over that link. An Excel file stored in Drive cannot be read this way. Use Import file below, or open it in Google Sheets and choose File, Save as Google Sheets.');
+    msg('Google blocked the read because the sheet is private. In the sheet, click Share, set General access to "Anyone with the link" (Viewer), copy that link here, and try again. Or use Import file below.');
   });
   render();
   return node;
@@ -964,6 +964,14 @@ function initUi() {
   }, 100);
   applyPrefs();
 }
+
+/* ── TAP TO REVEAL CARD CONTROLS (touch screens) ───────────── */
+document.addEventListener('click', (e) => {
+  if (!window.matchMedia('(hover: none), (max-width: 860px)').matches) return;
+  const hit = e.target.closest('#blocks > .block');
+  document.querySelectorAll('#blocks > .block.x-tap').forEach((b) => { if (b !== hit) b.classList.remove('x-tap'); });
+  if (hit && !e.target.closest('.x-chrome, .block-handle, .card-bg-btn, .block-insert')) hit.classList.add('x-tap');
+}, true);
 
 restoreWidgets();
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initUi);
