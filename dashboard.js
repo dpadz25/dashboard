@@ -623,6 +623,14 @@ function habitStreak(habitId) {
   return streak;
 }
 
+// Paper palette for habits that have no color of their own (display only, never saved).
+const HABIT_DEFAULTS = ['#b8553a', '#c98a2e', '#b8456f', '#4a55a2', '#3f7a58', '#2e7f78', '#a68a3a'];
+function habitColorFor(h) {
+  if (h.color) return h.color;
+  const i = getHabits().findIndex(x => x.id === h.id);
+  return HABIT_DEFAULTS[(i < 0 ? 0 : i) % HABIT_DEFAULTS.length];
+}
+
 function renderHabits() {
   if (editingTileKind === 'habit') return;  // inline rename open, see inlineRename()
   const habits = getHabits();
@@ -633,7 +641,8 @@ function renderHabits() {
     const done = !!state[h.id];
     const streak = habitStreak(h.id);
     const el   = document.createElement('div');
-    el.className = `habit-item${done ? ' done' : ''}`;
+    el.className = `habit-item${done ? ' done' : ''} has-color`;
+    el.style.setProperty('--hc', habitColorFor(h));
     el.innerHTML = `
       <div class="hcheck"></div>
       <div class="habit-icon">${iconRender(h.icon)}</div>
@@ -647,6 +656,7 @@ function renderHabits() {
   const pct = total ? Math.round(doneCount / total * 100) : 0;
   if ($('habitRing')) $('habitRing').style.strokeDashoffset = total ? CIRCUM - (doneCount / total) * CIRCUM : CIRCUM;
   if ($('habitPct')) $('habitPct').textContent = pct + '%';
+  if ($('habitSummary')) $('habitSummary').textContent = `${doneCount} of ${total} done`;
 }
 
 let habitEditOpen = false;
@@ -673,6 +683,7 @@ function renderHabitEditRows() {
         </div>
       </div>
       <input class="t-input" style="flex:1" value="${esc(h.label)}" onchange="window.dash.updateHabitLabel('${h.id}',this.value)"/>
+      <input class="habit-color-input" type="color" value="${h.color || '#7caa6a'}" title="Habit color" onchange="window.dash.setHabitColor('${h.id}',this.value)"/>
       <button class="del-btn" style="opacity:1;padding:4px 8px" onclick="window.dash.deleteHabit('${h.id}')">${ICONS.trash}</button>`;
     rows.appendChild(row);
   });
@@ -718,6 +729,15 @@ function deleteHabit(id) {
   saveHabitsConfig(getHabits().filter(h => h.id !== id));
   renderHabits(); renderHabitEditRows(); renderHabitHeat();
 }
+function setHabitColor(id, color) {
+  const habits = getHabits();
+  const h = habits.find(x => x.id === id);
+  if (!h) return;
+  h.color = color;
+  saveHabitsConfig(habits);
+  renderHabits(); renderHabitHeat();
+}
+
 function addHabit() {
   const inp = $('newHabitLabel');
   const label = inp.value.trim();
@@ -786,6 +806,7 @@ function renderDailies() {
   const doneTotal = items.filter(i => !!state[i.id]).length;
   if ($('dailyRing')) $('dailyRing').style.strokeDashoffset = total ? CIRCUM - (doneTotal / total) * CIRCUM : CIRCUM;
   if ($('dailyPct')) $('dailyPct').textContent = (total ? Math.round(doneTotal / total * 100) : 0) + '%';
+  if ($('dailySummary')) $('dailySummary').textContent = `${doneTotal} of ${total} done`;
 }
 
 let dailyEditOpen = false;
@@ -966,7 +987,7 @@ function renderPlannerTabs() {
 
   const weekBtn = document.createElement('button');
   weekBtn.className = 'tab planner-tab' + (activeTab === 'week' ? ' active' : '');
-  weekBtn.textContent = 'This Week';
+  weekBtn.textContent = 'This week';
   weekBtn.title = 'Every task due in the next 7 days';
   weekBtn.onclick = e => switchTab('week', e.currentTarget);
   tabsEl.appendChild(weekBtn);
@@ -989,8 +1010,6 @@ function renderPlannerTabs() {
     x.title = 'Remove class';
     x.textContent = '×';
     x.onclick = e => { e.stopPropagation(); removeClassTab(c.id); };
-    b.appendChild(x);
-
     tabsEl.appendChild(b);
   });
 
@@ -1014,7 +1033,7 @@ function renderTaskClassSelect() {
 }
 
 // ─── PLANNER / TASKS ──────────────────────────────────────────
-let activeTab = 'priority';
+let activeTab = 'all';
 
 const PRIORITY_TYPES = ['priority'];
 
@@ -1039,6 +1058,20 @@ function getDaysPill(dueDate) {
   if (diff <= 3)  return { cls:'urgent', label:`${diff}d` };
   if (diff <= 7)  return { cls:'soon',   label:`${diff}d` };
   return { cls:'far', label:`${diff}d` };
+}
+
+// Planner due label like the mockup: Overdue / Today / Tomorrow / Tue / Oct 20.
+function plannerDueLabel(dueDate) {
+  const p = getDaysPill(dueDate);
+  if (!p) return null;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const due = new Date(dueDate + 'T00:00:00');
+  const diff = Math.round((due - today) / 86400000);
+  let label = p.label;
+  if (diff < 0) label = 'Overdue';
+  else if (diff >= 2 && diff <= 6) label = due.toLocaleDateString(undefined, { weekday: 'short' });
+  else if (diff >= 7) label = due.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  return { cls: diff < 0 ? 'overdue ' + p.cls : p.cls, label };
 }
 
 function getTasks() { return load('plannerTasks', []); }
@@ -1067,6 +1100,13 @@ function nextRepeatDate(dueDate, repeat) {
   const base = dueDate ? new Date(dueDate + 'T00:00:00') : new Date();
   base.setHours(0,0,0,0);
   if (repeat === 'weekly') { base.setDate(base.getDate() + 7); return dateKey(base); }
+  if (repeat === 'monthly') {
+    // Same day next month; clamp so Jan 31 lands on Feb 28/29, not March.
+    const day = base.getDate();
+    base.setDate(1); base.setMonth(base.getMonth() + 1);
+    base.setDate(Math.min(day, new Date(base.getFullYear(), base.getMonth() + 1, 0).getDate()));
+    return dateKey(base);
+  }
   // daily & weekdays both step by one day; weekdays additionally skips Sat/Sun.
   base.setDate(base.getDate() + 1);
   if (repeat === 'weekdays') {
@@ -1075,7 +1115,7 @@ function nextRepeatDate(dueDate, repeat) {
   return dateKey(base);
 }
 
-const REPEAT_LABELS = { daily: 'Daily', weekdays: 'Weekdays', weekly: 'Weekly' };
+const REPEAT_LABELS = { daily: 'Daily', weekdays: 'Weekdays', weekly: 'Weekly', monthly: 'Monthly' };
 
 // Hover text for a due-date pill, e.g. "Due Fri, Oct 2 · click to change".
 // The pill itself only shows relative time (2d, Today), so this is the
@@ -1088,9 +1128,43 @@ function dueTitle(dueDate) {
   return `Due ${date.toLocaleDateString(undefined, opts)} · click to change`;
 }
 
+let plannerGroup = (function () { try { return localStorage.getItem('plannerGroup') === 'class' ? 'class' : 'day'; } catch (_) { return 'day'; } })();
+function setPlannerGroup(mode) {
+  plannerGroup = mode === 'class' ? 'class' : 'day';
+  try { localStorage.setItem('plannerGroup', plannerGroup); } catch (_) {}
+  renderPlanner();
+}
+function updatePlannerHead() {
+  const t = $('plannerTitle');
+  if (t) {
+    let txt = 'Everything on your plate';
+    if (activeTab === 'week') txt = 'This week';
+    else if (activeTab === 'priority') txt = 'Priority';
+    else if (activeTab.startsWith('class:')) { const c = getClass(activeTab.slice(6)); txt = c ? c.name : 'Class'; }
+    t.textContent = txt;
+  }
+  const d = $('plannerByDay'), c = $('plannerByClass');
+  if (d) d.classList.toggle('active', plannerGroup === 'day');
+  if (c) c.classList.toggle('active', plannerGroup === 'class');
+}
+
+function renderGlance() {
+  const el = $('hdrGlance');
+  if (!el) return;
+  const today = todayStr(), t = new Date(); t.setDate(t.getDate() + 1);
+  const tom = dateKey(t);
+  const open = getTasks().filter(x => !x.done && taskStatus(x) !== 'done');
+  const due = open.filter(x => x.dueDate === today).length;
+  const tm  = open.filter(x => x.dueDate === tom).length;
+  const od  = open.filter(x => x.dueDate && x.dueDate < today).length;
+  el.innerHTML = `<b>${due} due today</b><span>${tm} tomorrow \u00b7 ${open.length} open in all${od ? ` \u00b7 ${od} overdue` : ''}</span>`;
+}
+
 function renderPlanner() {
+  renderGlance();
   if (editingTaskId) return;  // inline rename open, see inlineRename()
   const el = $('plannerList');
+  updatePlannerHead();
   let tasks = getTasks();
 
   if (activeTab === 'priority') tasks = tasks.filter(t => PRIORITY_TYPES.includes((t.type||'').toLowerCase()));
@@ -1105,7 +1179,13 @@ function renderPlanner() {
     tasks = tasks.filter(t => t.classId === cid);
   }
 
+  const classOrder = getClasses().map(c => c.id);
   tasks.sort((a,b) => {
+    if (plannerGroup === 'class') {
+      const ia = classOrder.indexOf(a.classId), ib = classOrder.indexOf(b.classId);
+      const ra = ia < 0 ? 999 : ia, rb = ib < 0 ? 999 : ib;
+      if (ra !== rb) return ra - rb;
+    }
     if (a.done !== b.done) return a.done ? 1 : -1;
     if (!a.dueDate && !b.dueDate) return 0;
     if (!a.dueDate) return 1;
@@ -1122,22 +1202,56 @@ function renderPlanner() {
   }
   el.innerHTML = '';
 
+  // Group headers (Overdue / Today / Tomorrow / dated days) with a "n left" count.
+  const groupOf = t => {
+    if (plannerGroup === 'class') {
+      const gc = t.classId ? getClass(t.classId) : null;
+      return gc ? { key: 'c:' + gc.id, label: gc.name, dot: gc.color } : { key: 'c:none', label: 'No class', dot: '' };
+    }
+    if (taskStatus(t) === 'done') return { key: 'done', label: 'Done' };
+    if (!t.dueDate) return { key: 'none', label: 'No date' };
+    const pillInfo = getDaysPill(t.dueDate);
+    const [yy, mm, dd] = t.dueDate.split('-').map(Number);
+    const dt = new Date(yy, mm - 1, dd);
+    const nice = dt.toLocaleDateString(undefined, { weekday: 'short' }) + ' ' + dt.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    if (t.dueDate < todayStr()) return { key: 'over', label: 'Overdue' };
+    if (t.dueDate === todayStr()) return { key: t.dueDate, label: 'Today, ' + nice };
+    if (pillInfo && pillInfo.label === 'Tomorrow') return { key: t.dueDate, label: 'Tomorrow, ' + nice };
+    return { key: t.dueDate, label: nice };
+  };
+  const groupCounts = {};
+  tasks.forEach(t => { const g = groupOf(t).key; groupCounts[g] = (groupCounts[g] || 0) + 1; });
+  let lastGroup = null;
+
   tasks.forEach(t => {
+    const grp = groupOf(t);
+    if (grp.key !== lastGroup) {
+      lastGroup = grp.key;
+      const h = document.createElement('div');
+      h.className = 'task-group-label' + (grp.key === 'over' ? ' over' : '');
+      const nLeft = tasks.filter(x => groupOf(x).key === grp.key && taskStatus(x) !== 'done').length;
+      h.innerHTML = `<span>${grp.dot ? `<i class="gl-dot" style="background:${grp.dot}"></i>` : ''}${esc(grp.label)}</span><em>${grp.key === 'done' ? groupCounts[grp.key] + ' done' : nLeft + ' left'}</em>`;
+      el.appendChild(h);
+    }
     const cat  = getCategory(t.type);
-    const pill = getDaysPill(t.dueDate);
+    const pill = plannerDueLabel(t.dueDate);
     const cls  = t.classId ? getClass(t.classId) : null;
     const st   = taskStatus(t);
     const done = st === 'done';
     const div  = document.createElement('div');
     div.className = `task-item st-${st}${done ? ' completed' : ''}`;
     div.dataset.id = t.id;
+    if (cls) div.style.setProperty('--cc', cls.color);
     const classBadge = cls
       ? `<span class="class-badge" style="background:${cls.color}22;color:${cls.color};border:1px solid ${cls.color}44">${esc(cls.name.split(' ')[0])}</span>`
       : '';
     const meta = STATUS_META[st];
     div.innerHTML = `
       <div class="tcheck${done ? ' checked' : ''}" onclick="window.dash.toggleTask('${t.id}')" title="Tap to complete &amp; clear"></div>
-      <span class="task-txt" onclick="window.dash.startTaskRename('${t.id}',event)" title="Click to rename">${esc(t.text)}</span>
+      <span class="task-main">
+        <span class="task-txt" onclick="window.dash.startTaskRename('${t.id}',event)" title="Click to rename">${esc(t.text)}</span>
+        <span class="task-sub">${cls ? `<i class="task-sub-dot" style="background:${cls.color}"></i>${esc(cls.name)}` : '<i class="task-sub-dot none"></i>No class'}${t.dueTime ? ` \u00b7 ${fmtTime(t.dueTime)}` : ''}${t.repeat ? ` \u00b7 \u21bb ${REPEAT_LABELS[t.repeat] || t.repeat}` : ''}</span>
+      </span>
       <span class="task-meta">
       <button class="status-pill st-${st}" onclick="window.dash.openStatusMenu('${t.id}',event)" title="Change status">
         <span class="status-dot"></span>
@@ -1221,6 +1335,7 @@ function openDueMenu(id, ev) {
   menu.innerHTML = `
     <div class="due-menu-title">Due date</div>
     <input class="t-input" type="date" id="dueMenuDate" value="${t.dueDate || ''}"/>
+    <input class="t-input" type="time" id="dueMenuTime" value="${t.dueTime || ''}" title="Optional time"/>
     <div class="due-menu-actions">
       <button class="btn-ghost" onclick="window.dash.clearDueDate('${id}')">Clear</button>
       <button class="btn-add" onclick="window.dash.saveDueDate('${id}')">Save</button>
@@ -1255,6 +1370,8 @@ function saveDueDate(id) {
   const t = tasks.find(x => x.id === id);
   if (!t) return;
   t.dueDate = val || null;
+  const tm = document.getElementById('dueMenuTime');
+  t.dueTime = (val && tm && tm.value) || null;
   saveTasks(tasks);
   renderPlanner(); renderAgenda();
 }
@@ -1265,6 +1382,7 @@ function clearDueDate(id) {
   const t = tasks.find(x => x.id === id);
   if (!t) return;
   t.dueDate = null;
+  t.dueTime = null;
   saveTasks(tasks);
   renderPlanner(); renderAgenda();
 }
@@ -1281,8 +1399,19 @@ function setTaskStatus(id, status) {
 }
 
 function addTask() {
-  const name = $('taskName').value.trim();
+  let name = $('taskName').value.trim();
   if (!name) return;
+  // Smart entry: "read ch 6 #dev tomorrow 5pm daily" fills date/time/class/repeat.
+  if (window.extras && window.extras.parseCapture) {
+    const p = window.extras.parseCapture(name);
+    if (p.text && p.text !== name) {
+      name = p.text;
+      if (p.date) $('taskDue').value = p.date;
+      if (p.time && $('taskTime')) $('taskTime').value = p.time;
+      if (p.classId) $('taskClass').value = p.classId;
+      if (p.repeat && $('taskRepeat')) $('taskRepeat').value = p.repeat;
+    }
+  }
   const tasks = getTasks();
   const isPriority = activeTab === 'priority';
   // Default class = currently filtered class if user is on a class tab
@@ -1293,6 +1422,7 @@ function addTask() {
     id: uid(),
     text: name,
     dueDate: $('taskDue').value || null,
+    dueTime: ($('taskDue').value && $('taskTime') && $('taskTime').value) || null,
     type: isPriority ? 'priority' : $('taskType').value,
     classId,
     done: false,
@@ -1303,6 +1433,7 @@ function addTask() {
   saveTasks(tasks);
   $('taskName').value = '';
   if (repeatEl) repeatEl.value = '';
+  if ($('taskTime')) $('taskTime').value = '';
   renderPlanner(); renderAgenda();
 }
 
@@ -1477,7 +1608,7 @@ function updateTaskFormForTab() {
     const c = getClasses().find(x => x.id === activeTab.slice(6));
     if (c) where = ' to ' + c.name;
   }
-  name.placeholder = '+ add task' + where + '…';
+  name.placeholder = where ? 'Add a task' + where + '. Try: read ch 6 tomorrow 5pm' : 'Add a task. Try: read ch 6 #dev tomorrow 5pm';
 }
 
 // The ⋯ button beside quick-add reveals the full date/class/type/repeat
@@ -1505,7 +1636,7 @@ function renderLife() {
   const el = $('lifeList');
   const items = getLife();
   if (!items.length) {
-    el.innerHTML = `<div class="life-empty">empty list — quiet day.</div>`;
+    el.innerHTML = `<div class="life-empty">Nothing on the list.</div>`;
     return;
   }
   const sorted = [...items].sort((a,b) => (a.done?1:0) - (b.done?1:0));
@@ -1597,7 +1728,7 @@ function renderShopping() {
   if (!el) return;
   const items = getShopping();
   if (!items.length) {
-    el.innerHTML = `<div class="life-empty">list's empty — add what you need.</div>`;
+    el.innerHTML = `<div class="life-empty">Nothing to buy.</div>`;
     return;
   }
   el.innerHTML = '';
@@ -1632,7 +1763,7 @@ function renderShopping() {
     });
     el.appendChild(group);
   });
-  if (!el.children.length) el.innerHTML = `<div class="life-empty">list's empty — add what you need.</div>`;
+  if (!el.children.length) el.innerHTML = `<div class="life-empty">Nothing to buy.</div>`;
 }
 
 function addShopping() {
@@ -1913,86 +2044,59 @@ function tomorrowKey() {
   return dateKey(d);
 }
 
+function fmt12(t) {
+  if (!t) return '';
+  const [h, m] = t.split(':').map(Number);
+  if (isNaN(h)) return '';
+  return `${(h % 12) || 12}:${String(m || 0).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
+}
 function renderTomorrow() {
   const el = $('tomorrowBody'); if (!el) return;
   const tKey = tomorrowKey();
-  const t    = new Date(tKey + 'T00:00:00');
-  const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const tasks  = getTasks().filter(x => !x.done && x.dueDate === tKey);
   const events = getAllCalendarItems().filter(e => e.date === tKey);
-  const habits = getHabits();
-  const now    = new Date();
-  const eveningHint = now.getHours() >= 17;
-  const classes = getClasses();
-  const classSel = `<option value="">No class</option>` + classes.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
-
+  const items = [
+    ...events.map(e => ({ kind: 'event', id: e.id, ek: e._kind, title: (e._kind === 'starred' ? '\u2605 ' : '') + e.label, time: e.start || '', sub: e._kind === 'starred' ? 'Important date' : 'Event', color: 'var(--accent)' })),
+    ...tasks.map(x => { const c = x.classId ? getClass(x.classId) : null; return { kind: 'task', id: x.id, title: x.text, time: x.dueTime || '', sub: c ? c.name : (x.type ? x.type.charAt(0).toUpperCase() + x.type.slice(1) : 'No class'), color: c ? c.color : '#9b8c78' }; }),
+  ].sort((p, q) => (p.time ? 0 : 1) - (q.time ? 0 : 1) || p.time.localeCompare(q.time));
   el.innerHTML = `
-    <div class="tomorrow-head">
-      <div>
-        <div class="tomorrow-eyebrow">${eveningHint ? 'EVENING TEE\u2011UP' : 'PLANNING AHEAD'}</div>
-        <div class="tomorrow-title">${DAYS[t.getDay()]}, ${MONTHS[t.getMonth()]} ${t.getDate()}</div>
-      </div>
-      <div class="tomorrow-counts">
-        <span><strong>${tasks.length}</strong> tasks</span>
-        <span><strong>${events.length}</strong> events</span>
-      </div>
-    </div>
-
-    <div class="tomorrow-grid">
-      <div class="tomorrow-col">
-        <div class="tomorrow-col-label">Tasks due tomorrow</div>
-        <div class="tomorrow-list">
-        ${tasks.length ? tasks.map(x => {
-          const cls = x.classId ? getClass(x.classId) : null;
-          const classBadge = cls ? `<span class="class-badge" style="background:${cls.color}22;color:${cls.color};border:1px solid ${cls.color}44">${esc(cls.name.split(' ')[0])}</span>` : '';
-          return `<div class="tomorrow-row task">
-            <div class="tcheck" onclick="window.dash.toggleTask('${x.id}')"></div>
-            <span class="task-txt" style="flex:1">${esc(x.text)}</span>
-            ${classBadge}
-            ${x.type ? `<span class="type-badge ${getCategory(x.type)}">${esc(x.type)}</span>` : ''}
-            <button class="del-btn" style="opacity:1" onclick="window.dash.delTask('${x.id}')">×</button>
-          </div>`;
-        }).join('') : `<div class="tomorrow-empty">No tasks yet. Tee one up below.</div>`}
-        </div>
-        <div class="tomorrow-add">
-          <input class="t-input" id="tmrTaskName" placeholder="Task for tomorrow…" onkeydown="if(event.key==='Enter')window.dash.addTomorrowTask()"/>
-          <button class="btn-add" onclick="window.dash.addTomorrowTask()">Add</button>
-        </div>
-      </div>
-
-      <div class="tomorrow-col">
-        <div class="tomorrow-col-label">Events</div>
-        <div class="tomorrow-list">
-        ${events.length ? events.slice().sort((a,b) => (a.start || '').localeCompare(b.start || '')).map(e => `
-          <div class="tomorrow-row event">
-            <span class="tomorrow-event-dot ${e._kind==='starred'?'starred':''}"></span>
-            <span style="flex:1">${e._kind==='starred'?'★ ':''}${esc(e.label)}</span>
-            ${e.start ? `<span class="event-time-chip">${fmtTime(e.start)}${e.end ? '–' + fmtTime(e.end) : ''}</span>` : ''}
-            ${e._kind==='agenda' ? `<button class="del-btn" style="opacity:1" onclick="window.dash.delAgendaEvent('${e.id}')">×</button>` : ''}
+    <div class="tmr-list">
+      ${items.length ? items.map((it, i) => `
+        <div class="tmr-row" style="--i:${i}">
+          <div class="tmr-when">${it.time ? fmt12(it.time) : (it.kind === 'event' ? 'All day' : 'Due')}</div>
+          <div class="tmr-main">
+            <div class="tmr-title">${esc(it.title)}</div>
+            <div class="tmr-sub"><i class="tmr-dot" style="background:${it.color}"></i>${esc(it.sub)}</div>
           </div>
-        `).join('') : `<div class="tomorrow-empty">Nothing on the calendar.</div>`}
-        </div>
-        <div class="tomorrow-add">
-          <input class="t-input" id="tmrEventName" placeholder="Event for tomorrow…" onkeydown="if(event.key==='Enter')window.dash.addTomorrowEvent()"/>
-          <input class="t-input tmr-time" id="tmrEventTime" type="time" title="Start time (optional)"/>
-          <button class="btn-add" onclick="window.dash.addTomorrowEvent()">Add</button>
-        </div>
-      </div>
+          <div class="tmr-act">
+            ${it.kind === 'task' ? `<button type="button" class="tmr-btn" title="Mark done" aria-label="Mark done" onclick="window.dash.toggleTask('${it.id}')"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></button>` : ''}
+            ${it.kind === 'task' ? `<button type="button" class="tmr-btn" title="Delete" aria-label="Delete" onclick="window.dash.delTask('${it.id}')">\u00d7</button>` : (it.ek === 'agenda' ? `<button type="button" class="tmr-btn" title="Delete" aria-label="Delete" onclick="window.dash.delAgendaEvent('${it.id}')">\u00d7</button>` : '')}
+          </div>
+        </div>`).join('') : `<div class="tmr-empty">Nothing planned for tomorrow yet.</div>`}
     </div>
+    <div class="tmr-add">
+      <input class="t-input" id="tmrNew" placeholder="Add something for tomorrow" onkeydown="if(event.key==='Enter')window.dash.addTomorrowItem('task')"/>
+      <input class="t-input tmr-time" id="tmrTime" type="time" title="Time (optional)"/>
+      <button class="btn-add" type="button" onclick="window.dash.addTomorrowItem('task')">Task</button>
+      <button class="btn-add ghost" type="button" onclick="window.dash.addTomorrowItem('event')">Event</button>
+    </div>`;
+}
 
-    <div class="tomorrow-foot">
-      <div class="tomorrow-foot-label">Non-negotiables for tomorrow</div>
-      <div class="tomorrow-habits-row">
-        ${habits.length ? habits.map(h => `
-          <span class="tomorrow-habit-chip" title="${esc(h.label)}">
-            <span class="tomorrow-habit-icon">${iconRender(h.icon)}</span>
-            <span>${esc(h.label)}</span>
-          </span>
-        `).join('') : `<span class="tomorrow-empty" style="display:inline">No habits set up.</span>`}
-      </div>
-    </div>
-  `;
+function addTomorrowItem(kind) {
+  const inp = $('tmrNew'); const name = ((inp && inp.value) || '').trim();
+  if (!name) return;
+  const time = ($('tmrTime') && $('tmrTime').value) || '';
+  if (kind === 'event') {
+    const evs = getAgendaEvents(); const e = { id: uid(), label: name, date: tomorrowKey() };
+    if (time) e.start = time;
+    evs.push(e); saveAgendaEvents(evs);
+  } else {
+    const tasks = getTasks();
+    const t = { id: uid(), text: name, dueDate: tomorrowKey(), type: '', classId: null, done: false, createdAt: Date.now() };
+    if (time) t.dueTime = time;
+    tasks.unshift(t); saveTasks(tasks);
+  }
+  renderTomorrow(); renderPlanner();
 }
 
 function addTomorrowTask() {
@@ -2082,11 +2186,12 @@ function renderWeekView() {
     div.innerHTML = `
       <div class="week-day-head">
         <span class="week-day-lbl">${DAYS[i]}</span>
+        <span class="week-day-mon">${d.toLocaleDateString(undefined,{month:'short'})}</span>
         <span class="week-day-num">${d.getDate()}</span>
       </div>
-      <div class="week-day-items">
-        ${dayTasks.slice(0,4).map(t => `<div class="week-chip ${getCategory(t.type)}" title="${esc(t.text)}">${esc(t.text)}</div>`).join('')}
-        ${dayEvents.slice(0,2).map(e => `<div class="week-chip ${e._kind==='starred'?'event':'agenda-event'}" title="${esc(e.label)}">${e._kind==='starred'?'★ ':''}${e.start?`${fmtTime(e.start)} · `:''}${esc(e.label)}</div>`).join('')}
+      <div class="week-day-items${(dayTasks.length + dayEvents.length) ? '' : ' is-empty'}">
+        ${dayTasks.slice(0,8).map(t => { const wc = t.classId ? getClass(t.classId) : null; return `<div class="week-chip ${getCategory(t.type)}" style="--cc:${wc ? wc.color : '#8a7c6b'}" title="${esc(t.text)}">${esc(t.text)}</div>`; }).join('')}
+        ${dayEvents.slice(0,4).map(e => `<div class="week-chip ${e._kind==='starred'?'event':'agenda-event'}" title="${esc(e.label)}">${e._kind==='starred'?'★ ':''}${e.start?`${fmtTime(e.start)} · `:''}${esc(e.label)}</div>`).join('')}
       </div>`;
     strip.appendChild(div);
   });
@@ -2239,44 +2344,37 @@ function renderEventsView() {
   }).join('');
 }
 
-function renderHabitHeat() {
+function toggleHabitDay(id, ds) {
+  const hist = getHabitHistory();
+  if (!hist[ds]) hist[ds] = {};
+  hist[ds][id] = !hist[ds][id];
+  saveHabitHistory(hist);
+  renderHabits(); renderHabitHeat(ds + '|' + id);
+}
+function renderHabitHeat(popKey) {
   const el = $('habitsBody'); if (!el) return;
   const habits = getHabits();
   const hist = getHabitHistory();
   const today = new Date(); today.setHours(0,0,0,0);
   const todayStrV = todayStr();
-  const DAY_LBLS = ['S','M','T','W','T','F','S'];
+  const NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   const weekDates = getWeekDates();
   if (!habits.length) { el.innerHTML = `<div class="empty">Add some habits to track them here.</div>`; return; }
-  el.innerHTML = habits.map(h => {
-    let doneCount = 0;
-    const cells = weekDates.map(d => {
-      const ds = dateKey(d);
-      const done = hist[ds] && hist[ds][h.id];
-      if (done) doneCount++;
-      const isFuture = d > today;
-      const isToday = ds === todayStrV;
-      return `<div class="habit-cell${done?' done':''}${isToday?' today':''}${isFuture?' future':''}" title="${ds}">
-        <span class="d">${DAY_LBLS[d.getDay()]}</span>
-        <span class="n">${d.getDate()}</span>
-        ${done ? `<svg class="habit-cell-check" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>` : ''}
-      </div>`;
-    }).join('');
-    const streak = habitStreak(h.id);
-    return `<div class="habit-heat-row">
-      <div class="habit-heat-info">
-        <span class="habit-heat-chip">${iconRender(h.icon)}</span>
-        <span class="habit-heat-meta">
-          <span class="habit-heat-label">${esc(h.label)}</span>
-          <span class="habit-heat-sub">
-            <span class="habit-heat-count${doneCount === 7 ? ' full' : ''}">${doneCount}/7 this week</span>
-            ${streak >= 2 ? `<span class="habit-heat-streak" title="${streak}-day streak">\uD83D\uDD25 ${streak}</span>` : ''}
-          </span>
-        </span>
-      </div>
-      <div class="habit-heat-cells">${cells}</div>
-    </div>`;
-  }).join('');
+  const CHECK = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
+  el.innerHTML = `<div class="hh-grid${popKey ? ' no-enter' : ''}">
+    <span class="hh-corner"></span>
+    ${weekDates.map(d => `<span class="hh-day${dateKey(d) === todayStrV ? ' is-today' : ''}">${NAMES[d.getDay()]}</span>`).join('')}
+    ${habits.map((h, r) => {
+      const hc = habitColorFor(h);
+      return `<span class="hh-name" style="--i:${r}"><i style="background:${hc}"></i>${esc(h.label)}</span>` + weekDates.map((d, c) => {
+        const ds = dateKey(d);
+        const done = !!(hist[ds] && hist[ds][h.id]);
+        const future = d > today;
+        const pop = popKey === ds + '|' + h.id ? ' pop' : '';
+        return `<button type="button" class="hh-cell${done ? ' done' : ''}${future ? ' future' : ''}${pop}" style="--hc:${hc};--i:${r + c}" ${future ? 'disabled' : ''} title="${esc(h.label)}, ${ds}" aria-pressed="${done}" onclick="window.dash.toggleHabitDay('${h.id}','${ds}')">${done ? CHECK : ''}</button>`;
+      }).join('');
+    }).join('')}
+  </div>`;
 }
 
 // ─── IMPORTANT DATES ──────────────────────────────────────────
@@ -2292,11 +2390,11 @@ function renderDates() {
     .forEach(d => {
       const diff = Math.round((new Date(d.date+'T00:00:00') - today) / 86400000);
       let cls, label;
-      if (diff === 0)      { cls='today'; label='Today'; }
-      else if (diff < 0)   { cls='past';  label=`${Math.abs(diff)}d ago`; }
-      else if (diff === 1) { cls='soon';  label='Tomorrow'; }
-      else if (diff <= 30) { cls='soon';  label=`${diff}d`; }
-      else                 { cls='far';   label=`${diff}d`; }
+      if (diff === 0)      { cls='today'; }
+      else if (diff < 0)   { cls='past'; }
+      else if (diff <= 30) { cls='soon'; }
+      else                 { cls='far'; }
+      label = new Date(d.date + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' }).toUpperCase();
       const div = document.createElement('div');
       div.className = 'date-item';
       div.innerHTML = `
@@ -2359,7 +2457,7 @@ function switchGoalScope(scope, el) {
 function renderGoals() {
   const goals = getGoals()[goalScope] || [];
   const el = $('goalsList');
-  if (!goals.length) { el.innerHTML = `<div class="empty">No ${goalScope==='year'?'yearly':goalScope+'ly'} goals yet.</div>`; return; }
+  if (!goals.length) { el.innerHTML = `<div class="empty">No goals for this stretch yet.</div>`; return; }
   el.innerHTML = goals.map(g => {
     const pct = +(g.pct || 0);
     const full = pct >= 100;
@@ -2516,9 +2614,9 @@ function curNext() {
 }
 function curGoTo(i) { curIdx = i; renderCurrently(); }
 
-function curAdd() {
+function curAdd(given) {
   const meta = CUR_KINDS[curKind];
-  const title = prompt(meta.placeholder);
+  const title = (typeof given === 'string') ? given : prompt(meta.placeholder);
   if (!title) return;
   const all = getCurrentlyAll();
   all[curKind] = all[curKind] || [];
@@ -2672,7 +2770,7 @@ window.dashImg = { compressImage, cssUrl };
    - posX/posY: 0-100   (object-position percentages)
    - zoom:     100-400  (scale of the image — 100 = cover) */
 
-const CARD_BG_DEFAULTS = { intensity: 60, posX: 50, posY: 50, zoom: 100 };
+const CARD_BG_DEFAULTS = { intensity: 100, posX: 50, posY: 50, zoom: 100 };
 
 /* Some cards have sub-tabs (Currently → reading/watching/playing, Planner →
    class filter, Agenda → view, Goals → scope). We let users save a DIFFERENT
@@ -3028,8 +3126,8 @@ function renderHealth() {
   const tiles = [
     { key:'sleep',  name:'Sleep',  unit:'h',    icon:'moon',     val: h.sleep },
     { key:'steps',  name:'Steps',  unit:'',     icon:'activity', val: h.steps },
-    { key:'energy', name:'Energy', unit:'kcal', icon:'flame',    val: h.energy },
-    { key:'heart',  name:'Resting',unit:'bpm',  icon:'heart',    val: h.heart },
+    { key:'energy', name:'Active Energy', unit:'kcal', icon:'flame',    val: h.energy },
+    { key:'heart',  name:'Resting HR',unit:'bpm',  icon:'heart',    val: h.heart },
   ];
   const hist = getHealthHistory();
   const dates = getLast7Dates();
@@ -3211,9 +3309,9 @@ window.dash = {
   renderQlinks, deleteQlink, editQlinkIcon, openQlinkModal, closeQlinkModal, submitQlink, toggleMobileLinks,
   openIconPicker, closeIconPicker, pickLinkIcon, uploadLinkIcon,
   pickSideRailBg, clearSideRailBg, applySideRailBg, openLink,
-  renderHabits, toggleHabitEdit, addHabit, deleteHabit, toggleIconPicker, selectIcon, updateHabitLabel, uploadHabitIcon,
+  renderHabits, setHabitColor, toggleHabitEdit, addHabit, deleteHabit, toggleIconPicker, selectIcon, updateHabitLabel, uploadHabitIcon,
   renderDailies, toggleDailyEdit, addDailyItem, deleteDailyItem, updateDailyLabel, selectDailyIcon, setDailyToday, getDailies,
-  renderPlanner, renderPlannerTabs, renderTaskClassSelect, addTask, toggleTask, delTask, switchTab,
+  renderPlanner, renderPlannerTabs, renderTaskClassSelect, setPlannerGroup, addTask, toggleTask, delTask, switchTab,
   startTaskRename, renameTask, startTileRename, toggleTaskDetails,
   openStatusMenu, closeStatusMenu, setTaskStatus,
   openDueMenu, closeDueMenu, saveDueDate, clearDueDate,
@@ -3232,7 +3330,7 @@ window.dash = {
   pickCardImage, setCardBgProp, clearCardBg, toggleCardBgPopover, toggleRepositionMode, resetCardBgPosition, applyAllCardBgs, applyCardBg, injectCardBgButtons,
   // streaks / schedule / tomorrow
   renderClassSchedule, addScheduleBlock, delScheduleBlock, updateScheduleBlock,
-  renderTomorrow, openTomorrow, addTomorrowTask, addTomorrowEvent,
+  renderTomorrow, openTomorrow, addTomorrowTask, addTomorrowEvent, addTomorrowItem, toggleHabitDay,
   habitStreak, setHabitToday, getTaskLog, getHabits,
 };
 

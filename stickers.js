@@ -22,6 +22,7 @@ const { $, $$, uid, esc, load, save } = window.dashUtil;
 const KEY = 'stickers';
 const DEFAULTS = { size: 140, opacity: 100, rot: 0, layer: 'above' };
 const ANCHORS = ['tl', 'tr', 'bl', 'br'];
+const OUTLINE = 'drop-shadow(2px 0 0 #fff) drop-shadow(-2px 0 0 #fff) drop-shadow(0 2px 0 #fff) drop-shadow(0 -2px 0 #fff) drop-shadow(0 5px 8px rgba(0,0,0,.3))';
 
 let layerAbove = null;   // overlay above the cards
 let layerBehind = null;  // decorative layer behind the cards
@@ -111,7 +112,8 @@ function render() {
     el.draggable = false;
     el.style.width = (st.size ?? DEFAULTS.size) + 'px';
     el.style.opacity = String((st.opacity ?? DEFAULTS.opacity) / 100);
-    el.style.transform = `translate(-50%,-50%) rotate(${st.rot || 0}deg)`;
+    el.style.transform = `translate(-50%,-50%) rotate(${st.rot || 0}deg) scaleX(${st.flip ? -1 : 1})`;
+    el.style.filter = st.outline ? OUTLINE : '';
     ((st.layer === 'behind') ? layerBehind : layerAbove).appendChild(el);
     positionSticker(el, st);
     if (arranging) bindDrag(el, st.id);
@@ -154,7 +156,8 @@ function setStickerProp(id, prop, value) {
   if (el) {
     el.style.width = (st.size ?? DEFAULTS.size) + 'px';
     el.style.opacity = String((st.opacity ?? DEFAULTS.opacity) / 100);
-    el.style.transform = `translate(-50%,-50%) rotate(${st.rot || 0}deg)`;
+    el.style.transform = `translate(-50%,-50%) rotate(${st.rot || 0}deg) scaleX(${st.flip ? -1 : 1})`;
+    el.style.filter = st.outline ? OUTLINE : '';
     positionSticker(el, st);
   }
 }
@@ -277,7 +280,17 @@ function watchLayout() {
 }
 
 /* ── EXPORT + BOOT ───────────────────────────────────────────── */
+async function clearStickerBg(id) {
+  const cur = stickerImg(id);
+  if (!cur || !window.extras || !window.extras.cleanBg) return;
+  const orig = window.dashStore.getCached('sticker:' + id + ':orig');
+  if (orig) { await window.dashStore.set('sticker:' + id, orig); await window.dashStore.del('sticker:' + id + ':orig'); }
+  else { const png = await window.extras.cleanBg(cur); await window.dashStore.set('sticker:' + id + ':orig', cur); await window.dashStore.set('sticker:' + id, png); }
+  render();
+  if (window.tweaks && window.tweaks.refresh) window.tweaks.refresh();
+}
 window.stickers = {
+  clearBg: clearStickerBg,
   boot() { render(); watchLayout(); },
   render,
   add: addSticker,

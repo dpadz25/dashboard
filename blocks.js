@@ -1066,6 +1066,91 @@
     return div;
   }
 
+  /* ── CUSTOM WIDGETS (photo / hours / spotify) ─────────────
+     extras.js builds these cards. At boot they are already in the DOM
+     (buildStructure places them from the saved layout). Adding one later
+     drops it in a new row at the bottom. */
+  function addBlock(node) {
+    if (!container) return;
+    const rowEl = el('div', 'brow');
+    const colEl = el('div', 'bcol');
+    colEl.style.setProperty('--col-frac', '1');
+    node.style.setProperty('--frac', '1');
+    colEl.appendChild(node);
+    rowEl.appendChild(colEl);
+    container.appendChild(rowEl);
+    injectHandles(node);
+    if (window.dash && window.dash.injectCardBgButtons) {
+      window.dash.injectCardBgButtons();
+      window.dash.applyAllCardBgs();
+    }
+    saveLayout();
+    node.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+  // Put nodes in a new column to the right of `anchor` (a card that sits alone
+  // in its row). Used once to seed the Up next + Hours cards beside the planner.
+  function addBeside(anchorId, nodes) {
+    const anchor = container && container.querySelector('.block[data-card-id="' + anchorId + '"]');
+    const col = anchor && anchor.parentElement;
+    const row = col && col.parentElement;
+    if (!col || !row || !row.classList.contains('brow') || row.querySelectorAll(':scope > .bcol').length !== 1) return false;
+    col.style.setProperty('--col-frac', '0.62');
+    const colEl = el('div', 'bcol');
+    colEl.style.setProperty('--col-frac', '0.38');
+    nodes.forEach((n) => { n.style.setProperty('--frac', '1'); colEl.appendChild(n); });
+    row.appendChild(colEl);
+    nodes.forEach((n) => injectHandles(n));
+    if (window.dash && window.dash.injectCardBgButtons) { window.dash.injectCardBgButtons(); window.dash.applyAllCardBgs(); }
+    saveLayout();
+    return true;
+  }
+  // Rebuild the whole grid from a rows array (same shape as the saved layout).
+  function applyLayout(rows) {
+    if (!container) return;
+    container.querySelectorAll('.block').forEach((n) => { n.style.removeProperty('--bh'); syncFixed(n); });
+    buildStructure(rows);
+    container.querySelectorAll('.block').forEach((n) => injectHandles(n));
+    if (window.dash && window.dash.injectCardBgButtons) { window.dash.injectCardBgButtons(); window.dash.applyAllCardBgs(); }
+    saveLayout();
+  }
+  // Add nodes as a new right-hand column of an existing row (existing columns shrink to make room).
+  function addColumn(row, nodes) {
+    if (!row) return false;
+    const cols = [...row.querySelectorAll(':scope > .bcol')];
+    cols.forEach((c) => { const f = parseFloat(c.style.getPropertyValue('--col-frac')) || (1 / Math.max(1, cols.length)); c.style.setProperty('--col-frac', String(Math.round(f * 70) / 100)); });
+    const colEl = el('div', 'bcol');
+    colEl.style.setProperty('--col-frac', '0.3');
+    nodes.forEach((n) => { n.style.setProperty('--frac', '1'); colEl.appendChild(n); });
+    row.appendChild(colEl);
+    nodes.forEach((n) => injectHandles(n));
+    if (window.dash && window.dash.injectCardBgButtons) { window.dash.injectCardBgButtons(); window.dash.applyAllCardBgs(); }
+    saveLayout();
+    return true;
+  }
+  // Drop a new card into the shortest column of the last multi-column band (keeps the page even).
+  function addShortest(node) {
+    if (!container) return false;
+    const rows = [...container.querySelectorAll(':scope > .brow')].reverse();
+    const band = rows.find((r) => r.querySelectorAll(':scope > .bcol').length >= 3);
+    if (!band) return false;
+    const cols = [...band.querySelectorAll(':scope > .bcol')];
+    const target = cols.reduce((m, c) => (c.getBoundingClientRect().height < m.getBoundingClientRect().height ? c : m), cols[0]);
+    node.style.setProperty('--frac', '1');
+    target.appendChild(node);
+    injectHandles(node);
+    if (window.dash && window.dash.injectCardBgButtons) { window.dash.injectCardBgButtons(); window.dash.applyAllCardBgs(); }
+    saveLayout();
+    node.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return true;
+  }
+  function removeBlock(node) {
+    const col = node.parentElement;
+    const row = col ? col.parentElement : null;
+    node.remove();
+    cleanupEmpties(col, row);
+    saveLayout();
+  }
+
   /* ── AUTO-SCROLL during drag ────────────────────────────── */
   function startAutoScroll() {
     const EDGE   = 90;
@@ -1223,6 +1308,7 @@
   window.blocks = {
     boot,
     save: saveLayout,
+    addBlock, addBeside, addColumn, addShortest, applyLayout, removeBlock,
     applyTabHeight,
     reset() {
       try {

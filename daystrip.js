@@ -61,11 +61,15 @@ function render() {
     const showMonth = i === 0 || d.getDate() === 1;
     const dots =
       (evCount   ? `<span class="ds-dot ev"   title="${evCount} event${evCount > 1 ? 's' : ''}"></span>`   : '') +
-      (taskCount ? `<span class="ds-dot task" title="${taskCount} task${taskCount > 1 ? 's' : ''} due"></span>` : '') +
+      (taskCount ? (() => {
+        const cs = load('schoolClasses', []);
+        const cols = [...new Set(tasks.filter(t => t.dueDate === key).map(t => { const c = cs.find(x => x.id === t.classId); return c ? c.color : '#8a7c6b'; }))].slice(0, 3);
+        return cols.map(c => `<span class="ds-dot task" style="background:${c}" title="${taskCount} task${taskCount > 1 ? 's' : ''} due"></span>`).join('');
+      })() : '') +
       (clsCount  ? `<span class="ds-dot cls"  title="${clsCount} class${clsCount > 1 ? 'es' : ''}"></span>`  : '');
     html += `
       <button class="ds-day${isToday ? ' today' : ''}" onclick="window.daystrip.openDay('${key}')" title="Open ${DAY_FULL[d.getDay()]}">
-        <span class="ds-lbl">${isToday ? 'TODAY' : DAY_LBLS[d.getDay()]}</span>
+        <span class="ds-lbl">${DAY_LBLS[d.getDay()]}</span>
         <span class="ds-num">${d.getDate()}</span>
         <span class="ds-month">${showMonth ? MONTHS[d.getMonth()] : '&nbsp;'}</span>
         <span class="ds-dots">${dots || '<span class="ds-dot none"></span>'}</span>

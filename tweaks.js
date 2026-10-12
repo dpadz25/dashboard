@@ -7,8 +7,8 @@ const $ = window.dashUtil.$;
 const compressImage = window.dashImg ? window.dashImg.compressImage : null;
 
 const DEFAULTS = /*EDITMODE-BEGIN*/{
-  "theme": "amber",
-  "fontPreset": "modern",
+  "theme": "sky",
+  "fontPreset": "theme",
   "showQuicklinks": true,
   "showDaystrip": true,
   "showLife": true,
@@ -32,6 +32,10 @@ const DEFAULTS = /*EDITMODE-BEGIN*/{
 }/*EDITMODE-END*/;
 
 let state = { ...DEFAULTS, ...(window.dashUtil.load('tweaksState', {})) };
+// The redesign only exists in Sky and Forest. A saved older theme (paper, amber, dusk) would show half-styled.
+if (state.theme !== 'sky' && state.theme !== 'forest') { state.theme = 'sky'; state.fontPinned = false; }
+// First time on a new theme: use its fonts unless a font was picked on purpose after this.
+if ((state.theme === 'sky' || state.theme === 'forest') && !state.fontPinned) state.fontPreset = 'theme';
 let pageBg = null; // loaded from the image store once it's ready (see window load handler)
 
 let panelOpen = false;
@@ -97,6 +101,9 @@ const FONT_PRESETS = {
   },
 };
 
+// "Match theme" leaves the fonts to the theme itself (Sky and Forest each bring their own).
+FONT_PRESETS.theme = { name: 'Match theme', note: 'Fonts come from the theme', d: '', b: '', s: '', google: '' };
+
 const loadedFontKeys = new Set(['modern']);
 function ensureFontLoaded(presetKey) {
   if (loadedFontKeys.has(presetKey)) return;
@@ -116,6 +123,11 @@ function applyFontPreset() {
   const key = FONT_PRESETS[state.fontPreset] ? state.fontPreset : 'modern';
   ensureFontLoaded(key);
   const p = FONT_PRESETS[key];
+  if (key === 'theme') {
+    ['--font-d', '--font-b', '--font-s'].forEach((v) => document.documentElement.style.removeProperty(v));
+    document.documentElement.setAttribute('data-font', key);
+    return;
+  }
   document.documentElement.style.setProperty('--font-d', p.d);
   document.documentElement.style.setProperty('--font-b', p.b);
   document.documentElement.style.setProperty('--font-s', p.s);
@@ -199,6 +211,9 @@ function persist() {
 
 function setKey(key, value) {
   state[key] = value;
+  // Picking the new themes also hands the fonts back to the theme.
+  if (key === 'theme' && (value === 'sky' || value === 'forest')) { state.fontPreset = 'theme'; state.fontPinned = false; }
+  if (key === 'fontPreset') state.fontPinned = true;
   persist();
   try {
     window.parent.postMessage({ type: '__edit_mode_set_keys', edits: { [key]: value } }, '*');
@@ -284,9 +299,8 @@ function renderPanel() {
   if (!panel) return;
 
   const themes = [
-    { id:'amber', name:'Warm Amber',   colors:['#0d0b09','#1e1a15','#d4a252','#7caa6a'] },
-    { id:'paper', name:'Paper Journal',colors:['#efe7d6','#faf3e3','#b8501e','#4f7a3a'] },
-    { id:'dusk',  name:'Dusk Sage',    colors:['#0d1411','#1d2722','#94c08e','#6cb8b0'] },
+    { id:'sky',   name:'Sky (new)',    colors:['#2f3d56','#fbf7ef','#b8501e','#df9f7b'] },
+    { id:'forest',name:'Forest (new)', colors:['#1d3b2a','#f7faf4','#2f6b45','#d6ec8a'] },
   ];
 
   const railBg = window.dashStore.getCached('sideRailBg');
@@ -425,6 +439,11 @@ function renderPanel() {
               <div class="sticker-ctl"><label>Tilt</label>
                 <input type="range" min="-180" max="180" value="${st.rot ?? 0}" class="tweak-slider"
                        oninput="window.stickers.set('${st.id}','rot',this.value)"/></div>
+              <div class="sticker-layer-toggle">
+                <button class="${st.flip?'active':''}" onclick="window.stickers.set('${st.id}','flip',${st.flip?0:1});window.tweaks.refresh()">Flip</button>
+                <button class="${st.outline?'active':''}" onclick="window.stickers.set('${st.id}','outline',${st.outline?0:1});window.tweaks.refresh()">White edge</button>
+                <button onclick="window.stickers.clearBg('${st.id}')">${window.dashStore.getCached('sticker:'+st.id+':orig')?'Restore background':'Clear background'}</button>
+              </div>
               <div class="sticker-layer-toggle">
                 <button class="${(st.layer||'above')==='above'?'active':''}" onclick="window.stickers.set('${st.id}','layer','above')">Over widgets</button>
                 <button class="${st.layer==='behind'?'active':''}" onclick="window.stickers.set('${st.id}','layer','behind')">Behind widgets</button>
