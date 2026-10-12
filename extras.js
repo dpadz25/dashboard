@@ -420,11 +420,21 @@ function buildHours(w) {
   // Turn sheet rows (Category + Hours columns) into entries.
   const applyRows = (rows) => {
     const h = getHours();
-    const head = (rows[0] || []).map((x) => String(x).trim().toLowerCase());
-    const ci = head.findIndex((x) => x.startsWith('categor')), hi = head.findIndex((x) => x.startsWith('hour'));
-    if (ci < 0 || hi < 0) { msg('Could not find Category and Hours columns in that tab.'); return false; }
-    const fresh = rows.slice(1).filter((r) => parseFloat(r[hi]) > 0)
-      .map((r) => ({ id: uid(), cat: catKey(r[ci]), h: parseFloat(r[hi]), d: todayStr(), src: 'sheet' }));
+    // The real header row can sit under a title and notes, so look through the first rows for it.
+    let hr = -1, ci = -1, hi = -1;
+    for (let i = 0; i < Math.min(rows.length, 20) && hr < 0; i++) {
+      const head = (rows[i] || []).map((x) => String(x).trim().toLowerCase());
+      const c = head.findIndex((x) => x.startsWith('categor')), k = head.findIndex((x) => x.startsWith('hour'));
+      if (c >= 0 && k >= 0) { hr = i; ci = c; hi = k; }
+    }
+    if (hr < 0) { msg('Could not find Category and Hours columns. Add the Hours Log tab to the link (open that tab and copy the address) and try again.'); return false; }
+    const di = (rows[hr] || []).findIndex((x) => String(x).trim().toLowerCase() === 'date');
+    const isoDate = (v) => {
+      const m = String(v || '').match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+      return m ? `${m[3]}-${m[1].padStart(2, '0')}-${m[2].padStart(2, '0')}` : todayStr();
+    };
+    const fresh = rows.slice(hr + 1).filter((r) => parseFloat(r[hi]) > 0 && String(r[ci] || '').trim())
+      .map((r) => ({ id: uid(), cat: catKey(r[ci]), h: parseFloat(r[hi]), d: di >= 0 ? isoDate(r[di]) : todayStr(), src: 'sheet' }));
     h.entries = h.entries.filter((x) => x.src !== 'sheet' && x.src !== 'seed').concat(fresh);
     saveHours(h); render(); msg(`Imported ${fresh.length} rows.`);
     return true;
@@ -435,7 +445,11 @@ function buildHours(w) {
     const m = url.match(/\/spreadsheets\/d\/([\w-]+)/), g = (url.match(/[?#&]gid=(\d+)/) || [])[1] || '0';
     if (/\/d\/e\//.test(url)) return [url.includes('output=csv') ? url : url.replace(/\/pub.*$/, '') + '/pub?output=csv&gid=' + g];
     if (!m) return [url];
-    return [`https://docs.google.com/spreadsheets/d/${m[1]}/gviz/tq?tqx=out:csv&gid=${g}`, `https://docs.google.com/spreadsheets/d/${m[1]}/export?format=csv&gid=${g}`];
+    const base = `https://docs.google.com/spreadsheets/d/${m[1]}`;
+    const list = [];
+    if (!/[?#&]gid=/.test(url)) list.push(`${base}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent('Hours Log')}`);
+    list.push(`${base}/gviz/tq?tqx=out:csv&gid=${g}`, `${base}/export?format=csv&gid=${g}`);
+    return list;
   };
   const loadXlsx = () => window.XLSX ? Promise.resolve(window.XLSX) : new Promise((res, rej) => {
     const sc = document.createElement('script');
