@@ -2846,6 +2846,10 @@ function refreshTabbedBg(id) {
   ensureCardBgUI(id);
 }
 
+/* Cards whose original look is the full photo keep it; everything else defaults to the banner. */
+const FULL_PHOTO_CARDS = ['pomodoro', 'clock', 'currently', 'habits'];
+function defaultLookFor(id) { return (FULL_PHOTO_CARDS.includes(id) || String(id).startsWith('next-')) ? 'full' : 'banner'; }
+
 function applyCardBg(el) {
   const id = el.dataset.cardId;
   const cfg = getCardBg(id);
@@ -2877,8 +2881,9 @@ function applyCardBg(el) {
     el.setAttribute('data-has-bg', '1');
     if (isCard) {
       // How the photo and the card text share the space: banner (default), sheet, or glass.
-      el.setAttribute('data-bg-look', cfg.look || 'banner');
-      el.style.setProperty('--bg-dim', String((cfg.dim ?? 25) / 100));
+      const lk = cfg.look || defaultLookFor(id);
+      el.setAttribute('data-bg-look', lk);
+      el.style.setProperty('--bg-dim', String((cfg.dim ?? (lk === 'full' ? 0 : 25)) / 100));
       measureBgStrip(el);
       watchBgStrip(el);
     }
@@ -3059,10 +3064,10 @@ function ensureCardBgUI(id) {
 
   const isCard = cardEl && cardEl.classList.contains('card');
   const photoOn = has && !(cur && cur.off);
-  const look = (cur && cur.look) || 'banner';
-  const dim = (cur && cur.dim != null) ? cur.dim : 25;
+  const look = (cur && cur.look) || defaultLookFor(id);
+  const dim = (cur && cur.dim != null) ? cur.dim : (look === 'full' ? 0 : 25);
   const dark = !!(cur && cur.dark);
-  const looks = [['banner', 'Banner', 'linear-gradient(180deg,#c86a5a 0 40%,var(--card) 40%)'], ['sheet', 'Sheet', 'linear-gradient(160deg,#c86a5a,#6a3a4a)'], ['glass', 'Dark glass', 'linear-gradient(160deg,#4a2a30,#1c1218)']];
+  const looks = [['banner', 'Banner', 'linear-gradient(180deg,#c86a5a 0 40%,var(--card) 40%)'], ['full', 'Full photo', 'radial-gradient(circle at 70% 25%,#f2866a,#6a3a4a 70%)'], ['sheet', 'Sheet', 'linear-gradient(var(--card),var(--card)) center/72% 58% no-repeat,linear-gradient(160deg,#c86a5a,#6a3a4a)'], ['glass', 'Dark glass', 'linear-gradient(160deg,#4a2a30,#1c1218)']];
 
   pop.innerHTML = `
     <div class="card-bg-popover-title-row">

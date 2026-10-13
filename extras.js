@@ -1136,7 +1136,25 @@ function resetPlacement() { applyPaperLayout(); }
    dashboard.js. This labels the handle and adds a hide button, then CSS lays them out like the mockup. */
 const EYE_OFF = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.9 17.9A10.1 10.1 0 0 1 12 20C5 20 1 12 1 12a18.5 18.5 0 0 1 5.1-5.9M9.9 4.2A9.1 9.1 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.2 3.2M1 1l22 22"/></svg>';
 const PALETTE = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.8-.8 1.8-1.7 0-.5-.2-.9-.5-1.2-.3-.3-.5-.7-.5-1.2 0-1 .8-1.8 1.8-1.8H17a4 4 0 0 0 4-4C21 6.6 17 3 12 3z"/><circle cx="7.5" cy="11" r="1"/><circle cx="10" cy="7" r="1"/><circle cx="14.5" cy="7" r="1"/></svg>';
+const TRASH = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 10v6M14 10v6"/></svg>';
 const PLUS = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>';
+/* Delete a card: added widgets are removed for good (after a confirm); built-in cards are
+   removed from the dashboard and can be brought back from Add widget. */
+function deleteCard(b) {
+  const id = b.dataset.cardId, w = getWidgets().find((x) => x.id === id);
+  if (w) {
+    if (!confirm('Delete this widget? This cannot be undone.')) return;
+    saveWidgets(getWidgets().filter((x) => x.id !== id));
+    if (w.kind === 'photo') { window.dashStore.del('photo:' + id); window.dashStore.del('photo:' + id + ':orig'); }
+    if (w.kind === 'spotify') stopSpotify();
+    window.blocks.removeBlock(b);
+    return;
+  }
+  const p = getPrefs();
+  if (!p.hidden.includes(id)) p.hidden.push(id);
+  setPrefs(p);
+  toast(labelOf(b) + ' removed. Bring it back from Add widget.', () => { const q = getPrefs(); q.hidden = q.hidden.filter((x) => x !== id); setPrefs(q); });
+}
 function decorateBlocks() {
   document.querySelectorAll('.block[data-card-id]').forEach((b) => {
     const handle = b.querySelector(':scope > .block-handle');
@@ -1145,6 +1163,7 @@ function decorateBlocks() {
     const c = document.createElement('div');
     c.className = 'x-chrome';
     c.innerHTML = `<button type="button" data-a="hide" title="Hide this card" aria-label="Hide this card">${EYE_OFF}</button>
+      <button type="button" data-a="del" title="Delete this card" aria-label="Delete this card">${TRASH}</button>
       <button type="button" data-a="bg" title="Customize card" aria-label="Customize card">${PALETTE}</button>
       <button type="button" data-a="add" title="Add a note below" aria-label="Add a note below">${PLUS}</button>`;
     c.addEventListener('mousedown', (e) => e.stopPropagation());
@@ -1156,6 +1175,8 @@ function decorateBlocks() {
         if (!p.hidden.includes(id)) p.hidden.push(id);
         setPrefs(p);
         toast(labelOf(b) + ' hidden', () => { const q = getPrefs(); q.hidden = q.hidden.filter((x) => x !== id); setPrefs(q); });
+      } else if (a.dataset.a === 'del') {
+        deleteCard(b);
       } else if (a.dataset.a === 'bg') {
         const btn = b.querySelector(':scope > .card-bg-btn'); if (btn) btn.click();
       } else {

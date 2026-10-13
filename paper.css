@@ -415,7 +415,7 @@ body.stickers-arranging .block.sticker-target { outline: 0 !important; box-shado
   color: #f4ece0;
 }
 /* no pills on the card text in any look */
-:is([data-theme="sky"],[data-theme="forest"]) .card[data-has-bg="1"][data-bg-look] :is(.planner-title, h2, h3, .x-hdr-text h2, .task-group-label > span, .task-group-label > em, .empty, .x-sub, .x-end-row .ghost) {
+:is([data-theme="sky"],[data-theme="forest"]) .card[data-has-bg="1"][data-bg-look]:not([data-bg-look="full"]) :is(.planner-title, h2, h3, .x-hdr-text h2, .task-group-label > span, .task-group-label > em, .empty, .x-sub, .x-end-row .ghost) {
   background: none; -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: none; padding: 0; border-radius: 0; width: auto;
 }
 
@@ -475,3 +475,9 @@ body.stickers-arranging .block.sticker-target { outline: 0 !important; box-shado
   background: #f4ece0; color: #2a2018;
 }
 :is([data-theme="sky"],[data-theme="forest"]) .card:is([data-card-dark="1"], [data-bg-look="glass"][data-has-bg="1"]) ::placeholder { color: rgba(244,236,224,.55); }
+
+/* full photo: the original look. The photo fills the card and the existing text backings stay. */
+:is([data-theme="sky"],[data-theme="forest"]) .card[data-has-bg="1"][data-bg-look="full"]::before {
+  display: block !important; content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none; border-radius: inherit; background: rgba(18,12,22,var(--bg-dim, 0)); }
+.card-bg-looks { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.card-bg-looks button i { height: 38px; }
