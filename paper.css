@@ -373,3 +373,105 @@ body.stickers-arranging .block.sticker-target { outline: 0 !important; box-shado
   :is([data-theme="sky"],[data-theme="forest"]) .header-card .hdr-glance .gl b { font-size: 2rem; }
   :is([data-theme="sky"],[data-theme="forest"]) .header-card .hdr-glance .gl em { font-size: .56rem; letter-spacing: .14em; }
 }
+
+/* ── HEADER: thinner ── */
+@media (min-width: 861px) {
+  :is([data-theme="sky"],[data-theme="forest"]) .header-card { min-height: 0 !important; padding: 1rem 1.5rem !important; }
+  :is([data-theme="sky"],[data-theme="forest"]) .header-card .header-card-content { min-height: 0; gap: .35rem; }
+  :is([data-theme="sky"],[data-theme="forest"]) .header-card .header-card-content::before { inset: -1rem -1.5rem; }
+  :is([data-theme="sky"],[data-theme="forest"]) .header-card .hdr-grp .greeting { font-size: clamp(2.8rem, 5vw, 4.2rem) !important; }
+  :is([data-theme="sky"],[data-theme="forest"]) .header-card .hdr-grp .quote-line { font-size: 1.3rem; }
+  :is([data-theme="sky"],[data-theme="forest"]) .header-card .hdr-grp-identity { gap: .1rem; }
+  :is([data-theme="sky"],[data-theme="forest"]) .header-card .hdr-grp-when { flex-direction: row-reverse; flex-wrap: nowrap; align-items: center; justify-content: flex-start; gap: 1rem; }
+  :is([data-theme="sky"],[data-theme="forest"]) .header-card .hdr-glance { min-width: 300px; }
+  :is([data-theme="sky"],[data-theme="forest"]) .header-card .hdr-glance .gl { padding: 8px 0 0 14px; gap: 5px; }
+  :is([data-theme="sky"],[data-theme="forest"]) .header-card .hdr-glance .gl b { font-size: clamp(1.7rem, 2.4vw, 2.2rem); }
+  :is([data-theme="sky"],[data-theme="forest"]) .header-card .hdr-glance .gl em { font-size: .58rem; }
+  :is([data-theme="sky"],[data-theme="forest"]) .header-card .hdr-row { align-items: center; }
+  :is([data-theme="sky"],[data-theme="forest"]) .header-card .hdr-grp-weather { padding: 4px 8px !important; }
+}
+
+/* ── HEADER: softer readability glow (replaces the flat dark scrim) ── */
+@media (min-width: 861px) {
+  :is([data-theme="sky"],[data-theme="forest"]) .header-card .header-card-content::before {
+    inset: -1rem -1.5rem;
+    background:
+      radial-gradient(ellipse 34% 95% at 14% 40%, rgba(14,12,20,.46), rgba(14,12,20,.22) 55%, transparent 100%),
+      radial-gradient(ellipse 22% 80% at 57% 40%, rgba(14,12,20,.36), transparent 100%);
+    filter: blur(14px);
+  }
+  :is([data-theme="sky"],[data-theme="forest"]) .header-card .hdr-grp-weather { background: rgba(14,12,20,.28) !important; border-color: rgba(255,255,255,.12) !important; box-shadow: none !important; }
+}
+
+/* ── CARD LOOK: banner (default), sheet, dark glass, dark card ─────────────────────────────
+   The photo never sits behind loose text. Banner keeps it to a strip over the title row, sheet
+   frames one calm panel with it, glass dims and blurs it. Nothing is wrapped in bubbles. */
+:is([data-theme="sky"],[data-theme="forest"]) .card:is([data-card-dark="1"], [data-bg-look="glass"][data-has-bg="1"]) {
+  --card: #262120; --card-elev: #2f2927; --surface2: rgba(255,255,255,.08); --surface3: rgba(255,255,255,.13);
+  --border: rgba(255,255,255,.14); --border2: rgba(255,255,255,.26);
+  --text: #f4ece0; --text-s: #e8ddcc; --muted: #cbbdaa; --muted2: #a99b89;
+  --accent: #ff9a6b; --accent-s: #ffb28a; --accent-dim: rgba(255,154,107,.18);
+  --teal: #7fd0c8; --green: #9bd27a; --red: #ff8f7f; --purple: #c7a4ee; --blue: #8fb5f0;
+  color: #f4ece0;
+}
+/* no pills on the card text in any look */
+:is([data-theme="sky"],[data-theme="forest"]) .card[data-has-bg="1"][data-bg-look] :is(.planner-title, h2, h3, .x-hdr-text h2, .task-group-label > span, .task-group-label > em, .empty, .x-sub, .x-end-row .ghost) {
+  background: none; -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: none; padding: 0; border-radius: 0; width: auto;
+}
+
+/* banner */
+:is([data-theme="sky"],[data-theme="forest"]) .card[data-has-bg="1"][data-bg-look="banner"] .card-bg-layer {
+  inset: 0 0 auto 0; height: var(--bg-strip-h, 90px); border-radius: inherit; border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+:is([data-theme="sky"],[data-theme="forest"]) .card[data-has-bg="1"][data-bg-look="banner"]::before {
+  display: block !important; content: ""; position: absolute; left: 0; right: 0; top: 0; height: var(--bg-strip-h, 90px); z-index: 0; pointer-events: none;
+  border-radius: inherit; border-bottom-left-radius: 0; border-bottom-right-radius: 0;
+  background: linear-gradient(0deg, rgba(18,12,22,.62), rgba(18,12,22,0) 78%), rgba(18,12,22,var(--bg-dim, .25)); }
+:is([data-theme="sky"],[data-theme="forest"]) .card[data-has-bg="1"][data-bg-look="banner"] > .block-scale > :is(.sec-label-row, .x-head) :is(.sec-label, .sec-label *, .planner-title, h2, h3, .x-title, .x-hdr-text, .x-hdr-text *) {
+  color: #fff !important; text-shadow: 0 1px 3px rgba(0,0,0,.5), 0 2px 14px rgba(0,0,0,.45); }
+
+/* sheet */
+:is([data-theme="sky"],[data-theme="forest"]) .card[data-has-bg="1"][data-bg-look="sheet"] { padding: 12px; }
+:is([data-theme="sky"],[data-theme="forest"]) .card[data-has-bg="1"][data-bg-look="sheet"] > .block-scale {
+  background: color-mix(in srgb, var(--card) 94%, transparent); -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px);
+  border-radius: calc(var(--r, 22px) - 8px); padding: 1.1rem 1.25rem; box-shadow: 0 14px 34px rgba(20,10,20,.3); box-sizing: border-box; }
+:is([data-theme="sky"],[data-theme="forest"]) .card[data-has-bg="1"][data-bg-look="sheet"]::before {
+  display: block !important; content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none; border-radius: inherit; background: rgba(18,12,22,var(--bg-dim, .25)); }
+
+/* dark glass */
+:is([data-theme="sky"],[data-theme="forest"]) .card[data-has-bg="1"][data-bg-look="glass"] .card-bg-layer { inset: -16px; border-radius: 0; }
+:is([data-theme="sky"],[data-theme="forest"]) .card[data-has-bg="1"][data-bg-look="glass"] .card-bg-img { filter: blur(14px) saturate(1.1); }
+:is([data-theme="sky"],[data-theme="forest"]) .card[data-has-bg="1"][data-bg-look="glass"]::before {
+  display: block !important; content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none; border-radius: inherit;
+  background: linear-gradient(rgba(18,12,22,.6), rgba(18,12,22,.6)), rgba(18,12,22,var(--bg-dim, .25)); }
+
+/* the Card look popover */
+.card-bg-popover { width: 290px; }
+.card-bg-seg { display: flex; gap: 3px; padding: 3px; border-radius: 999px; background: var(--surface2); }
+.card-bg-seg button { flex: 1; border: 0; border-radius: 999px; padding: .45rem 0; font: 600 .72rem var(--font-b); color: var(--muted); background: transparent; cursor: pointer; }
+.card-bg-seg button.on { background: var(--card-elev, #fffdf8); color: var(--text); box-shadow: 0 1px 3px rgba(60,40,20,.15); }
+.card-bg-sub { font: 700 .58rem var(--font-b); letter-spacing: .16em; text-transform: uppercase; color: var(--muted2); margin-top: .1rem; }
+.card-bg-looks { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.card-bg-looks button { display: flex; flex-direction: column; gap: 6px; align-items: center; border: 2px solid transparent; border-radius: 12px; background: var(--surface2); padding: 6px 4px 7px; font: 600 .66rem var(--font-b); color: var(--text); cursor: pointer; }
+.card-bg-looks button i { display: block; width: 100%; height: 34px; border-radius: 7px; }
+.card-bg-looks button.on { border-color: var(--accent); }
+.card-bg-switch { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-top: .45rem; border-top: 1px dashed var(--border2); cursor: pointer; }
+.card-bg-switch span { display: flex; flex-direction: column; gap: 1px; }
+.card-bg-switch b { font: 600 .75rem var(--font-b); color: var(--text); }
+.card-bg-switch em { font: 400 .65rem var(--font-b); font-style: normal; color: var(--muted); }
+.card-bg-switch input { appearance: none; -webkit-appearance: none; flex: none; width: 38px; height: 22px; border-radius: 11px; background: var(--border2); position: relative; cursor: pointer; transition: background .15s; margin: 0; }
+.card-bg-switch input::after { content: ""; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.3); transition: transform .15s; }
+.card-bg-switch input:checked { background: var(--accent); }
+.card-bg-switch input:checked::after { transform: translateX(16px); }
+
+/* dark card: controls that carry their own light fill follow the card's dark tones */
+:is([data-theme="sky"],[data-theme="forest"]) .card:is([data-card-dark="1"], [data-bg-look="glass"][data-has-bg="1"]) :is(.tab, .planner-tab, .t-input, .t-select, .icon-btn, .round-btn, .agenda-tab, input:not([type=checkbox]):not([type=radio]):not([type=range]), select, textarea) {
+  background: rgba(255,255,255,.09); color: var(--text); border-color: rgba(255,255,255,.18);
+}
+:is([data-theme="sky"],[data-theme="forest"]) .card:is([data-card-dark="1"], [data-bg-look="glass"][data-has-bg="1"]) :is(.tab.active, .planner-tab.active, .agenda-tab.active) {
+  background: #f4ece0 !important; color: #2a2018 !important; border-color: transparent !important;
+}
+:is([data-theme="sky"],[data-theme="forest"]) .card:is([data-card-dark="1"], [data-bg-look="glass"][data-has-bg="1"]) :is(.seg, .planner-seg, .planner-group) button.active,
+:is([data-theme="sky"],[data-theme="forest"]) .card:is([data-card-dark="1"], [data-bg-look="glass"][data-has-bg="1"]) button.active:not(.tab):not(.planner-tab):not(.agenda-tab) {
+  background: #f4ece0; color: #2a2018;
+}
+:is([data-theme="sky"],[data-theme="forest"]) .card:is([data-card-dark="1"], [data-bg-look="glass"][data-has-bg="1"]) ::placeholder { color: rgba(244,236,224,.55); }

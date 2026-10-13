@@ -255,21 +255,35 @@ const WMO = {
 };
 
 function initWeather() {
-  if (!navigator.geolocation) { $('wText').textContent = 'Weather unavailable'; return; }
   const cached = load('weatherCache', null);
   if (cached && Date.now() - cached.t < 30*60*1000) { $('wText').textContent = cached.text; return; }
-  navigator.geolocation.getCurrentPosition(pos => {
-    const { latitude: lat, longitude: lon } = pos.coords;
-    fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(4)}&longitude=${lon.toFixed(4)}&current_weather=true&temperature_unit=fahrenheit`)
-      .then(r => r.json())
-      .then(d => {
-        const { temperature, weathercode } = d.current_weather;
-        const text = `${WMO[weathercode] ?? 'Weather'} · ${Math.round(temperature)}°F`;
-        $('wText').textContent = text;
-        save('weatherCache', { t: Date.now(), text });
-      })
-      .catch(() => { weatherRetryState('Unavailable · retry', 'Click to try again'); });
-  }, () => { weatherRetryState('Allow location · retry', 'Click to try again. If location is blocked, allow it for this site in your browser settings first.'); });
+  // Location is optional: if the browser blocks it (or takes too long), use the last place we
+  // knew, then a home default, so the pill never gets stuck on "unavailable".
+  const HOME = { latitude: 39.3632, longitude: -74.5521 };   // Northfield, NJ
+  const go = (c) => { save('weatherCoords', { latitude: c.latitude, longitude: c.longitude }); fetchWeather(c.latitude, c.longitude); };
+  const fallback = () => fetchWeather((load('weatherCoords', null) || HOME).latitude, (load('weatherCoords', null) || HOME).longitude);
+  if (!navigator.geolocation) { fallback(); return; }
+  let done = false;
+  const t = setTimeout(() => { if (!done) { done = true; fallback(); } }, 6000);
+  navigator.geolocation.getCurrentPosition(
+    pos => { if (done) return; done = true; clearTimeout(t); go(pos.coords); },
+    () => { if (done) return; done = true; clearTimeout(t); fallback(); },
+    { timeout: 5000, maximumAge: 6 * 3600 * 1000 }
+  );
+}
+function fetchWeather(lat, lon, tries = 0) {
+  fetch(`https://api.open-meteo.com/v1/forecast?latitude=${(+lat).toFixed(4)}&longitude=${(+lon).toFixed(4)}&current_weather=true&temperature_unit=fahrenheit`)
+    .then(r => { if (!r.ok) throw new Error('weather ' + r.status); return r.json(); })
+    .then(d => {
+      const { temperature, weathercode } = d.current_weather;
+      const text = `${WMO[weathercode] ?? 'Weather'} \u00b7 ${Math.round(temperature)}\u00b0F`;
+      $('wText').textContent = text;
+      save('weatherCache', { t: Date.now(), text });
+    })
+    .catch(() => {
+      if (tries < 2) setTimeout(() => fetchWeather(lat, lon, tries + 1), 1500 * (tries + 1));
+      else weatherRetryState('Unavailable \u00b7 retry', 'Click to try again');
+    });
 }
 
 // Failed weather pill becomes a click-to-retry instead of a dead end.
@@ -2835,8 +2849,11 @@ function refreshTabbedBg(id) {
 function applyCardBg(el) {
   const id = el.dataset.cardId;
   const cfg = getCardBg(id);
-  const imgSrc = (cfg && cfg.hasImg) ? getCardImg(id) : null;
+  const isCard = el.classList.contains('card');
+  const imgSrc = (cfg && cfg.hasImg && !cfg.off) ? getCardImg(id) : null;
   let layer = el.querySelector(':scope > .card-bg-layer');
+  // Dark card works with or without a photo.
+  if (isCard && cfg && cfg.dark) el.setAttribute('data-card-dark', '1'); else el.removeAttribute('data-card-dark');
   if (cfg && imgSrc) {
     if (!layer) {
       layer = document.createElement('div');
@@ -2858,10 +2875,56 @@ function applyCardBg(el) {
     img.style.transformOrigin = `${posX}% ${posY}%`;
     layer.style.opacity = String(intensity / 100);
     el.setAttribute('data-has-bg', '1');
+    if (isCard) {
+      // How the photo and the card text share the space: banner (default), sheet, or glass.
+      el.setAttribute('data-bg-look', cfg.look || 'banner');
+      el.style.setProperty('--bg-dim', String((cfg.dim ?? 25) / 100));
+      measureBgStrip(el);
+      watchBgStrip(el);
+    }
   } else {
     if (layer) layer.remove();
     el.removeAttribute('data-has-bg');
+    el.removeAttribute('data-bg-look');
+    el.style.removeProperty('--bg-dim');
+    el.style.removeProperty('--bg-strip-h');
   }
+}
+
+/* Banner look: the photo strip ends just under the card's title row. */
+function measureBgStrip(el) {
+  if (el.getAttribute('data-bg-look') !== 'banner') return;
+  const scale = el.querySelector(':scope > .block-scale') || el;
+  const hd = [...scale.children].find(c => c.matches('.sec-label-row, .x-head, .planner-head, .sec-label, .card-head'));
+  let h = 78;
+  if (hd) {
+    const er = el.getBoundingClientRect(), hr = hd.getBoundingClientRect();
+    const z = el.offsetWidth ? er.width / el.offsetWidth : 1;
+    h = Math.max(78, (hr.bottom - er.top) / z + 16);
+  }
+  el.style.setProperty('--bg-strip-h', Math.round(h) + 'px');
+}
+const bgWatched = new WeakSet();
+function watchBgStrip(el) {
+  if (bgWatched.has(el) || typeof ResizeObserver === 'undefined') return;
+  bgWatched.add(el);
+  new ResizeObserver(() => measureBgStrip(el)).observe(el);
+}
+
+/* Look settings (style, dimming, dark card, photo on/off) live in the same cardBg config. */
+function setCardLook(id, prop, value) {
+  const cur = getCardBg(id) || { ...CARD_BG_DEFAULTS };
+  cur[prop] = value;
+  saveCardBg(id, cur);
+  const el = document.querySelector(`[data-card-id="${id}"]`);
+  if (el) applyCardBg(el);
+  const lbl = document.querySelector(`.card-bg-popover[data-card-id="${id}"] [data-prop-label="dim"]`);
+  if (prop === 'dim' && lbl) lbl.textContent = Math.round(value) + '%';
+  else ensureCardBgUI(id);
+}
+function setCardPhotoOn(id, on) {
+  if (on && !cardHasImg(id)) { pickCardImage(id); return; }
+  setCardLook(id, 'off', !on);
 }
 
 function pickCardImage(id) {
@@ -2872,7 +2935,7 @@ function pickCardImage(id) {
     if (!file) return;
     compressImage(file, 3000, dataUrl => {
       const cur = getCardBg(id) || { ...CARD_BG_DEFAULTS };
-      cur.hasImg = true;
+      cur.hasImg = true; cur.off = false;
       delete cur.img;
       window.dashStore.set(cardImgKey(id), dataUrl);
       saveCardBg(id, cur);
@@ -2911,7 +2974,8 @@ function resetCardBgPosition(id) {
 
 function clearCardBg(id) {
   window.dashStore.del(cardImgKey(id));
-  saveCardBg(id, null);
+  const prevCfg = getCardBg(id);
+  saveCardBg(id, prevCfg && prevCfg.dark ? { dark: true } : null);
   const el = document.querySelector(`[data-card-id="${id}"]`);
   if (el) applyCardBg(el);
   ensureCardBgUI(id);
@@ -2993,14 +3057,40 @@ function ensureCardBgUI(id) {
   const tabChip = tab ? `<span class="card-bg-tab-chip">${esc(tabLabel)}</span>` : '';
   const tabHint = tab ? `<div class="card-bg-popover-hint">Each sub-tab keeps its own background — switch tabs above to set another.</div>` : '';
 
+  const isCard = cardEl && cardEl.classList.contains('card');
+  const photoOn = has && !(cur && cur.off);
+  const look = (cur && cur.look) || 'banner';
+  const dim = (cur && cur.dim != null) ? cur.dim : 25;
+  const dark = !!(cur && cur.dark);
+  const looks = [['banner', 'Banner', 'linear-gradient(180deg,#c86a5a 0 40%,var(--card) 40%)'], ['sheet', 'Sheet', 'linear-gradient(160deg,#c86a5a,#6a3a4a)'], ['glass', 'Dark glass', 'linear-gradient(160deg,#4a2a30,#1c1218)']];
+
   pop.innerHTML = `
     <div class="card-bg-popover-title-row">
-      <div class="card-bg-popover-title">Card background</div>
+      <div class="card-bg-popover-title">Card look</div>
       ${tabChip}
     </div>
     ${tabHint}
+    ${isCard ? `
+    <div class="card-bg-seg" role="group" aria-label="Background">
+      <button type="button" class="${photoOn ? '' : 'on'}" onclick="window.dash.setCardPhotoOn('${id}', false)">Plain</button>
+      <button type="button" class="${photoOn ? 'on' : ''}" onclick="window.dash.setCardPhotoOn('${id}', true)">Photo</button>
+    </div>` : ''}
+    ${photoOn && isCard ? `
+    <div class="card-bg-sub">Photo style</div>
+    <div class="card-bg-looks">
+      ${looks.map(([k, label, thumb]) => `<button type="button" class="${look === k ? 'on' : ''}" onclick="window.dash.setCardLook('${id}','look','${k}')"><i style="background:${thumb}"></i>${label}</button>`).join('')}
+    </div>
+    <div class="card-bg-slider-wrap">
+      <span class="card-bg-slider-label">Dimming</span>
+      <input type="range" min="0" max="90" value="${dim}" class="card-bg-slider"
+             oninput="window.dash.setCardLook('${id}','dim',+this.value)"/>
+      <span class="card-bg-slider-val" data-prop-label="dim">${Math.round(dim)}%</span>
+    </div>` : ''}
+    ${isCard ? `
+    <label class="card-bg-switch"><span><b>Dark card</b><em>Light text on a dark surface</em></span>
+      <input type="checkbox" ${dark ? 'checked' : ''} onchange="window.dash.setCardLook('${id}','dark',this.checked)"/></label>` : ''}
     ${has ? `<div class="card-bg-preview" style="background-image:url('${imgSrc}')"></div>` : `<div class="card-bg-preview empty">no image</div>`}
-    <button class="card-bg-action" onclick="window.dash.pickCardImage('${id}')">${has?'Replace':'Upload'} image</button>
+    <button class="card-bg-action" onclick="window.dash.pickCardImage('${id}')">${has?'Change photo':'Upload photo'}</button>
 
     ${has ? `
       <button class="card-bg-action ${reposActive?'active':''}" onclick="window.dash.toggleRepositionMode('${id}')">
@@ -3327,7 +3417,7 @@ window.dash = {
   renderHealth, openHealthModal, closeHealthModal, syncHealth, openManualHealth, closeManualHealth, saveManualHealth, toggleHealth,
   renderPeople, addPerson, checkin, delPerson,
   currentTabFor,
-  pickCardImage, setCardBgProp, clearCardBg, toggleCardBgPopover, toggleRepositionMode, resetCardBgPosition, applyAllCardBgs, applyCardBg, injectCardBgButtons,
+  pickCardImage, setCardLook, setCardPhotoOn, setCardBgProp, clearCardBg, toggleCardBgPopover, toggleRepositionMode, resetCardBgPosition, applyAllCardBgs, applyCardBg, injectCardBgButtons,
   // streaks / schedule / tomorrow
   renderClassSchedule, addScheduleBlock, delScheduleBlock, updateScheduleBlock,
   renderTomorrow, openTomorrow, addTomorrowTask, addTomorrowEvent, addTomorrowItem, toggleHabitDay,
