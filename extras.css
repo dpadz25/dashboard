@@ -251,3 +251,20 @@
 @media (prefers-reduced-motion: reduce) { .x-disc { animation: none !important; } .x-arm { transition: none; } }
 .x-sp2 .x-disc-wrap { width: min(70%, 175px); }
 .x-sp2 .x-arm { right: 3%; }
+
+/* Spotify legibility over photo card backgrounds. Frosted panels use the card's own
+   color and text pairing, so contrast holds in every theme and on any photo. */
+.block-x-spotify .x-head,
+.x-sp2 .x-sp-tabs, .x-sp2 .x-sp-info, .x-sp2 .x-sp-panel, .x-sp2 .x-sp-lists {
+  background: color-mix(in srgb, var(--card, #fbf7ef) 84%, transparent);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2); backdrop-filter: blur(14px) saturate(1.2);
+  border-radius: 14px; }
+.block-x-spotify .x-head { padding: 5px 10px; border-radius: 999px; }
+.x-sp2 .x-sp-tabs { padding: 4px 8px; border-radius: 999px; }
+.x-sp2 .x-sp-info { padding: 8px 10px; }
+.x-sp2 .x-sp-panel { display: flex; flex-direction: column; gap: 6px; padding: 8px 10px 6px; }
+.x-sp2 .x-sp-lists { padding: 8px; }
+.x-sp2 .x-sp-bg { opacity: .55; }
+.x-sp2 .x-sp-dev { display: none; }
+.x-sp2 .x-sp-tabs button { white-space: nowrap; }
+.x-sp2 .x-sp-off { margin-left: auto; }

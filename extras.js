@@ -607,6 +607,7 @@ function buildSpotify(w) {
           <div class="x-sp-meta"><b class="x-sp-title">Nothing playing</b><span class="x-sp-artist">Start Spotify on any device</span><em class="x-sp-album"></em></div>
           <button type="button" class="x-sp-like" data-sp="like" aria-label="Save to Liked Songs" aria-pressed="false">${SP_ICON.heart}</button>
         </div>
+        <div class="x-sp-panel">
         <div class="x-bar" data-sp="seek"><i></i></div>
         <div class="x-sp-time"><span class="x-t-cur">0:00</span><span class="x-t-dur">0:00</span></div>
         <div class="x-sp-ctl">
@@ -618,6 +619,7 @@ function buildSpotify(w) {
         </div>
         <input class="x-sp-vol" type="range" min="0" max="100" value="50" aria-label="Volume"/>
         <p class="x-sp-msg" role="status"></p>
+        </div>
       </div>
       <div class="x-sp-lists" hidden></div>`;
   };
@@ -673,7 +675,7 @@ function buildSpotify(w) {
     st.repeat = j.repeat_state || 'off';
     rp.classList.toggle('on', st.repeat !== 'off'); rp.classList.toggle('one', st.repeat === 'track'); rp.setAttribute('aria-pressed', st.repeat !== 'off');
     if (j.device) {
-      q('.x-sp-dev').textContent = j.device.name;
+      q('.x-sp-dev').textContent = j.device.name; q('.x-sp-tabs').title = 'Playing on ' + j.device.name;
       if (!st.volDrag && j.device.volume_percent != null) q('.x-sp-vol').value = j.device.volume_percent;
     }
     if (st.view === 'tracks') markPlayingRow();
