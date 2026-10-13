@@ -269,3 +269,9 @@
 .x-sp2 .x-arm::before { content: ""; position: absolute; top: -5px; left: -7px; width: 18px; height: 18px; border-radius: 50%; background: #d9cbb2; box-shadow: 0 2px 4px rgba(0,0,0,.4); }
 .x-sp2 .x-arm i { position: absolute; inset: 0; border-radius: 3px; background: linear-gradient(90deg, #9a8a72, #e6dcc8 50%, #9a8a72); }
 .x-sp2 .x-arm i::after { content: ""; position: absolute; bottom: -6px; left: -3px; width: 12px; height: 14px; border-radius: 2px; background: #2b2118; }
+/* record slides out with the independent `translate` property so the spin never cancels it,
+   then sits under the needle and turns slowly */
+.x-sp2 .x-disc { transform: none; translate: 34% 0; transition: translate .9s cubic-bezier(.5,0,.2,1); animation: x-disc-spin 16s linear infinite; animation-play-state: paused; }
+.x-sp2 .x-disc-wrap.playing .x-disc { transform: none; translate: 46% 0; animation-play-state: running; }
+.x-sp2 .x-disc-wrap.playing .x-arm { transform: rotate(13deg); }
+@media (prefers-reduced-motion: reduce) { .x-sp2 .x-disc { animation: none !important; } }
