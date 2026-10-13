@@ -275,3 +275,14 @@
 .x-sp2 .x-disc-wrap.playing .x-disc { transform: none; translate: 46% 0; animation-play-state: running; }
 .x-sp2 .x-disc-wrap.playing .x-arm { transform: rotate(13deg); }
 @media (prefers-reduced-motion: reduce) { .x-sp2 .x-disc { animation: none !important; } }
+/* fixed-size stage so sleeve, record and needle always line up */
+.x-sp2 .x-disc-wrap { width: 280px; max-width: 100%; height: 190px; margin: 0 auto; }
+.x-sp2 .x-sleeve { left: 8px; top: 10px; width: 170px; max-width: none; height: 170px; aspect-ratio: auto; }
+.x-sp2 .x-disc { left: 106px; top: 15px; width: 160px; max-width: none; height: 160px; aspect-ratio: auto; translate: -52px 0; }
+.x-sp2 .x-disc-wrap.playing .x-disc { translate: 0 0; }
+.x-sp2 .x-disc-label { inset: 29%; background: var(--sp-clay); overflow: hidden; }
+.x-sp2 .x-disc-label img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+.x-sp2 .x-disc-label img[hidden] { display: none; }
+.x-sp2 .x-disc-label::after { z-index: 2; width: 9%; background: #f6efe2; box-shadow: 0 0 0 2px rgba(0,0,0,.35); }
+.x-sp2 .x-arm { left: 265px; right: auto; top: 4px; width: 6px; height: 76px; transform-origin: 50% 0; transform: rotate(-12deg); }
+.x-sp2 .x-disc-wrap.playing .x-arm { transform: rotate(10.7deg); }

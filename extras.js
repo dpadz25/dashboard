@@ -599,7 +599,7 @@ function buildSpotify(w) {
 </div>
 <div class="x-sp-now">
   <div class="x-disc-wrap">
-    <div class="x-disc"><div class="x-disc-label"></div></div>
+    <div class="x-disc"><div class="x-disc-label"><img alt="" hidden/></div></div>
     <div class="x-sleeve"><img alt="" hidden/><i class="x-sleeve-sun"></i></div>
     <div class="x-arm"><i></i></div>
   </div>
@@ -652,7 +652,7 @@ function buildSpotify(w) {
       q('.x-sp-title').textContent = 'Nothing playing';
       q('.x-sp-artist').textContent = 'Start Spotify on any device';
       q('.x-sp-album').textContent = '';
-      q('.x-sleeve img').hidden = true;
+      q('.x-sleeve img').hidden = true; q('.x-disc-label img').hidden = true;
       q('.x-sp-bg').style.backgroundImage = '';
       st.prog = st.dur = 0; st.id = ''; paintProgress();
       return;
@@ -666,6 +666,9 @@ function buildSpotify(w) {
     const img = q('.x-sleeve img');
     if (art && img.getAttribute('src') !== art) img.src = art;
     img.hidden = !art;
+    const lab = q('.x-disc-label img');
+    if (art && lab.getAttribute('src') !== art) lab.src = art;
+    lab.hidden = !art;
     q('.x-sp-bg').style.backgroundImage = art ? `url("${art.replace(/"/g, '')}")` : '';
     st.prog = j.progress_ms || 0; st.at = Date.now(); st.dur = it.duration_ms || 0; st.uri = it.uri;
     if (st.id !== it.id) { st.id = it.id; if (it.type === 'track') checkLiked(it.id); q('.x-sp-like').classList.remove('on'); }
