@@ -10,72 +10,22 @@
     "repeat": ""
   },
   {
-    "id": "uw6xue2c",
-    "title": "prepare 4 therapy",
-    "dueDate": "2026-10-12",
+    "id": "ct6o9rhe",
+    "title": "email bena topic",
+    "dueDate": "2026-10-13",
     "category": "General",
-    "type": "priority",
-    "priority": true,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "8nhm7brq",
-    "title": "finish ev draft",
-    "dueDate": "2026-10-12",
-    "category": "General",
-    "type": "priority",
-    "priority": true,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "j551ra4j",
-    "title": "send email to ingrid morning",
-    "dueDate": "2026-10-12",
-    "category": "General",
-    "type": "priority",
-    "priority": true,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "98840apw",
-    "title": "Session Intake Ingrid 5:30 PM",
-    "dueDate": "2026-10-12",
-    "category": "General",
-    "type": "priority",
-    "priority": true,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "gyupwetw",
-    "title": "Read Ch. 5",
-    "dueDate": "2026-10-12",
-    "category": "Assessment 1",
-    "type": "reading",
+    "type": "assignment",
     "priority": false,
     "completed": false,
     "repeat": ""
   },
   {
-    "id": "6h5rs2i4",
-    "title": "EV Project, Part I Draft",
-    "dueDate": "2026-10-12",
-    "category": "Assessment 1",
-    "type": "project",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "sq9vh68q",
-    "title": "Pre-class Survey 6: Sexual Orientation & Heterosexism",
-    "dueDate": "2026-10-12",
-    "category": "cultural issues",
-    "type": "discussion",
-    "priority": false,
+    "id": "jsig6r8u",
+    "title": "email zoom link to jayden",
+    "dueDate": "2026-10-13",
+    "category": "General",
+    "type": "priority",
+    "priority": true,
     "completed": false,
     "repeat": ""
   },
@@ -85,6 +35,16 @@
     "dueDate": "2026-10-13",
     "category": "clinical practicum 1",
     "type": "quiz",
+    "priority": false,
+    "completed": false,
+    "repeat": ""
+  },
+  {
+    "id": "sq9vh68q",
+    "title": "Pre-class Survey 6: Sexual Orientation & Heterosexism",
+    "dueDate": "2026-10-13",
+    "category": "cultural issues",
+    "type": "discussion",
     "priority": false,
     "completed": false,
     "repeat": ""
