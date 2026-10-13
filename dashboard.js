@@ -1157,7 +1157,7 @@ function renderGlance() {
   const due = open.filter(x => x.dueDate === today).length;
   const tm  = open.filter(x => x.dueDate === tom).length;
   const od  = open.filter(x => x.dueDate && x.dueDate < today).length;
-  el.innerHTML = `<b>${due} due today</b><span>${tm} tomorrow \u00b7 ${open.length} open in all${od ? ` \u00b7 ${od} overdue` : ''}</span>`;
+  el.innerHTML = `<div class="gl"><b>${due}</b><em>Due today</em></div><div class="gl"><b>${tm}</b><em>Tomorrow</em></div><div class="gl"><b>${open.length}</b><em>Open</em></div>${od ? `<div class="gl od"><b>${od}</b><em>Overdue</em></div>` : ''}`;
 }
 
 function renderPlanner() {

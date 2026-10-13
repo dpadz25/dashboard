@@ -338,3 +338,38 @@ body.stickers-arranging .block.sticker-target { outline: 0 !important; box-shado
   .x-chrome { top: -14px; right: 10px; }
   .x-chrome button { width: 30px; height: 30px; }
 }
+
+/* ── HEADER: editorial ──
+   Big name, plain quote, big numbers. Nothing sits in a box, so every word carries its own
+   soft shadow, and a gentle scrim darkens the left side of the card so it stays readable on any
+   background photo (or none). The small round buttons and pills keep their own glass. */
+:is([data-theme="sky"],[data-theme="forest"]) .header-card .hdr-glance .gl { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding: 14px 0 0 18px; border-left: 1px solid rgba(255,255,255,.22); text-align: left; }
+:is([data-theme="sky"],[data-theme="forest"]) .header-card .hdr-glance .gl:first-child { border-left: 0; padding-left: 0; }
+:is([data-theme="sky"],[data-theme="forest"]) .header-card .hdr-glance .gl b { font: 600 clamp(2.6rem, 4vw, 3.6rem)/.9 var(--font-d); color: #fff; text-shadow: 0 2px 3px rgba(0,0,0,.45), 0 4px 22px rgba(0,0,0,.45); }
+:is([data-theme="sky"],[data-theme="forest"]) .header-card .hdr-glance .gl em { font: 600 .66rem/1 var(--font-b); font-style: normal; letter-spacing: .2em; text-transform: uppercase; color: #ffd9b0; text-shadow: 0 1px 6px rgba(0,0,0,.6); }
+:is([data-theme="sky"],[data-theme="forest"]) .header-card .hdr-glance .gl.od b { color: #ffb4a0; }
+:is([data-theme="sky"],[data-theme="forest"]) .header-card .hdr-glance { text-shadow: none; }
+@media (min-width: 861px) {
+  :is([data-theme="sky"],[data-theme="forest"]) .header-card .header-card-content { position: relative; isolation: isolate; min-height: 220px; }
+  :is([data-theme="sky"],[data-theme="forest"]) .header-card .header-card-content::before {
+    content: ""; position: absolute; inset: -1.4rem; z-index: -1; pointer-events: none;
+    background: linear-gradient(90deg, rgba(14,12,20,.6) 0%, rgba(14,12,20,.36) 55%, rgba(14,12,20,.04) 90%), linear-gradient(0deg, rgba(14,12,20,.3), transparent 45%); }
+  :is([data-theme="sky"],[data-theme="forest"]) .header-card .hdr-grp-identity,
+  :is([data-theme="sky"],[data-theme="forest"]) .header-card .hdr-grp-quote {
+    background: none !important; border: 0 !important; box-shadow: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important;
+    padding: 0 !important; width: auto !important; }
+  :is([data-theme="sky"],[data-theme="forest"]) .header-card .hdr-grp .greeting { font-size: clamp(3.6rem, 8vw, 7.4rem) !important; line-height: .95; letter-spacing: -.01em; color: #fff;
+    text-shadow: 0 2px 3px rgba(0,0,0,.45), 0 6px 36px rgba(0,0,0,.5); }
+  :is([data-theme="sky"],[data-theme="forest"]) .header-card .hdr-eyebrow { display: flex; align-items: center; gap: 12px; color: #ffd9b0; opacity: 1; text-shadow: 0 1px 6px rgba(0,0,0,.6); }
+  :is([data-theme="sky"],[data-theme="forest"]) .header-card .hdr-eyebrow::before { content: ""; width: 28px; height: 1px; background: currentColor; }
+  :is([data-theme="sky"],[data-theme="forest"]) .header-card .hdr-grp .quote-line { font-size: 1.7rem; line-height: 1.2; color: #fbeede;
+    text-shadow: 0 1px 3px rgba(0,0,0,.5), 0 3px 20px rgba(0,0,0,.45); }
+  :is([data-theme="sky"],[data-theme="forest"]) .header-card .hdr-glance { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); align-items: start; gap: 0;
+    min-width: min(440px, 100%); padding: 0; background: none; border: 0; border-top: 1px solid rgba(255,255,255,.35); border-radius: 0; backdrop-filter: none; -webkit-backdrop-filter: none; }
+}
+@media (max-width: 860px) {
+  :is([data-theme="sky"],[data-theme="forest"]) .header-card .hdr-glance { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 0; width: 100%; align-items: start; padding: 10px 14px; }
+  :is([data-theme="sky"],[data-theme="forest"]) .header-card .hdr-glance .gl { padding: 0 0 0 12px; gap: 5px; }
+  :is([data-theme="sky"],[data-theme="forest"]) .header-card .hdr-glance .gl b { font-size: 2rem; }
+  :is([data-theme="sky"],[data-theme="forest"]) .header-card .hdr-glance .gl em { font-size: .56rem; letter-spacing: .14em; }
+}
