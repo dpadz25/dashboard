@@ -556,7 +556,7 @@ const SP_ICON = {
   pause: '<svg viewBox="0 0 24 24"><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg>',
   shuffle: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg>',
   repeat: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 2l4 4-4 4M3 11v-1a4 4 0 014-4h14M7 22l-4-4 4-4M21 13v1a4 4 0 01-4 4H3"/></svg>',
-  heart: '<svg viewBox="0 0 24 24"><path d="M12 21s-8-5.2-8-11a4.5 4.5 0 018-2.8A4.5 4.5 0 0120 10c0 5.800-8 11-8 11z"/></svg>',
+  heart: '<svg viewBox="0 0 24 24"><path d="M12 21s-8-5.2-8-11a4.5 4.5 0 018-2.8A4.5 4.5 0 0120 10c0 5.8-8 11-8 11z"/></svg>',
   back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>',
 };
 
@@ -584,44 +584,44 @@ function buildSpotify(w) {
     body.innerHTML = lsGet(SP.id)
       ? `<p class="x-note">Connect your Spotify account.</p><button class="btn-add" type="button" data-sp="login">Connect</button> <button class="btn-ghost" type="button" data-sp="reset">Change Client ID</button>`
       : `<p class="x-note">Paste your Spotify app Client ID. Redirect URI to register:</p><code class="x-code">${esc(redirectUri())}</code>
-         <div class="x-hr-sheet"><input name="cid" placeholder="Client ID"/><button class="btn-add" type="button" data-sp="save">Save</button></div>`;
+<div class="x-hr-sheet"><input name="cid" placeholder="Client ID"/><button class="btn-add" type="button" data-sp="save">Save</button></div>`;
   };
 
   /* Player shell. Built once so the record keeps spinning between polls. */
   const drawPlayer = () => {
     body.className = 'x-body x-sp2';
     body.innerHTML = `
-      <div class="x-sp-bg"></div>
-      <div class="x-sp-tabs" role="tablist">
-        <button type="button" data-sp="tab-now" class="on">Now playing</button>
-        <button type="button" data-sp="tab-lists">Playlists</button>
-        <span class="x-sp-dev"></span>
-        <button type="button" data-sp="disconnect" class="x-sp-off">Disconnect</button>
-      </div>
-      <div class="x-sp-now">
-        <div class="x-disc-wrap">
-          <div class="x-disc"><div class="x-disc-label"><img alt="" hidden/></div></div>
-          <div class="x-arm"><i></i></div>
-        </div>
-        <div class="x-sp-info">
-          <div class="x-sp-meta"><b class="x-sp-title">Nothing playing</b><span class="x-sp-artist">Start Spotify on any device</span><em class="x-sp-album"></em></div>
-          <button type="button" class="x-sp-like" data-sp="like" aria-label="Save to Liked Songs" aria-pressed="false">${SP_ICON.heart}</button>
-        </div>
-        <div class="x-sp-panel">
-        <div class="x-bar" data-sp="seek"><i></i></div>
-        <div class="x-sp-time"><span class="x-t-cur">0:00</span><span class="x-t-dur">0:00</span></div>
-        <div class="x-sp-ctl">
-          <button type="button" data-sp="shuffle" class="sm" aria-label="Shuffle" aria-pressed="false">${SP_ICON.shuffle}</button>
-          <button type="button" data-sp="prev" aria-label="Previous">${SP_ICON.prev}</button>
-          <button type="button" data-sp="toggle" class="big" aria-label="Play or pause">${SP_ICON.play}</button>
-          <button type="button" data-sp="next" aria-label="Next">${SP_ICON.next}</button>
-          <button type="button" data-sp="repeat" class="sm" aria-label="Repeat" aria-pressed="false">${SP_ICON.repeat}</button>
-        </div>
-        <input class="x-sp-vol" type="range" min="0" max="100" value="50" aria-label="Volume"/>
-        <p class="x-sp-msg" role="status"></p>
-        </div>
-      </div>
-      <div class="x-sp-lists" hidden></div>`;
+<div class="x-sp-bg"></div>
+<div class="x-sp-tabs" role="tablist">
+  <button type="button" data-sp="tab-now" class="on">Now playing</button>
+  <button type="button" data-sp="tab-lists">Playlists</button>
+  <button type="button" data-sp="disconnect" class="x-sp-off">Disconnect</button>
+</div>
+<div class="x-sp-now">
+  <div class="x-disc-wrap">
+    <div class="x-disc"><div class="x-disc-label"></div></div>
+    <div class="x-sleeve"><img alt="" hidden/><i class="x-sleeve-sun"></i></div>
+    <div class="x-arm"><i></i></div>
+  </div>
+  <div class="x-sp-panel">
+    <div class="x-sp-info">
+      <div class="x-sp-meta"><b class="x-sp-title">Nothing playing</b><span class="x-sp-artist">Start Spotify on any device</span><em class="x-sp-album"></em></div>
+      <button type="button" class="x-sp-like" data-sp="like" aria-label="Save to Liked Songs" aria-pressed="false">${SP_ICON.heart}</button>
+    </div>
+    <div class="x-bar" data-sp="seek"><i></i></div>
+    <div class="x-sp-time"><span class="x-t-cur">0:00</span><span class="x-t-dur">0:00</span></div>
+    <div class="x-sp-ctl">
+      <button type="button" data-sp="shuffle" class="sm" aria-label="Shuffle" aria-pressed="false">${SP_ICON.shuffle}</button>
+      <button type="button" data-sp="prev" aria-label="Previous">${SP_ICON.prev}</button>
+      <button type="button" data-sp="toggle" class="big" aria-label="Play or pause">${SP_ICON.play}</button>
+      <button type="button" data-sp="next" aria-label="Next">${SP_ICON.next}</button>
+      <button type="button" data-sp="repeat" class="sm" aria-label="Repeat" aria-pressed="false">${SP_ICON.repeat}</button>
+    </div>
+    <div class="x-sp-foot"><i></i><span class="x-sp-dev"></span><input class="x-sp-vol" type="range" min="0" max="100" value="50" aria-label="Volume"/></div>
+    <p class="x-sp-msg" role="status"></p>
+  </div>
+</div>
+<div class="x-sp-lists" hidden></div>`;
   };
   const q = (s) => body.querySelector(s);
   const msg = (t) => { const m = q('.x-sp-msg'); if (m) { m.textContent = t || ''; clearTimeout(msg.t); if (t) msg.t = setTimeout(() => { m.textContent = ''; }, 4000); } };
@@ -652,7 +652,7 @@ function buildSpotify(w) {
       q('.x-sp-title').textContent = 'Nothing playing';
       q('.x-sp-artist').textContent = 'Start Spotify on any device';
       q('.x-sp-album').textContent = '';
-      q('.x-disc-label img').hidden = true;
+      q('.x-sleeve img').hidden = true;
       q('.x-sp-bg').style.backgroundImage = '';
       st.prog = st.dur = 0; st.id = ''; paintProgress();
       return;
@@ -663,7 +663,7 @@ function buildSpotify(w) {
     q('.x-sp-title').textContent = it.name;
     q('.x-sp-artist').textContent = names;
     q('.x-sp-album').textContent = it.album ? it.album.name : '';
-    const img = q('.x-disc-label img');
+    const img = q('.x-sleeve img');
     if (art && img.getAttribute('src') !== art) img.src = art;
     img.hidden = !art;
     q('.x-sp-bg').style.backgroundImage = art ? `url("${art.replace(/"/g, '')}")` : '';
@@ -675,7 +675,7 @@ function buildSpotify(w) {
     st.repeat = j.repeat_state || 'off';
     rp.classList.toggle('on', st.repeat !== 'off'); rp.classList.toggle('one', st.repeat === 'track'); rp.setAttribute('aria-pressed', st.repeat !== 'off');
     if (j.device) {
-      q('.x-sp-dev').textContent = j.device.name; q('.x-sp-tabs').title = 'Playing on ' + j.device.name;
+      q('.x-sp-dev').textContent = 'Playing on ' + j.device.name; q('.x-sp-tabs').title = 'Playing on ' + j.device.name;
       if (!st.volDrag && j.device.volume_percent != null) q('.x-sp-vol').value = j.device.volume_percent;
     }
     if (st.view === 'tracks') markPlayingRow();
@@ -731,12 +731,12 @@ function buildSpotify(w) {
       st.lists = (r.items || []).filter(Boolean);
     }
     el.innerHTML = `
-      <input class="x-sp-find" type="search" placeholder="Filter playlists" aria-label="Filter playlists"/>
-      <ul class="x-pl">${st.lists.map((p) => `
-        <li><button type="button" data-sp="open" data-id="${esc(p.id)}" data-name="${esc(p.name)}">
-          <span class="x-pl-art">${coverOf(p) ? `<img alt="" loading="lazy" src="${esc(coverOf(p))}"/>` : ''}</span>
-          <span class="x-pl-meta"><b>${esc(p.name)}</b><span>${esc(p.owner && p.owner.display_name || '')}</span></span>
-        </button></li>`).join('') || '<li class="x-note">No playlists found.</li>'}</ul>`;
+<input class="x-sp-find" type="search" placeholder="Filter playlists" aria-label="Filter playlists"/>
+<ul class="x-pl">${st.lists.map((p) => `
+<li><button type="button" data-sp="open" data-id="${esc(p.id)}" data-name="${esc(p.name)}">
+<span class="x-pl-art">${coverOf(p) ? `<img alt="" loading="lazy" src="${esc(coverOf(p))}"/>` : ''}</span>
+<span class="x-pl-meta"><b>${esc(p.name)}</b><span>${esc(p.owner && p.owner.display_name || '')}</span></span>
+</button></li>`).join('') || '<li class="x-note">No playlists found.</li>'}</ul>`;
   };
 
   const drawTracks = async (id, name) => {
@@ -750,11 +750,11 @@ function buildSpotify(w) {
     if (!r || r.error) { el.innerHTML = head + `<p class="x-note">${r && r.error === 403 ? 'Spotify only lets this app read playlists you own or collaborate on.' : 'Couldn\'t load tracks.'}</p>`; return; }
     const rows = (r.items || []).map((e) => e && (e.item || e.track)).filter((t) => t && t.uri && t.type !== 'episode');
     el.innerHTML = head + `<ul class="x-tr">${rows.map((t) => `
-      <li><button type="button" data-sp="play-track" data-uri="${esc(t.uri)}" data-id="${esc(id)}">
-        <span class="x-tr-n"><img alt="" loading="lazy" src="${esc(coverOf(t.album || {}))}"/></span>
-        <span class="x-pl-meta"><b>${esc(t.name)}</b><span>${esc((t.artists || []).map((a) => a.name).join(', '))}</span></span>
-        <span class="x-tr-d">${fmt(t.duration_ms)}</span>
-      </button></li>`).join('') || '<li class="x-note">Empty playlist.</li>'}</ul>`;
+<li><button type="button" data-sp="play-track" data-uri="${esc(t.uri)}" data-id="${esc(id)}">
+<span class="x-tr-n"><img alt="" loading="lazy" src="${esc(coverOf(t.album || {}))}"/></span>
+<span class="x-pl-meta"><b>${esc(t.name)}</b><span>${esc((t.artists || []).map((a) => a.name).join(', '))}</span></span>
+<span class="x-tr-d">${fmt(t.duration_ms)}</span>
+</button></li>`).join('') || '<li class="x-note">Empty playlist.</li>'}</ul>`;
     markPlayingRow();
   };
   const markPlayingRow = () => {
@@ -820,7 +820,6 @@ function buildSpotify(w) {
   spHandleRedirect().then(() => { if (lsGet(SP.tok) && !spTimer) start(); });
   return node;
 }
-
 
 /* ── OVERDUE CARRY-OVER ────────────────────────────────────── */
 function setupCarry() {
