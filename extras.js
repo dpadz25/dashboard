@@ -498,12 +498,13 @@ function buildHours(w) {
   return node;
 }
 
-/* ── SPOTIFY NOW PLAYING ───────────────────────────────────── */
+/* ── SPOTIFY PLAYER ────────────────────────────────────────── */
 // Device-local on purpose: tokens must never reach Firestore.
 const SP = { id: 'spotify.clientId', tok: 'spotify.token', ver: 'spotify.verifier' };
-const SCOPES = 'user-read-playback-state user-modify-playback-state user-read-currently-playing';
+const SCOPES = 'user-read-playback-state user-modify-playback-state user-read-currently-playing playlist-read-private playlist-read-collaborative user-library-read user-library-modify';
+const NEED_SCOPE = 'playlist-read-private';
 const redirectUri = () => location.origin + location.pathname;
-let spTimer = null, spRoot = null;
+let spTimer = null, spTick = null;
 const lsGet = (k) => { try { return JSON.parse(localStorage.getItem(k)); } catch (_) { return null; } };
 const lsSet = (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, JSON.stringify(v)); } catch (_) {} };
 
@@ -525,7 +526,7 @@ async function spToken(params) {
   if (!r.ok) throw new Error('token');
   const j = await r.json();
   const old = lsGet(SP.tok) || {};
-  lsSet(SP.tok, { access: j.access_token, refresh: j.refresh_token || old.refresh, exp: Date.now() + (j.expires_in - 60) * 1000 });
+  lsSet(SP.tok, { access: j.access_token, refresh: j.refresh_token || old.refresh, scope: j.scope || old.scope || '', exp: Date.now() + (j.expires_in - 60) * 1000 });
 }
 // Back from Spotify's login page with ?code=...
 async function spHandleRedirect() {
@@ -546,82 +547,278 @@ async function spApi(path, method, body) {
   if (!r.ok) return { error: r.status };
   return r.json().catch(() => ({ empty: true }));
 }
-function stopSpotify() { clearInterval(spTimer); spTimer = null; }
+function stopSpotify() { clearInterval(spTimer); clearInterval(spTick); spTimer = spTick = null; }
+
+const SP_ICON = {
+  prev: '<svg viewBox="0 0 24 24"><path d="M6 5h2v14H6zM20 5v14L9 12z"/></svg>',
+  next: '<svg viewBox="0 0 24 24"><path d="M16 5h2v14h-2zM4 5l11 7L4 19z"/></svg>',
+  play: '<svg viewBox="0 0 24 24"><path d="M7 4l13 8-13 8z"/></svg>',
+  pause: '<svg viewBox="0 0 24 24"><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg>',
+  shuffle: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg>',
+  repeat: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 2l4 4-4 4M3 11v-1a4 4 0 014-4h14M7 22l-4-4 4-4M21 13v1a4 4 0 01-4 4H3"/></svg>',
+  heart: '<svg viewBox="0 0 24 24"><path d="M12 21s-8-5.2-8-11a4.5 4.5 0 018-2.8A4.5 4.5 0 0120 10c0 5.800-8 11-8 11z"/></svg>',
+  back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>',
+};
 
 function buildSpotify(w) {
-  const node = shell(w, 'Now playing');
+  const node = shell(w, 'Spotify');
   const body = node.querySelector('.x-body');
-  spRoot = body;
-  const fmt = (ms) => { const s = Math.floor(ms / 1000); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+  const fmt = (ms) => { const s = Math.max(0, Math.floor(ms / 1000)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+  const st = { prog: 0, at: 0, dur: 0, playing: false, uri: '', id: '', lists: null, view: 'now', volDrag: false, repeat: 'off' };
+  const hasScope = () => { const t = lsGet(SP.tok); return !!(t && (t.scope || '').includes(NEED_SCOPE)); };
 
-  const badge = (on) => {
-    const h = node.querySelector('.x-head');
-    let t = h.querySelector('.x-badge');
-    if (on && !t) { t = document.createElement('span'); t.className = 'x-badge'; t.textContent = 'Sample data'; h.insertBefore(t, h.querySelector('.x-del')); }
-    if (!on && t) t.remove();
+  const drawSample = () => {
+    stopSpotify();
+    drawPlayer();
+    q('.x-sp-title').textContent = 'Sample track one';
+    q('.x-sp-artist').textContent = 'Artist name';
+    q('.x-bar i').style.width = '40%';
+    q('.x-t-cur').textContent = '1:15'; q('.x-t-dur').textContent = '3:24';
+    body.querySelectorAll('button[data-sp]:not([data-sp=connect])').forEach((b) => { b.disabled = true; });
+    q('.x-sp-vol').disabled = true;
+    q('.x-sp-msg').innerHTML = '<button class="btn-ghost" type="button" data-sp="connect">Connect Spotify</button>';
   };
-  const form = () => {
+  const drawSetup = () => {
+    stopSpotify();
+    body.className = 'x-body';
     body.innerHTML = lsGet(SP.id)
       ? `<p class="x-note">Connect your Spotify account.</p><button class="btn-add" type="button" data-sp="login">Connect</button> <button class="btn-ghost" type="button" data-sp="reset">Change Client ID</button>`
       : `<p class="x-note">Paste your Spotify app Client ID. Redirect URI to register:</p><code class="x-code">${esc(redirectUri())}</code>
          <div class="x-hr-sheet"><input name="cid" placeholder="Client ID"/><button class="btn-add" type="button" data-sp="save">Save</button></div>`;
   };
-  // Until Spotify is connected, show the mockup's sample player.
-  const drawSetup = () => {
-    badge(true);
+
+  /* Player shell. Built once so the record keeps spinning between polls. */
+  const drawPlayer = () => {
+    body.className = 'x-body x-sp2';
     body.innerHTML = `
-      <div class="x-sp"><div class="x-sp-disc" aria-hidden="true"></div>
-        <div class="x-sp-meta"><b>Sample track one</b><span>Artist name</span></div></div>
-      <div class="x-bar"><i style="width:40%"></i></div>
-      <div class="x-sp-time"><span>1:15</span><span>3:24</span></div>
-      <div class="x-sp-ctl"><button type="button" disabled aria-label="Previous">\u2039</button><button type="button" class="x-sp-main" disabled>Pause</button><button type="button" disabled aria-label="Next">\u203a</button></div>
-      <div class="x-sp-end"><button class="btn-ghost" type="button" data-sp="connect">Connect Spotify</button></div>`;
+      <div class="x-sp-bg"></div>
+      <div class="x-sp-tabs" role="tablist">
+        <button type="button" data-sp="tab-now" class="on">Now playing</button>
+        <button type="button" data-sp="tab-lists">Playlists</button>
+        <span class="x-sp-dev"></span>
+        <button type="button" data-sp="disconnect" class="x-sp-off">Disconnect</button>
+      </div>
+      <div class="x-sp-now">
+        <div class="x-disc-wrap">
+          <div class="x-disc"><div class="x-disc-label"><img alt="" hidden/></div></div>
+          <div class="x-arm"><i></i></div>
+        </div>
+        <div class="x-sp-info">
+          <div class="x-sp-meta"><b class="x-sp-title">Nothing playing</b><span class="x-sp-artist">Start Spotify on any device</span><em class="x-sp-album"></em></div>
+          <button type="button" class="x-sp-like" data-sp="like" aria-label="Save to Liked Songs" aria-pressed="false">${SP_ICON.heart}</button>
+        </div>
+        <div class="x-bar" data-sp="seek"><i></i></div>
+        <div class="x-sp-time"><span class="x-t-cur">0:00</span><span class="x-t-dur">0:00</span></div>
+        <div class="x-sp-ctl">
+          <button type="button" data-sp="shuffle" class="sm" aria-label="Shuffle" aria-pressed="false">${SP_ICON.shuffle}</button>
+          <button type="button" data-sp="prev" aria-label="Previous">${SP_ICON.prev}</button>
+          <button type="button" data-sp="toggle" class="big" aria-label="Play or pause">${SP_ICON.play}</button>
+          <button type="button" data-sp="next" aria-label="Next">${SP_ICON.next}</button>
+          <button type="button" data-sp="repeat" class="sm" aria-label="Repeat" aria-pressed="false">${SP_ICON.repeat}</button>
+        </div>
+        <input class="x-sp-vol" type="range" min="0" max="100" value="50" aria-label="Volume"/>
+        <p class="x-sp-msg" role="status"></p>
+      </div>
+      <div class="x-sp-lists" hidden></div>`;
   };
-  const draw = (j) => {
-    badge(false);
+  const q = (s) => body.querySelector(s);
+  const msg = (t) => { const m = q('.x-sp-msg'); if (m) { m.textContent = t || ''; clearTimeout(msg.t); if (t) msg.t = setTimeout(() => { m.textContent = ''; }, 4000); } };
+
+  const paintProgress = () => {
+    if (!q('.x-bar')) return;
+    const cur = Math.min(st.dur, st.prog + (st.playing ? Date.now() - st.at : 0));
+    q('.x-bar i').style.width = (st.dur ? (cur / st.dur) * 100 : 0) + '%';
+    q('.x-t-cur').textContent = fmt(cur);
+    q('.x-t-dur').textContent = fmt(st.dur);
+  };
+
+  const checkLiked = async (id) => {
+    let r = await spApi('/me/library/contains?uris=' + encodeURIComponent('spotify:track:' + id));
+    if (!Array.isArray(r)) r = await spApi('/me/tracks/contains?ids=' + id);
+    if (Array.isArray(r) && st.id === id) { const b = q('.x-sp-like'); if (b) { b.classList.toggle('on', !!r[0]); b.setAttribute('aria-pressed', !!r[0]); } }
+  };
+
+  const update = (j) => {
+    if (!q('.x-disc')) return;
     const it = j && j.item;
-    if (!it) { body.innerHTML = '<p class="x-note">Nothing playing. Start Spotify on any device.</p>'; return; }
-    const art = (it.album && it.album.images && it.album.images[1]) ? it.album.images[1].url : '';
+    st.playing = !!(j && j.is_playing && it);
+    const disc = q('.x-disc-wrap');
+    disc.classList.toggle('playing', st.playing);
+    const tg = q('[data-sp=toggle]');
+    tg.innerHTML = st.playing ? SP_ICON.pause : SP_ICON.play;
+    if (!it) {
+      q('.x-sp-title').textContent = 'Nothing playing';
+      q('.x-sp-artist').textContent = 'Start Spotify on any device';
+      q('.x-sp-album').textContent = '';
+      q('.x-disc-label img').hidden = true;
+      q('.x-sp-bg').style.backgroundImage = '';
+      st.prog = st.dur = 0; st.id = ''; paintProgress();
+      return;
+    }
+    const images = (it.album && it.album.images) || (it.images) || [];
+    const art = (images[1] || images[0] || {}).url || '';
     const names = it.artists ? it.artists.map((a) => a.name).join(', ') : (it.show ? it.show.name : '');
-    body.innerHTML = `
-      <div class="x-sp">
-        ${art ? `<img class="x-sp-art${j.is_playing ? ' spin' : ''}" alt="" src="${esc(art)}"/>` : ''}
-        <div class="x-sp-meta"><b>${esc(it.name)}</b><span>${esc(names)}</span></div>
-      </div>
-      <div class="x-bar"><i style="width:${Math.min(100, (j.progress_ms / it.duration_ms) * 100)}%"></i></div>
-      <div class="x-sp-time"><span>${fmt(j.progress_ms)}</span><span>${fmt(it.duration_ms)}</span></div>
-      <div class="x-sp-ctl">
-        <button type="button" data-sp="prev" aria-label="Previous">⏮</button>
-        <button type="button" data-sp="toggle" aria-label="Play or pause">${j.is_playing ? '⏸' : '▶'}</button>
-        <button type="button" data-sp="next" aria-label="Next">⏭</button>
-      </div>
-      <div class="x-sp-end"><button class="btn-ghost" type="button" data-sp="disconnect">Disconnect</button></div>`;
-    body.dataset.playing = j.is_playing ? '1' : '';
+    q('.x-sp-title').textContent = it.name;
+    q('.x-sp-artist').textContent = names;
+    q('.x-sp-album').textContent = it.album ? it.album.name : '';
+    const img = q('.x-disc-label img');
+    if (art && img.getAttribute('src') !== art) img.src = art;
+    img.hidden = !art;
+    q('.x-sp-bg').style.backgroundImage = art ? `url("${art.replace(/"/g, '')}")` : '';
+    st.prog = j.progress_ms || 0; st.at = Date.now(); st.dur = it.duration_ms || 0; st.uri = it.uri;
+    if (st.id !== it.id) { st.id = it.id; if (it.type === 'track') checkLiked(it.id); q('.x-sp-like').classList.remove('on'); }
+    paintProgress();
+    const sh = q('[data-sp=shuffle]'), rp = q('[data-sp=repeat]');
+    sh.classList.toggle('on', !!j.shuffle_state); sh.setAttribute('aria-pressed', !!j.shuffle_state);
+    st.repeat = j.repeat_state || 'off';
+    rp.classList.toggle('on', st.repeat !== 'off'); rp.classList.toggle('one', st.repeat === 'track'); rp.setAttribute('aria-pressed', st.repeat !== 'off');
+    if (j.device) {
+      q('.x-sp-dev').textContent = j.device.name;
+      if (!st.volDrag && j.device.volume_percent != null) q('.x-sp-vol').value = j.device.volume_percent;
+    }
+    if (st.view === 'tracks') markPlayingRow();
   };
+
   const poll = async () => {
     if (document.hidden || !lsGet(SP.tok)) return;
     const j = await spApi('/me/player');
-    if (!j) return drawSetup();
-    if (j.error) { body.innerHTML = `<p class="x-note">Spotify error ${j.error}. Check your app settings.</p>`; return; }
-    draw(j.empty ? null : j);
+    if (!j) return drawSample();
+    if (j.error) { if (q('.x-sp-msg')) msg('Spotify error ' + j.error + '. Check your app settings.'); return; }
+    update(j.empty ? null : j);
   };
+
+  const start = () => {
+    stopSpotify();
+    if (!q('.x-disc')) drawPlayer();
+    poll();
+    spTimer = setInterval(poll, 4000);
+    spTick = setInterval(paintProgress, 400);
+  };
+
+  const act = async (path, method, okMsg) => {
+    const r = await spApi(path, method);
+    if (r && r.error === 404) msg('No active device. Open Spotify somewhere first.');
+    else if (r && r.error === 403) msg('Spotify blocked that. Playback control needs Premium.');
+    else if (r && r.error) msg('Spotify error ' + r.error);
+    else if (okMsg) msg(okMsg);
+    setTimeout(poll, 350);
+    return r;
+  };
+
+  /* ── playlists ── */
+  const lists = () => q('.x-sp-lists');
+  const showView = (v) => {
+    st.view = v === 'now' ? 'now' : st.view === 'tracks' && v === 'lists' ? 'tracks' : v;
+    q('.x-sp-now').hidden = v !== 'now';
+    lists().hidden = v === 'now';
+    q('[data-sp=tab-now]').classList.toggle('on', v === 'now');
+    q('[data-sp=tab-lists]').classList.toggle('on', v !== 'now');
+    st.view = v;
+  };
+  const reconnectHtml = () => `<p class="x-note">Playlists need extra permission.</p><button class="btn-add" type="button" data-sp="login">Reconnect Spotify</button>`;
+  const coverOf = (o) => ((o.images || [])[o.images && o.images.length > 1 ? 1 : 0] || {}).url || '';
+
+  const drawLists = async () => {
+    showView('lists');
+    const el = lists();
+    if (!hasScope()) { el.innerHTML = reconnectHtml(); return; }
+    if (!st.lists) {
+      el.innerHTML = '<p class="x-note">Loading playlists…</p>';
+      const r = await spApi('/me/playlists?limit=50');
+      if (!r || r.error) { el.innerHTML = `<p class="x-note">Couldn't load playlists${r && r.error ? ' (' + r.error + ')' : ''}.</p>`; return; }
+      st.lists = (r.items || []).filter(Boolean);
+    }
+    el.innerHTML = `
+      <input class="x-sp-find" type="search" placeholder="Filter playlists" aria-label="Filter playlists"/>
+      <ul class="x-pl">${st.lists.map((p) => `
+        <li><button type="button" data-sp="open" data-id="${esc(p.id)}" data-name="${esc(p.name)}">
+          <span class="x-pl-art">${coverOf(p) ? `<img alt="" loading="lazy" src="${esc(coverOf(p))}"/>` : ''}</span>
+          <span class="x-pl-meta"><b>${esc(p.name)}</b><span>${esc(p.owner && p.owner.display_name || '')}</span></span>
+        </button></li>`).join('') || '<li class="x-note">No playlists found.</li>'}</ul>`;
+  };
+
+  const drawTracks = async (id, name) => {
+    st.view = 'tracks'; st.plId = id;
+    const el = lists();
+    el.innerHTML = `<div class="x-pl-head"><button type="button" data-sp="lists-back" aria-label="Back to playlists">${SP_ICON.back}</button><b>${esc(name)}</b><button type="button" class="btn-add" data-sp="play-list" data-id="${esc(id)}">Play</button></div><p class="x-note">Loading…</p>`;
+    // /items replaced /tracks for dev-mode apps in 2026; fall back for older ones.
+    let r = await spApi('/playlists/' + id + '/items?limit=100');
+    if (r && r.error) r = await spApi('/playlists/' + id + '/tracks?limit=100');
+    const head = el.firstElementChild.outerHTML;
+    if (!r || r.error) { el.innerHTML = head + `<p class="x-note">${r && r.error === 403 ? 'Spotify only lets this app read playlists you own or collaborate on.' : 'Couldn\'t load tracks.'}</p>`; return; }
+    const rows = (r.items || []).map((e) => e && (e.item || e.track)).filter((t) => t && t.uri && t.type !== 'episode');
+    el.innerHTML = head + `<ul class="x-tr">${rows.map((t) => `
+      <li><button type="button" data-sp="play-track" data-uri="${esc(t.uri)}" data-id="${esc(id)}">
+        <span class="x-tr-n"><img alt="" loading="lazy" src="${esc(coverOf(t.album || {}))}"/></span>
+        <span class="x-pl-meta"><b>${esc(t.name)}</b><span>${esc((t.artists || []).map((a) => a.name).join(', '))}</span></span>
+        <span class="x-tr-d">${fmt(t.duration_ms)}</span>
+      </button></li>`).join('') || '<li class="x-note">Empty playlist.</li>'}</ul>`;
+    markPlayingRow();
+  };
+  const markPlayingRow = () => {
+    body.querySelectorAll('.x-tr button').forEach((b) => b.classList.toggle('now', b.dataset.uri === st.uri));
+  };
+
+  /* ── events ── */
   body.addEventListener('click', async (e) => {
     const a = e.target.closest('[data-sp]'); if (!a) return;
     const k = a.dataset.sp;
-    if (k === 'connect') { badge(false); form(); }
-    else if (k === 'disconnect') { lsSet(SP.tok, null); stopSpotify(); drawSetup(); }
-    else if (k === 'save') { const v = body.querySelector('[name=cid]').value.trim(); if (v) { lsSet(SP.id, v); drawSetup(); } }
+    if (k === 'save') { const v = body.querySelector('[name=cid]').value.trim(); if (v) { lsSet(SP.id, v); drawSetup(); } }
+    else if (k === 'connect') drawSetup();
+    else if (k === 'disconnect') { lsSet(SP.tok, null); stopSpotify(); drawSample(); }
     else if (k === 'login') spLogin();
-    else if (k === 'reset') { lsSet(SP.id, null); lsSet(SP.tok, null); form(); }
-    else if (k === 'prev') { await spApi('/me/player/previous', 'POST'); setTimeout(poll, 400); }
-    else if (k === 'next') { await spApi('/me/player/next', 'POST'); setTimeout(poll, 400); }
-    else if (k === 'toggle') { await spApi(body.dataset.playing ? '/me/player/pause' : '/me/player/play', 'PUT'); setTimeout(poll, 400); }
+    else if (k === 'reset') { lsSet(SP.id, null); lsSet(SP.tok, null); drawSetup(); }
+    else if (k === 'tab-now') showView('now');
+    else if (k === 'tab-lists') { if (st.view === 'tracks') showView('tracks'); else drawLists(); }
+    else if (k === 'lists-back') drawLists();
+    else if (k === 'open') drawTracks(a.dataset.id, a.dataset.name);
+    else if (k === 'play-list') { await act('/me/player/play', 'PUT'); /* replaced below */ }
+    else if (k === 'prev') act('/me/player/previous', 'POST');
+    else if (k === 'next') act('/me/player/next', 'POST');
+    else if (k === 'toggle') { st.playing = !st.playing; st.prog = st.prog; st.at = Date.now(); act(st.playing ? '/me/player/play' : '/me/player/pause', 'PUT'); }
+    else if (k === 'shuffle') act('/me/player/shuffle?state=' + !a.classList.contains('on'), 'PUT');
+    else if (k === 'repeat') act('/me/player/repeat?state=' + (st.repeat === 'off' ? 'context' : st.repeat === 'context' ? 'track' : 'off'), 'PUT');
+    else if (k === 'seek') {
+      const r = a.getBoundingClientRect(), ms = Math.round(((e.clientX - r.left) / r.width) * st.dur);
+      st.prog = ms; st.at = Date.now(); paintProgress();
+      act('/me/player/seek?position_ms=' + ms, 'PUT');
+    }
+    else if (k === 'like' && st.id) {
+      const on = !a.classList.contains('on'), uri = encodeURIComponent('spotify:track:' + st.id);
+      a.classList.toggle('on', on); a.setAttribute('aria-pressed', on);
+      let r = await spApi('/me/library?uris=' + uri, on ? 'PUT' : 'DELETE');
+      if (r && r.error) r = await spApi('/me/tracks?ids=' + st.id, on ? 'PUT' : 'DELETE');
+      if (r && r.error) { a.classList.toggle('on', !on); a.setAttribute('aria-pressed', !on); msg('Couldn\'t update Liked Songs. Try reconnecting Spotify.'); }
+      else msg(on ? 'Saved to Liked Songs' : 'Removed from Liked Songs');
+    }
   });
+  // play actions need a JSON body, which spApi supports through its third arg
+  body.addEventListener('click', async (e) => {
+    const a = e.target.closest('[data-sp=play-list],[data-sp=play-track]'); if (!a) return;
+    const ctx = 'spotify:playlist:' + a.dataset.id;
+    const payload = a.dataset.sp === 'play-track' ? { context_uri: ctx, offset: { uri: a.dataset.uri } } : { context_uri: ctx };
+    const r = await spApi('/me/player/play', 'PUT', payload);
+    if (r && r.error === 404) { showView('now'); msg('No active device. Open Spotify somewhere first.'); }
+    else if (r && r.error === 403) { showView('now'); msg('Spotify blocked that. Playback control needs Premium.'); }
+    else { showView('now'); setTimeout(poll, 500); }
+  });
+  body.addEventListener('input', (e) => {
+    if (e.target.matches('.x-sp-vol')) {
+      st.volDrag = true; clearTimeout(st.volT);
+      const v = e.target.value;
+      st.volT = setTimeout(async () => { await spApi('/me/player/volume?volume_percent=' + v, 'PUT'); st.volDrag = false; }, 200);
+    } else if (e.target.matches('.x-sp-find')) {
+      const t = e.target.value.toLowerCase();
+      body.querySelectorAll('.x-pl li').forEach((li) => { li.hidden = !li.textContent.toLowerCase().includes(t); });
+    }
+  });
+
   stopSpotify();
-  if (lsGet(SP.tok)) { poll(); spTimer = setInterval(poll, 5000); } else drawSetup();
-  spHandleRedirect().then(() => { if (lsGet(SP.tok)) { poll(); if (!spTimer) spTimer = setInterval(poll, 5000); } });
+  if (lsGet(SP.tok)) start(); else drawSample();
+  spHandleRedirect().then(() => { if (lsGet(SP.tok) && !spTimer) start(); });
   return node;
 }
+
 
 /* ── OVERDUE CARRY-OVER ────────────────────────────────────── */
 function setupCarry() {
