@@ -42,6 +42,19 @@ function classSlotsFor(weekday) {  // weekday: 0-6 (Sun-Sat)
   return out;
 }
 
+/* A readable count under each day: "3 due" with the first class colour,
+   "1 event" when only events are on, "Free" otherwise. */
+function countChip(key, taskCount, evCount, tasks) {
+  if (taskCount) {
+    const cs = load('schoolClasses', []);
+    const t = tasks.find(x => x.dueDate === key);
+    const c = t && cs.find(x => x.id === t.classId);
+    return `<span class="ds-count has"><i style="background:${c ? c.color : 'var(--accent)'}"></i>${taskCount} due</span>`;
+  }
+  if (evCount) return `<span class="ds-count has">${evCount} event${evCount > 1 ? 's' : ''}</span>`;
+  return '<span class="ds-count">Free</span>';
+}
+
 /* ── STRIP ───────────────────────────────────────────────────── */
 function render() {
   const el = $('daystrip');
@@ -73,6 +86,7 @@ function render() {
         <span class="ds-num">${d.getDate()}</span>
         <span class="ds-month">${showMonth ? MONTHS[d.getMonth()] : '&nbsp;'}</span>
         <span class="ds-dots">${dots || '<span class="ds-dot none"></span>'}</span>
+        ${countChip(key, taskCount, evCount, tasks)}
       </button>`;
   }
   el.innerHTML = html;

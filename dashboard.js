@@ -2551,6 +2551,7 @@ function saveCurrentlyAll(c) { save('currently', c); }
 function switchCurKind(kind, el) {
   curKind = kind;
   curIdx = 0;
+  curPanel = '';
   $$('.cur-tab').forEach(t => t.classList.remove('active'));
   if (el) el.classList.add('active');
   renderCurrently();
@@ -2564,46 +2565,182 @@ function curVisible(all) {
   return (all[curKind] || []).filter(i => i.status !== 'queued');
 }
 
+// Floating-cover layout (polish.css). curPanel: '' | 'track' | 'add'.
+let curPanel = '';
+const CUR_UNITS = {
+  reading:  { unit: 'Page',    plural: 'pages',    step: 1 },
+  watching: { unit: 'Episode', plural: 'episodes', step: 1 },
+  playing:  { unit: 'Progress', plural: '',        step: 5, percent: true },
+};
+const CF_ICON = {
+  check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg>',
+  plus:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>',
+  prev:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>',
+  next:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>',
+  x:     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>',
+};
+
+// Works out progress for an entry. Reading / watching count pages / episodes
+// (cur of total); playing is a plain percent. Older entries that only have a
+// percent still show it.
+function curProgressInfo(item, kind) {
+  const u = CUR_UNITS[kind];
+  if (u.percent) {
+    const pct = Math.max(0, Math.min(100, Math.round(+item.progress || 0)));
+    return { pct, done: pct >= 100, summary: pct ? `${pct}% complete` : 'Not started', calc: pct >= 100 ? 'Finished' : `${100 - pct}% left to go` };
+  }
+  const cur = Math.max(0, +item.cur || 0), total = Math.max(0, +item.total || 0);
+  if (total > 0) {
+    const pct = Math.min(100, Math.round((cur / total) * 100));
+    const left = Math.max(0, total - cur);
+    const one = u.plural.slice(0, -1);
+    return { pct, done: cur >= total, summary: `${u.unit} ${cur} of ${total} · ${pct}%`,
+      calc: cur >= total ? `Finished, all ${total} ${u.plural}` : `${pct}% done · ${left} ${left === 1 ? one : u.plural} left` };
+  }
+  if (item.progress != null && !cur) return { pct: +item.progress, done: +item.progress >= 100, summary: `${item.progress}%`, calc: `Add the total ${u.plural} to count them` };
+  return { pct: 0, done: false, summary: cur ? `${u.unit} ${cur}` : 'Not started', calc: `Add the total ${u.plural} to see your percent` };
+}
+
+function curAddRow(meta) {
+  return `<div class="cf-addrow">
+      <input id="curAddInput" placeholder="${esc(meta.placeholder)}" aria-label="${esc(meta.placeholder)}"
+             onkeydown="if(event.key==='Enter')window.dash.curAddSubmit();if(event.key==='Escape')window.dash.curSetPanel('')"/>
+      <button class="cf-pill" type="button" onclick="window.dash.curAddSubmit()">Add</button>
+      ${curPanel === 'add' ? `<button class="cf-ic" type="button" onclick="window.dash.curSetPanel('')" aria-label="Cancel" title="Cancel">${CF_ICON.x}</button>` : ''}
+    </div>`;
+}
+
 function renderCurrently() {
   const all = getCurrentlyAll();
   const items = curVisible(all);
   const meta = CUR_KINDS[curKind];
   const wrap = $('currentlyCarousel');
+  if (!wrap) return;
   if (!items.length) {
-    wrap.innerHTML = `<div class="cur-empty">${ICONS[meta.icon]}<div>nothing in your ${curKind} queue.<br>tap "+ Add" to start.</div></div>`;
+    wrap.innerHTML = `<div class="cur-empty">${ICONS[meta.icon]}<div>nothing in your ${curKind} queue.<br>add one below.</div></div>${curAddRow(meta)}`;
     renderCurDots(0, 0);
-    $('curPrev').disabled = true;
-    $('curNext').disabled = true;
+    if ($('curPrev')) $('curPrev').disabled = true;
+    if ($('curNext')) $('curNext').disabled = true;
     return;
   }
   if (curIdx >= items.length) curIdx = items.length - 1;
   if (curIdx < 0) curIdx = 0;
   const item = items[curIdx];
+  const u = CUR_UNITS[curKind];
+  const p = curProgressInfo(item, curKind);
+  const many = items.length > 1;
+
+  const actions = curPanel === 'add' ? curAddRow(meta) : `
+      <div class="cf-actions">
+        <button class="cf-pill" type="button" onclick="window.dash.curSetPanel('track')" aria-expanded="${curPanel === 'track'}">Track progress</button>
+        <button class="cf-ic" type="button" onclick="window.dash.finishCur()" aria-label="Mark finished" title="Mark finished">${CF_ICON.check}</button>
+        <button class="cf-ic" type="button" onclick="window.dash.curSetPanel('add')" aria-label="Add a title" title="Add a title">${CF_ICON.plus}</button>
+        <span class="cf-sp"></span>
+        <button class="cf-ic" type="button" onclick="window.dash.curPrev()" aria-label="Previous" title="Previous" ${many ? '' : 'disabled'}>${CF_ICON.prev}</button>
+        <button class="cf-ic" type="button" onclick="window.dash.curNext()" aria-label="Next" title="Next" ${many ? '' : 'disabled'}>${CF_ICON.next}</button>
+      </div>`;
+
+  const pop = curPanel !== 'track' ? '' : `
+    <div class="cf-pop" role="dialog" aria-label="Track progress">
+      <div class="cf-pop-h"><span>Track progress</span><button type="button" onclick="window.dash.curSetPanel('')" aria-label="Close">×</button></div>
+      ${u.percent ? `
+      <div class="cf-row"><label for="cfCur">Progress</label>
+        <button class="cf-step" type="button" onclick="window.dash.curStep(-1)" aria-label="Back ${u.step} percent">−</button>
+        <input id="cfCur" type="number" min="0" max="100" inputmode="numeric" value="${p.pct}" onchange="window.dash.curSetProgress(this.value)"/>
+        <button class="cf-step" type="button" onclick="window.dash.curStep(1)" aria-label="Forward ${u.step} percent">+</button>
+        <span>%</span></div>` : `
+      <div class="cf-row"><label for="cfCur">${u.unit}</label>
+        <button class="cf-step" type="button" onclick="window.dash.curStep(-1)" aria-label="Back one">−</button>
+        <input id="cfCur" type="number" min="0" inputmode="numeric" value="${+item.cur || 0}" onchange="window.dash.curSetProgress(this.value, null)"/>
+        <button class="cf-step" type="button" onclick="window.dash.curStep(1)" aria-label="Forward one">+</button></div>
+      <div class="cf-row"><label for="cfTotal">Out of</label>
+        <input id="cfTotal" type="number" min="0" inputmode="numeric" value="${+item.total || ''}" style="width:96px" onchange="window.dash.curSetProgress(null, this.value)"/>
+        <span>${u.plural}</span></div>`}
+      <div class="cf-quick">
+        <button type="button" onclick="window.dash.curResetProgress()">Start over</button>
+        <button type="button" onclick="window.dash.curCompleteProgress()">Mark finished</button>
+      </div>
+      <div class="cf-calc">${esc(p.calc)}</div>
+    </div>`;
 
   wrap.innerHTML = `
-    <div class="cur-card">
-      <div class="cur-img-wrap" onclick="window.dash.pickCurImage()">
-        ${item.img
-          ? `<img src="${item.img}" alt="">`
-          : `<div class="cur-img-empty">${ICONS.image}<span>tap to upload</span></div>`}
+    <div class="cf">
+      <div class="cf-cover" onclick="window.dash.pickCurImage()" title="Change cover">
+        ${item.img ? `<img src="${item.img}" alt="">` : `<span>Add<br>cover</span>`}
       </div>
-      <div class="cur-body">
-        <div class="cur-tag">${meta.tag}</div>
-        <input class="cur-title" value="${esc(item.title||'')}" placeholder="Title"
+      <div class="cf-body">
+        <div class="cf-tag">${meta.tag} · ${curIdx + 1} of ${items.length}${p.done ? '<span class="cf-badge">Finished</span>' : ''}</div>
+        <input class="cur-title" value="${esc(item.title||'')}" placeholder="Title" aria-label="Title"
                oninput="window.dash.updateCur('title',this.value)"/>
-        <input class="cur-sub" value="${esc(item.sub||'')}" placeholder="${curKind==='reading'?'Author':curKind==='watching'?'Studio / showrunner':'Studio / dev'}"
+        <input class="cur-sub" value="${esc(item.sub||'')}" aria-label="${curKind==='reading'?'Author':'Details'}" placeholder="${curKind==='reading'?'Author':curKind==='watching'?'Season / studio':'Platform / studio'}"
                oninput="window.dash.updateCur('sub',this.value)"/>
-        ${item.progress != null ? `<div class="cur-progress-bar"><div class="cur-progress-fill" style="width:${item.progress}%"></div></div>` : ''}
-        <div class="cur-actions">
-          <button class="cur-action" onclick="window.dash.cycleCurProgress()">${item.progress != null ? `${item.progress}%` : 'Track progress'}</button>
-          <button class="cur-action danger" onclick="window.dash.finishCur()">Finish</button>
-        </div>
+        <div class="cf-prog"><div class="cf-bar"><i style="width:${p.pct}%"></i></div><span>${esc(p.summary)}</span></div>
+        ${actions}
       </div>
+      ${pop}
     </div>`;
 
   renderCurDots(curIdx, items.length);
-  $('curPrev').disabled = items.length <= 1;
-  $('curNext').disabled = items.length <= 1;
+  if ($('curPrev')) $('curPrev').disabled = !many;
+  if ($('curNext')) $('curNext').disabled = !many;
+  if (curPanel === 'add') { const i = $('curAddInput'); if (i) i.focus(); }
+}
+
+function curSetPanel(p) {
+  curPanel = (curPanel === p) ? '' : p;
+  renderCurrently();
+}
+function curAddSubmit() {
+  const i = $('curAddInput');
+  const v = i ? i.value.trim() : '';
+  if (!v) return;
+  curPanel = '';
+  curAdd(v);
+}
+function curSetProgress(curVal, totalVal) {
+  const all = getCurrentlyAll();
+  const item = curVisible(all)[curIdx];
+  if (!item) return;
+  const u = CUR_UNITS[curKind];
+  if (u.percent) {
+    const n = parseInt(curVal, 10);
+    item.progress = Math.max(0, Math.min(100, isNaN(n) ? 0 : n));
+  } else {
+    let cur = curVal == null ? (+item.cur || 0) : parseInt(curVal, 10);
+    let total = totalVal == null ? (+item.total || 0) : parseInt(totalVal, 10);
+    cur = Math.max(0, isNaN(cur) ? 0 : cur);
+    total = Math.max(0, isNaN(total) ? 0 : total);
+    if (total > 0) cur = Math.min(cur, total);
+    item.cur = cur;
+    item.total = total || null;
+    item.progress = total > 0 ? Math.round((cur / total) * 100) : (cur ? item.progress : null);
+  }
+  saveCurrentlyAll(all);
+  renderCurrently();
+}
+function curStep(dir) {
+  const item = curVisible(getCurrentlyAll())[curIdx];
+  if (!item) return;
+  const u = CUR_UNITS[curKind];
+  if (u.percent) curSetProgress((+item.progress || 0) + dir * u.step);
+  else curSetProgress((+item.cur || 0) + dir * u.step, null);
+}
+function curResetProgress() {
+  if (CUR_UNITS[curKind].percent) curSetProgress(0);
+  else curSetProgress(0, null);
+}
+function curCompleteProgress() {
+  const item = curVisible(getCurrentlyAll())[curIdx];
+  if (!item) return;
+  if (CUR_UNITS[curKind].percent) curSetProgress(100);
+  else if (+item.total > 0) curSetProgress(item.total, null);
+  else {
+    const all = getCurrentlyAll();
+    const it = curVisible(all)[curIdx];
+    it.progress = 100;
+    saveCurrentlyAll(all);
+    renderCurrently();
+  }
 }
 
 function renderCurDots(active, total) {
@@ -2618,12 +2755,14 @@ function curPrev() {
   const items = curVisible(getCurrentlyAll());
   if (items.length <= 1) return;
   curIdx = (curIdx - 1 + items.length) % items.length;
+  curPanel = '';
   renderCurrently();
 }
 function curNext() {
   const items = curVisible(getCurrentlyAll());
   if (items.length <= 1) return;
   curIdx = (curIdx + 1) % items.length;
+  curPanel = '';
   renderCurrently();
 }
 function curGoTo(i) { curIdx = i; renderCurrently(); }
@@ -3419,6 +3558,7 @@ window.dash = {
   renderShopping, addShopping, toggleShopping, updateShopping, delShopping, clearDoneShopping, toggleShopCategoryGroup,
   renderGoals, switchGoalScope, addGoal, delGoal, cycleGoal,
   renderCurrently, renderCurrentlyTabs, switchCurKind, curPrev, curNext, curGoTo, curAdd, updateCur, cycleCurProgress, finishCur, pickCurImage,
+  curSetPanel, curAddSubmit, curSetProgress, curStep, curResetProgress, curCompleteProgress,
   renderHealth, openHealthModal, closeHealthModal, syncHealth, openManualHealth, closeManualHealth, saveManualHealth, toggleHealth,
   renderPeople, addPerson, checkin, delPerson,
   currentTabFor,
