@@ -3039,12 +3039,13 @@ function applyCardBg(el) {
 function measureBgStrip(el) {
   if (el.getAttribute('data-bg-look') !== 'banner') return;
   const scale = el.querySelector(':scope > .block-scale') || el;
-  const hd = [...scale.children].find(c => c.matches('.sec-label-row, .x-head, .planner-head, .sec-label, .card-head'));
+  // Cards with a big headline number (Practicum hours) keep that number inside the photo too.
+  const hd = scale.querySelector('.x-hr-top') || [...scale.children].find(c => c.matches('.sec-label-row, .x-head, .planner-head, .sec-label, .card-head'));
   let h = 78;
   if (hd) {
     const er = el.getBoundingClientRect(), hr = hd.getBoundingClientRect();
     const z = el.offsetWidth ? er.width / el.offsetWidth : 1;
-    h = Math.max(78, (hr.bottom - er.top) / z + 16);
+    h = Math.max(78, (hr.bottom - er.top) / z + (hd.matches('.x-hr-top') ? 18 : 16));
   }
   el.style.setProperty('--bg-strip-h', Math.round(h) + 'px');
 }

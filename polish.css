@@ -123,13 +123,12 @@ html:not([data-theme="sky"]):not([data-theme="forest"]) .hdr-clock b { color: va
 .block-x-next:not([data-has-bg="1"]) .x-when { background: var(--accent); color: var(--on-accent, #fff); }
 
 /* Hours + Dailies, banner look: a taller strip that holds the whole header */
-:is([data-theme="sky"],[data-theme="forest"]) .block-x-hours[data-has-bg="1"][data-bg-look="banner"] { --bg-strip-h: 132px; }
-:is([data-theme="sky"],[data-theme="forest"]) .block[data-card-id="dailies"][data-has-bg="1"][data-bg-look="banner"] { --bg-strip-h: 124px; }
 :is([data-theme="sky"],[data-theme="forest"]) :is(.block-x-hours, .block[data-card-id="dailies"])[data-has-bg="1"][data-bg-look="banner"]::before {
   z-index: 1 !important; mix-blend-mode: normal !important; opacity: 1 !important; filter: none !important;
   background: linear-gradient(to top, rgba(18,11,5,.9) 0%, rgba(18,11,5,.65) 55%, rgba(18,11,5,.35) 100%) !important;
 }
-.block-x-hours[data-has-bg="1"][data-bg-look="banner"] .x-hr-top { position: relative; z-index: 1; margin-bottom: 26px; min-height: 52px; }
+.block-x-hours[data-has-bg="1"][data-bg-look="banner"] .x-hr-top { position: relative; z-index: 1; margin: 6px 0 30px; min-height: 56px; }
+.block-x-hours[data-has-bg="1"][data-bg-look="banner"] .x-hr-big { font-size: 2rem; }
 .block-x-hours[data-has-bg="1"][data-bg-look="banner"] .x-hr-big { color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.6); background: none !important; box-shadow: none !important; }
 .block-x-hours[data-has-bg="1"][data-bg-look="banner"] .x-ring { border-radius: 50%; background: rgba(0,0,0,.35); }
 .block-x-hours[data-has-bg="1"][data-bg-look="banner"] .x-ring circle:first-child { stroke: rgba(255,255,255,.3); }
