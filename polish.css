@@ -343,3 +343,12 @@ html.x-dark .cf-badge { background: #2e4a27; color: #cdeec0; }
 html.x-dark .hdr-mode-btn .i-sun { display: block; }
 html.x-dark .hdr-mode-btn .i-moon { display: none; }
 html.x-dark:is([data-theme="sky"],[data-theme="forest"]) .habit-item:not(.done) :is(.habit-label, .habit-icon) { color: var(--text-s) !important; opacity: 1 !important; }
+
+/* ── 10. PAGE BACKGROUND PHOTO ──────────────────────────────────
+   redesign.css hides body::before / ::after on Sky and Forest, which also
+   hid an uploaded page background. Bring both layers back when one is set. */
+:is([data-theme="sky"],[data-theme="forest"]) body[data-has-bg="1"]::before,
+:is([data-theme="sky"],[data-theme="forest"]) body[data-has-bg="1"]::after { display: block !important; }
+[data-theme="sky"] { --bg-rgb: 22,18,34; }
+[data-theme="forest"] { --bg-rgb: 230,238,227; }
+html.x-dark[data-theme="forest"] { --bg-rgb: 15,22,18; }
