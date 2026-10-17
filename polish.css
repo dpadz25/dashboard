@@ -82,6 +82,7 @@ body.x-wide .dash { max-width: min(100%, 1880px) !important; }
 @media (max-width: 860px) { .hdr-char { display: none !important; } }
 /* lead mode: the name block slides right to make room for him */
 @media (min-width: 861px) {
+  .header-card.x-char-lead .hdr-grp-identity { flex-shrink: 0 !important; }
   .header-card.x-char-lead :is(.hdr-grp-identity, .hdr-grp-quote) { margin-left: calc(var(--char-w, 120px) + 26px) !important; }
 }
 
@@ -279,3 +280,66 @@ html:not([data-theme="sky"]):not([data-theme="forest"]) .hdr-clock b { color: va
 .side-rail[data-has-bg="1"] :is(.rail-link-icon svg, .x-space:not(.on) svg) { stroke-width: 2.4; filter: drop-shadow(0 0 1px rgba(255,255,255,.6)); }
 .side-rail[data-has-bg="1"] .x-space.on, .side-rail[data-has-bg="1"] .x-space.on * { text-shadow: none !important; filter: none !important; }
 [data-theme="sky"] .side-rail:not([data-has-bg="1"]) :is(.rail-link-text, .x-space span) { font-weight: 600; }
+
+/* ── 9. DARK MODE (Sky + Forest) ────────────────────────────────
+   html.x-dark is set by polish.js (and by a tiny inline script in index.html
+   so the page never flashes light first). Light stays the default. */
+html.x-dark { color-scheme: dark; }
+html.x-dark[data-theme="sky"] {
+  --bg: #15131c; --card: #1f1b22; --card-elev: #28222a; --surface2: #2d2630; --surface3: #362e38;
+  --border: #3b3239; --border2: #51464d;
+  --text: #f2e9dc; --text-s: #dacebf; --muted: #b6a897; --muted2: #998b7d;
+  --accent: #e8814b; --accent-s: #f4a172; --accent-dim: rgba(232,129,75,.2); --on-accent: #1a1210;
+  --green: #93c97f; --green-dim: rgba(147,201,127,.16); --teal: #7fd0c8; --teal-dim: rgba(127,208,200,.16);
+  --red: #f08e80; --red-dim: rgba(240,142,128,.16); --purple: #c3a5ec; --purple-dim: rgba(195,165,236,.16);
+  --blue: #93b6ef; --blue-dim: rgba(147,182,239,.16);
+  --shadow: 0 12px 32px rgba(0,0,0,.45);
+  background: #2a1d24;
+}
+html.x-dark[data-theme="forest"] {
+  --bg: #0f1612; --card: #18211b; --card-elev: #1f2a22; --surface2: #243028; --surface3: #2c3930;
+  --border: #314037; --border2: #45574b;
+  --text: #e4ede3; --text-s: #c6d4c7; --muted: #a2b4a6; --muted2: #849788;
+  --accent: #86c697; --accent-s: #a6dab3; --accent-dim: rgba(134,198,151,.18); --on-accent: #0f1612;
+  --green: #9bd27a; --teal: #7fd0c8; --red: #f08e80; --purple: #c3a5ec; --blue: #93b6ef;
+  --shadow: 0 12px 32px rgba(0,0,0,.4);
+}
+html.x-dark[data-theme="sky"] body { background: linear-gradient(180deg, #0e1220 0%, #1f1a2c 38%, #34202b 76%, #422626 100%); }
+html.x-dark[data-theme="forest"] body { background: #0f1612; }
+html.x-dark:is([data-theme="sky"],[data-theme="forest"]) .card { border-color: rgba(255,255,255,.06); }
+
+/* surfaces that were hard-coded white or cream */
+html.x-dark:is([data-theme="sky"],[data-theme="forest"]) :is(.t-input, .t-select, .icon-btn, .tab.active, .seg button.active, .agenda-tab.active,
+  .task-item, .habit-item, .person-item, .checkin-btn, .carousel-nav, .health-tile, .clock-format-btn, .x-carry .btn-ghost,
+  .planner-chips .tab, .x-sp-ctl button, .ds-day:not(.today), .task, .daily-group .habit-item.done, .habit-item.has-color:not(.done)) {
+  background: var(--card-elev) !important; color: var(--text);
+}
+html.x-dark:is([data-theme="sky"],[data-theme="forest"]) .planner-chips .tab.active { background: var(--text) !important; color: var(--card) !important; }
+html.x-dark:is([data-theme="sky"],[data-theme="forest"]) .block[data-card-id="currently"]:not([data-has-bg="1"]) .carousel { background: none !important; }
+html.x-dark:is([data-theme="sky"],[data-theme="forest"]) .daystrip-card { background: var(--card) !important; }
+html.x-dark[data-theme="sky"] :is(.side-rail, .side-rail-brand) { background: #19161e !important; }
+html.x-dark[data-theme="sky"] :is(.x-space, .rail-link, .rail-add, .rail-edit-toggle) { color: var(--text-s); }
+html.x-dark[data-theme="sky"] :is(.x-space:not(.on):hover, .rail-link:hover) { background: var(--surface3); color: var(--text); }
+html.x-dark[data-theme="sky"] .x-space.dashed, html.x-dark[data-theme="sky"] :is(.rail-add, .rail-edit-toggle) { border-color: var(--border2); }
+html.x-dark:is([data-theme="sky"],[data-theme="forest"]) .x-tabbar { background: #19161e; }
+html.x-dark:is([data-theme="sky"],[data-theme="forest"]) .x-carry { background: color-mix(in srgb, #c0392b 18%, var(--card)); }
+html.x-dark:is([data-theme="sky"],[data-theme="forest"]) .card:not([data-has-bg="1"]) :is(.sec-label, .x-title, .x-eyebrow) { color: var(--accent) !important; }
+html.x-dark:is([data-theme="sky"],[data-theme="forest"]) ::placeholder { color: var(--muted); }
+
+/* the new pieces from this pass */
+html.x-dark .block[data-card-id="dailies"] .daily-group[data-group="morning"]   { --dg-tint: rgba(217,154,43,.2);  --dg-ink: #f0b65a; --dg: #e2a443; }
+html.x-dark .block[data-card-id="dailies"] .daily-group[data-group="afternoon"] { --dg-tint: rgba(62,138,132,.25); --dg-ink: #84d3cb; --dg: #4fa49d; }
+html.x-dark .block[data-card-id="dailies"] .daily-group[data-group="evening"]   { --dg-tint: rgba(125,92,163,.28); --dg-ink: #c9aaf0; --dg: #9874c4; }
+html.x-dark .cf-pop { background: var(--card-elev); color: var(--text); border: 1px solid var(--border); }
+html.x-dark .cf-pop :is(.cf-row label, .cf-row span) { color: var(--text-s); }
+html.x-dark .cf-pop .cf-pop-h { color: var(--accent); }
+html.x-dark .cf-pop :is(.cf-pop-h button, .cf-quick button, .cf-calc) { background: var(--surface2); color: var(--text); border-color: var(--border); }
+html.x-dark .cf-pop :is(.cf-row .cf-step, .cf-row input) { background: var(--card); color: var(--text); border-color: var(--border2); }
+html.x-dark .cf-badge { background: #2e4a27; color: #cdeec0; }
+
+/* the toggle in the header */
+.hdr-mode-btn svg { width: 16px; height: 16px; }
+.hdr-mode-btn .i-sun { display: none; }
+html.x-dark .hdr-mode-btn .i-sun { display: block; }
+html.x-dark .hdr-mode-btn .i-moon { display: none; }
+html.x-dark:is([data-theme="sky"],[data-theme="forest"]) .habit-item:not(.done) :is(.habit-label, .habit-icon) { color: var(--text-s) !important; opacity: 1 !important; }

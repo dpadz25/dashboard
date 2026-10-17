@@ -262,10 +262,45 @@ function watchDailies() {
   renderDots();
 }
 
+/* ── DARK MODE ─────────────────────────────────────────────
+   'light' | 'dark' | 'auto' (follow the device). Kept per device on purpose,
+   so a phone can follow its own system setting. */
+const MODE_KEY = 'polishMode';
+const mq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+const getMode = () => { try { return localStorage.getItem(MODE_KEY) || 'light'; } catch (_) { return 'light'; } };
+const isDark = () => { const m = getMode(); return m === 'dark' || (m === 'auto' && !!(mq && mq.matches)); };
+function applyMode() {
+  const dark = isDark();
+  document.documentElement.classList.toggle('x-dark', dark);
+  const btn = document.getElementById('hdrModeBtn');
+  if (btn) { btn.setAttribute('aria-pressed', String(dark)); btn.title = dark ? 'Switch to light mode' : 'Switch to dark mode'; btn.setAttribute('aria-label', btn.title); }
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute('content', dark ? '#15131c' : '#0d0b09');
+}
+function setMode(m) {
+  try { localStorage.setItem(MODE_KEY, m); } catch (_) {}
+  applyMode();
+  if (window.tweaks && window.tweaks.refresh) window.tweaks.refresh();
+}
+if (mq && mq.addEventListener) mq.addEventListener('change', () => { if (getMode() === 'auto') applyMode(); });
+function buildModeBtn() {
+  const acts = document.querySelector('#headerCard .hdr-when-actions');
+  if (!acts || document.getElementById('hdrModeBtn')) return;
+  const b = document.createElement('button');
+  b.type = 'button'; b.id = 'hdrModeBtn'; b.className = 'icon-btn hdr-mode-btn';
+  b.innerHTML = '<svg class="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>' +
+    '<svg class="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>';
+  b.addEventListener('click', () => setMode(isDark() ? 'light' : 'dark'));
+  acts.prepend(b);
+  applyMode();
+}
+applyMode();
+
 /* ── BOOT ──────────────────────────────────────────────────── */
 function boot() {
   document.body.classList.toggle('x-wide', isWide());
   buildClock();
+  buildModeBtn();
   buildChar();
   watchDailies();
   let tries = 0;
@@ -288,5 +323,5 @@ function boot() {
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
 else boot();
 
-window.polish = { isWide, setWide, closeMenu, placeChar };
+window.polish = { isWide, setWide, closeMenu, placeChar, getMode, setMode, isDark };
 })();

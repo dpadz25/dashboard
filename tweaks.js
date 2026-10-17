@@ -332,6 +332,16 @@ function renderPanel() {
       </div>
 
       <div class="tweak-section">
+        <div class="tweak-section-title">Appearance</div>
+        <div class="theme-grid">
+          ${['light','dark','auto'].map(m => `
+            <button class="theme-swatch ${(window.polish && window.polish.getMode() === m) ? 'active' : ''}" onclick="window.polish && window.polish.setMode('${m}')">
+              <div class="theme-swatch-name">${m === 'light' ? 'Light' : m === 'dark' ? 'Dark' : 'Match device'}</div>
+            </button>`).join('')}
+        </div>
+      </div>
+
+      <div class="tweak-section">
         <div class="tweak-section-title">Page width</div>
         <div class="theme-grid">
           <button class="theme-swatch ${(window.polish && window.polish.isWide()) ? '' : 'active'}" onclick="window.polish && window.polish.setWide(false)">
