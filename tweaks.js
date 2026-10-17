@@ -332,6 +332,18 @@ function renderPanel() {
       </div>
 
       <div class="tweak-section">
+        <div class="tweak-section-title">Page width</div>
+        <div class="theme-grid">
+          <button class="theme-swatch ${(window.polish && window.polish.isWide()) ? '' : 'active'}" onclick="window.polish && window.polish.setWide(false)">
+            <div class="theme-swatch-name">Centered</div>
+          </button>
+          <button class="theme-swatch ${(window.polish && window.polish.isWide()) ? 'active' : ''}" onclick="window.polish && window.polish.setWide(true)">
+            <div class="theme-swatch-name">Wide</div>
+          </button>
+        </div>
+      </div>
+
+      <div class="tweak-section">
         <div class="tweak-section-title">Typeface</div>
         <div class="font-grid">
           ${Object.entries(FONT_PRESETS).map(([key, p]) => `
