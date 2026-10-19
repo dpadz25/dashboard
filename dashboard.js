@@ -1691,7 +1691,7 @@ function seedLife() {
     if (!lists.some(l => l.id === id)) lists.push({ id, name: s.name });
     s.items.forEach((text, n) => {
       const iid = id + '-' + n;
-      if (!items.some(i => i.id === iid)) items.push({ id: iid, text, done: false, cat: 'packing', list: id, t: Date.now() });
+      if (!items.some(i => i.id === iid)) items.push({ id: iid, text, done: false, cat: 'packing', list: id, t: n });
     });
   });
   saveLifeLists(lists);
@@ -1778,8 +1778,13 @@ function renderLife() {
     return;
   }
   const order = ['general', ...lifePages().map(p => p.id)];
+  // Tie-break on creation time so every device shows the same order after a
+  // sync (array order can differ between devices). Checklists read oldest
+  // first, to-dos newest first.
+  const isCheck = i => !!(lifePage(i.cat) && lifePage(i.cat).check);
   const sorted = [...items].sort((a, b) => (a.done ? 1 : 0) - (b.done ? 1 : 0)
-    || (tab === 'all' ? order.indexOf(a.cat || 'general') - order.indexOf(b.cat || 'general') : 0));
+    || (tab === 'all' ? order.indexOf(a.cat || 'general') - order.indexOf(b.cat || 'general') : 0)
+    || ((a.t || 0) - (b.t || 0)) * (isCheck(a) ? 1 : -1));
   el.innerHTML = '';
   sorted.forEach(item => {
     const div = document.createElement('div');
