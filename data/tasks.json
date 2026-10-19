@@ -10,91 +10,31 @@
     "repeat": ""
   },
   {
-    "id": "ct6o9rhe",
-    "title": "email bena topic",
-    "dueDate": "2026-10-13",
-    "category": "General",
+    "id": "5g5a55va",
+    "title": "Student and staff meeting",
+    "dueDate": "2026-10-19",
+    "category": "Practicum",
+    "type": "assignment",
+    "priority": false,
+    "completed": false,
+    "repeat": "weekly"
+  },
+  {
+    "id": "hngv708i",
+    "title": "Pick topic and work on it for hours!!!",
+    "dueDate": "2026-10-19",
+    "category": "Practicum",
     "type": "assignment",
     "priority": false,
     "completed": false,
     "repeat": ""
   },
   {
-    "id": "jsig6r8u",
-    "title": "email zoom link to jayden",
-    "dueDate": "2026-10-13",
-    "category": "General",
-    "type": "priority",
-    "priority": true,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "db9opznu",
-    "title": "Module 6 quiz (Social anxiety)",
-    "dueDate": "2026-10-13",
-    "category": "clinical practicum 1",
-    "type": "quiz",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "sq9vh68q",
-    "title": "Pre-class Survey 6: Sexual Orientation & Heterosexism",
-    "dueDate": "2026-10-13",
-    "category": "cultural issues",
-    "type": "discussion",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "andxgx6p",
-    "title": "Journal Entry, Week 8",
-    "dueDate": "2026-10-14",
-    "category": "Dev. Psych",
+    "id": "jdoqw5pw",
+    "title": "Prepare for Session with J, read up on sleep and plan out his next session",
+    "dueDate": "2026-10-19",
+    "category": "Practicum",
     "type": "assignment",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "8auffcri",
-    "title": "Week 8, DSM-5-TR Bipolar Disorders criteria",
-    "dueDate": "2026-10-14",
-    "category": "Dev. Psych",
-    "type": "reading",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "58nl3urx",
-    "title": "Week 8, Van Meter et al. (2021), subthreshold manic symptoms differentiating bipolar from unipolar depression",
-    "dueDate": "2026-10-14",
-    "category": "Dev. Psych",
-    "type": "reading",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "w6wogcj8",
-    "title": "Week 8, Nicholas (2017), self-management in young adults with bipolar disorder",
-    "dueDate": "2026-10-14",
-    "category": "Dev. Psych",
-    "type": "reading",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "a5r25t02",
-    "title": "Read Ch. 21",
-    "dueDate": "2026-10-15",
-    "category": "Dev. Psych",
-    "type": "reading",
     "priority": false,
     "completed": false,
     "repeat": ""
@@ -128,6 +68,16 @@
     "priority": false,
     "completed": false,
     "repeat": ""
+  },
+  {
+    "id": "z720s2hp",
+    "title": "Session with J 4:30",
+    "dueDate": "2026-10-20",
+    "category": "Practicum",
+    "type": "discussion",
+    "priority": false,
+    "completed": false,
+    "repeat": "weekly"
   },
   {
     "id": "fku8mwm1",
@@ -270,16 +220,6 @@
     "repeat": ""
   },
   {
-    "id": "nc2upcua",
-    "title": "ask dr alex and dr mcnulty about accuring my hours",
-    "dueDate": "2026-10-30",
-    "category": "Practicum",
-    "type": "assignment",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
     "id": "ut2a3k9a",
     "title": "Read Ch. 8",
     "dueDate": "2026-11-02",
@@ -304,16 +244,6 @@
     "title": "case presentation",
     "dueDate": "2026-11-03",
     "category": "clinical practicum 1",
-    "type": "assignment",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "rkdw635q",
-    "title": "FREE Trauma Certification Training w/ Dr. Kate Truitt",
-    "dueDate": "2026-11-03",
-    "category": "Practicum",
     "type": "assignment",
     "priority": false,
     "completed": false,
