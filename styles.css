@@ -6133,3 +6133,4 @@ body.library-open { overflow: hidden; }
 .life-tab-n { margin-left: 0.3rem; opacity: 0.7; font-size: 0.68rem; }
 .life-tag { flex: 0 0 auto; font-size: 0.65rem; color: var(--muted); border: 1px solid var(--border); border-radius: 999px; padding: 0.05rem 0.45rem; white-space: nowrap; }
 .life-target { flex: 0 0 auto; max-width: 8.5rem; }
+.life-tab.add { border-style: dashed; }

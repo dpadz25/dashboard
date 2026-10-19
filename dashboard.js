@@ -1647,7 +1647,7 @@ function setTaskDueDefault() {
 // page (tab). Packing items also carry `list`, the id of one of the
 // reusable lists in `lifeLists` ({id, name}). Page order/names are fixed;
 // the packing lists and every item (seeded or not) are fully editable.
-const LIFE_PAGES = [
+const LIFE_FIXED_PAGES = [
   { id: 'health',    name: 'Health' },
   { id: 'house',     name: 'House' },
   { id: 'money',     name: 'Money' },
@@ -1669,11 +1669,22 @@ function getLifeLists() { return load('lifeLists', []); }
 function saveLifeLists(l) { save('lifeLists', l); }
 function lifeUI() { return load('lifeUI', { tab: 'all', list: '' }); }
 function saveLifeUI(u) { save('lifeUI', u); }
-function lifePage(id) { return LIFE_PAGES.find(p => p.id === id); }
+// Your own filters live in `lifePages` ({id, name, check?}) and show after the built-in ones.
+function getLifePages() { return load('lifePages', []); }
+function saveLifePages(l) { save('lifePages', l); }
+function lifePages() { return [...LIFE_FIXED_PAGES, ...getLifePages()]; }
+function lifePage(id) { return lifePages().find(p => p.id === id); }
+function isCustomLifePage(id) { return getLifePages().some(p => p.id === id); }
 
 // Seed the three starter packing lists once. Ids are fixed so two devices
 // seeding at the same time merge instead of duplicating.
 function seedLife() {
+  if (!localStorage.getItem('lifePagesSeeded')) {
+    const pages = getLifePages();
+    if (!pages.some(p => p.id === 'pg-job')) pages.push({ id: 'pg-job', name: 'Job' });
+    saveLifePages(pages);
+    save('lifePagesSeeded', 1);
+  }
   if (localStorage.getItem('lifeSeeded')) return;
   const lists = getLifeLists(), items = getLife();
   Object.entries(LIFE_SEED).forEach(([id, s]) => {
@@ -1691,7 +1702,7 @@ function seedLife() {
 function lifeTargets() {
   // [{value, label}] for the add dropdown on the All tab
   const out = [{ value: 'general', label: 'General' }];
-  LIFE_PAGES.forEach(p => {
+  lifePages().forEach(p => {
     if (p.id === 'packing') getLifeLists().forEach(l => out.push({ value: 'packing:' + l.id, label: 'Packing · ' + l.name }));
     else out.push({ value: p.id, label: p.name });
   });
@@ -1722,7 +1733,8 @@ function renderLife() {
   getLife().forEach(i => { if (!i.done) counts[i.cat || 'general'] = (counts[i.cat || 'general'] || 0) + 1; });
   const totalLeft = getLife().filter(i => !i.done).length;
   const tabBtn = (id, name, n) => `<button class="life-tab${tab === id ? ' active' : ''}" onclick="window.dash.setLifeTab('${id}')">${esc(name)}${n ? `<span class="life-tab-n">${n}</span>` : ''}</button>`;
-  $('lifeTabs').innerHTML = tabBtn('all', 'All', totalLeft) + LIFE_PAGES.map(p => tabBtn(p.id, p.name, counts[p.id])).join('');
+  $('lifeTabs').innerHTML = tabBtn('all', 'All', totalLeft) + lifePages().map(p => tabBtn(p.id, p.name, counts[p.id])).join('')
+    + `<button class="life-tab add" onclick="window.dash.addLifePage()" title="New filter">+</button>`;
 
   // packing sub-list pills
   const pills = $('lifePills');
@@ -1731,6 +1743,9 @@ function renderLife() {
     pills.innerHTML = lists.map(l => `<button class="life-pill${ui.list === l.id ? ' active' : ''}" onclick="window.dash.setLifeList('${l.id}')" ondblclick="window.dash.renameLifeList('${l.id}')" title="Double-click to rename">${esc(l.name)}</button>`).join('')
       + `<button class="life-pill add" onclick="window.dash.addLifeList()" title="New list">+</button>`
       + (ui.list ? `<button class="life-pill add" onclick="window.dash.renameLifeList('${ui.list}')" title="Rename this list">✎</button><button class="life-pill add" onclick="window.dash.delLifeList('${ui.list}')" title="Delete this list">×</button>` : '');
+  } else if (isCustomLifePage(tab)) {
+    pills.style.display = '';
+    pills.innerHTML = `<button class="life-pill add" onclick="window.dash.renameLifePage('${tab}')" title="Rename this filter">✎ Rename</button><button class="life-pill add" onclick="window.dash.delLifePage('${tab}')" title="Delete this filter">× Delete</button>`;
   } else {
     pills.style.display = 'none';
   }
@@ -1762,7 +1777,7 @@ function renderLife() {
     el.innerHTML = `<div class="life-empty">${tab === 'packing' && !lists.length ? 'No packing lists yet.' : 'Nothing on the list.'}</div>`;
     return;
   }
-  const order = ['general', ...LIFE_PAGES.map(p => p.id)];
+  const order = ['general', ...lifePages().map(p => p.id)];
   const sorted = [...items].sort((a, b) => (a.done ? 1 : 0) - (b.done ? 1 : 0)
     || (tab === 'all' ? order.indexOf(a.cat || 'general') - order.indexOf(b.cat || 'general') : 0));
   el.innerHTML = '';
@@ -1777,6 +1792,38 @@ function renderLife() {
       <button class="del-btn" onclick="window.dash.delLife('${item.id}')">×</button>`;
     el.appendChild(div);
   });
+}
+
+function addLifePage() {
+  const name = (prompt('Name for the new filter?') || '').trim();
+  if (!name) return;
+  const check = confirm('Make it a reusable checklist (Reset button instead of Clear done)?\n\nOK = checklist, Cancel = normal to-do list');
+  const pages = getLifePages();
+  const id = 'pg-' + uid();
+  pages.push({ id, name, ...(check ? { check: true } : {}) });
+  saveLifePages(pages);
+  setLifeTab(id);
+}
+
+function renameLifePage(id) {
+  const pages = getLifePages();
+  const p = pages.find(x => x.id === id);
+  if (!p) return;
+  const name = (prompt('Rename filter', p.name) || '').trim();
+  if (!name) return;
+  p.name = name;
+  saveLifePages(pages);
+  renderLife();
+}
+
+function delLifePage(id) {
+  const p = getLifePages().find(x => x.id === id);
+  if (!p) return;
+  const n = getLife().filter(i => i.cat === id).length;
+  if (!confirm(`Delete the "${p.name}" filter${n ? ` and its ${n} item${n>1?'s':''}` : ''}?`)) return;
+  saveLifePages(getLifePages().filter(x => x.id !== id));
+  saveLife(getLife().filter(i => i.cat !== id));
+  setLifeTab('all');
 }
 
 function setLifeTab(id) { const u = lifeUI(); u.tab = id; saveLifeUI(u); renderLife(); }
@@ -3730,7 +3777,7 @@ window.dash = {
   renderDates, addDate, delDate, toggleDateTimeRow,
   closeDayQuickAdd, submitDayQuickAdd,
   renderLife, addLife, toggleLife, updateLife, delLife, clearDoneLife,
-  setLifeTab, setLifeList, resetLife, addLifeList, renameLifeList, delLifeList,
+  setLifeTab, addLifePage, renameLifePage, delLifePage, setLifeList, resetLife, addLifeList, renameLifeList, delLifeList,
   renderShopping, addShopping, toggleShopping, updateShopping, delShopping, clearDoneShopping, toggleShopCategoryGroup,
   renderGoals, switchGoalScope, addGoal, delGoal, cycleGoal,
   renderCurrently, renderCurrentlyTabs, switchCurKind, curPrev, curNext, curGoTo, curAdd, updateCur, cycleCurProgress, finishCur, pickCurImage,

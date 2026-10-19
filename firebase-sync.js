@@ -32,7 +32,7 @@
     'plannerTasks', 'schoolClasses', 'importantDates', 'agendaEvents',
     'habitsConfig', 'habitHistory', 'dailiesConfig', 'dailiesHistory',
     'goals', 'currently', 'currentlyArchive',
-    'lifeItems', 'lifeLists', 'lifeSeeded', 'shoppingItems', 'people', 'health', 'healthHistory', 'healthLastSync',
+    'lifeItems', 'lifeLists', 'lifeSeeded', 'lifePages', 'lifePagesSeeded', 'shoppingItems', 'people', 'health', 'healthHistory', 'healthLastSync',
     'qlinks', 'tweaksState', 'clockFormat24', 'pomoState', 'notifySettings',
     'dashboard.blocks.layout.v4', 'dashboard.blocks.layout.v3', 'dashboard.blocks.notes.v1',
     'dashboard.blocks.mheights.v1', 'dashboard.blocks.tabheights.v1',
@@ -59,7 +59,7 @@
      ─────────────────────────────────────────────────────────── */
   const ID_ARRAY_KEYS = new Set([
     'plannerTasks', 'schoolClasses', 'importantDates', 'agendaEvents',
-    'habitsConfig', 'dailiesConfig', 'currentlyArchive', 'lifeItems', 'lifeLists', 'shoppingItems', 'people',
+    'habitsConfig', 'dailiesConfig', 'currentlyArchive', 'lifeItems', 'lifeLists', 'lifePages', 'shoppingItems', 'people',
     'taskCompletionLog', 'photoWidgets'
   ]);
   const BUCKET_KEYS = { goals: ['year','quarter','week'], currently: ['reading','watching','playing'] };
