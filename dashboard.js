@@ -1643,17 +1643,128 @@ function setTaskDueDefault() {
 }
 
 // ─── LIFE CHECKLIST ───────────────────────────────────────────
+// Items live in `lifeItems` as {id, text, done, cat, list?}. `cat` picks the
+// page (tab). Packing items also carry `list`, the id of one of the
+// reusable lists in `lifeLists` ({id, name}). Page order/names are fixed;
+// the packing lists and every item (seeded or not) are fully editable.
+const LIFE_PAGES = [
+  { id: 'health',    name: 'Health' },
+  { id: 'house',     name: 'House' },
+  { id: 'money',     name: 'Money' },
+  { id: 'packing',   name: 'Packing',      check: true },
+  { id: 'school',    name: 'School',       check: true },
+  { id: 'practicum', name: 'Practicum',    check: true },
+  { id: 'errands',   name: 'Errands & Car' },
+];
+const LIFE_BASICS = ['Phone charger', 'Meds', 'Laptop + charger', 'Toiletries'];
+const LIFE_SEED = {
+  'pk-south': { name: 'South', items: LIFE_BASICS },
+  'pk-north': { name: 'North', items: LIFE_BASICS },
+  'pk-trip':  { name: 'Trip',  items: [...LIFE_BASICS, 'ID + wallet', 'Travel pouch'] },
+};
+
 function getLife() { return load('lifeItems', []); }
 function saveLife(l) { save('lifeItems', l); }
+function getLifeLists() { return load('lifeLists', []); }
+function saveLifeLists(l) { save('lifeLists', l); }
+function lifeUI() { return load('lifeUI', { tab: 'all', list: '' }); }
+function saveLifeUI(u) { save('lifeUI', u); }
+function lifePage(id) { return LIFE_PAGES.find(p => p.id === id); }
+
+// Seed the three starter packing lists once. Ids are fixed so two devices
+// seeding at the same time merge instead of duplicating.
+function seedLife() {
+  if (localStorage.getItem('lifeSeeded')) return;
+  const lists = getLifeLists(), items = getLife();
+  Object.entries(LIFE_SEED).forEach(([id, s]) => {
+    if (!lists.some(l => l.id === id)) lists.push({ id, name: s.name });
+    s.items.forEach((text, n) => {
+      const iid = id + '-' + n;
+      if (!items.some(i => i.id === iid)) items.push({ id: iid, text, done: false, cat: 'packing', list: id, t: Date.now() });
+    });
+  });
+  saveLifeLists(lists);
+  saveLife(items);
+  save('lifeSeeded', 1);
+}
+
+function lifeTargets() {
+  // [{value, label}] for the add dropdown on the All tab
+  const out = [{ value: 'general', label: 'General' }];
+  LIFE_PAGES.forEach(p => {
+    if (p.id === 'packing') getLifeLists().forEach(l => out.push({ value: 'packing:' + l.id, label: 'Packing · ' + l.name }));
+    else out.push({ value: p.id, label: p.name });
+  });
+  return out;
+}
+
+function lifeLabel(item) {
+  if (item.cat === 'packing') {
+    const l = getLifeLists().find(x => x.id === item.list);
+    return 'Packing' + (l ? ' · ' + l.name : '');
+  }
+  const p = lifePage(item.cat);
+  return p ? p.name : 'General';
+}
 
 function renderLife() {
   const el = $('lifeList');
-  const items = getLife();
+  if (!el) return;
+  seedLife();
+  const ui = lifeUI();
+  const lists = getLifeLists();
+  if (ui.tab !== 'all' && !lifePage(ui.tab)) ui.tab = 'all';
+  if (ui.tab === 'packing' && !lists.some(l => l.id === ui.list)) ui.list = lists[0] ? lists[0].id : '';
+  const tab = ui.tab;
+
+  // tabs
+  const counts = {};
+  getLife().forEach(i => { if (!i.done) counts[i.cat || 'general'] = (counts[i.cat || 'general'] || 0) + 1; });
+  const totalLeft = getLife().filter(i => !i.done).length;
+  const tabBtn = (id, name, n) => `<button class="life-tab${tab === id ? ' active' : ''}" onclick="window.dash.setLifeTab('${id}')">${esc(name)}${n ? `<span class="life-tab-n">${n}</span>` : ''}</button>`;
+  $('lifeTabs').innerHTML = tabBtn('all', 'All', totalLeft) + LIFE_PAGES.map(p => tabBtn(p.id, p.name, counts[p.id])).join('');
+
+  // packing sub-list pills
+  const pills = $('lifePills');
+  if (tab === 'packing') {
+    pills.style.display = '';
+    pills.innerHTML = lists.map(l => `<button class="life-pill${ui.list === l.id ? ' active' : ''}" onclick="window.dash.setLifeList('${l.id}')" ondblclick="window.dash.renameLifeList('${l.id}')" title="Double-click to rename">${esc(l.name)}</button>`).join('')
+      + `<button class="life-pill add" onclick="window.dash.addLifeList()" title="New list">+</button>`
+      + (ui.list ? `<button class="life-pill add" onclick="window.dash.renameLifeList('${ui.list}')" title="Rename this list">✎</button><button class="life-pill add" onclick="window.dash.delLifeList('${ui.list}')" title="Delete this list">×</button>` : '');
+  } else {
+    pills.style.display = 'none';
+  }
+
+  // add row: dropdown only on All
+  const sel = $('lifeTarget');
+  if (tab === 'all') {
+    const cur = sel.value;
+    sel.innerHTML = lifeTargets().map(t => `<option value="${esc(t.value)}">${esc(t.label)}</option>`).join('');
+    if ([...sel.options].some(o => o.value === cur)) sel.value = cur;
+    sel.style.display = '';
+  } else {
+    sel.style.display = 'none';
+  }
+  $('lifeInput').placeholder = tab === 'packing' && !lists.length ? 'add a list first (+)' : tab === 'all' ? 'something to do' : 'add to ' + (lifePage(tab).name);
+
+  // header action: Reset (checklist pages) or Clear done
+  const checkPage = tab !== 'all' && lifePage(tab).check;
+  const btn = $('lifeAction');
+  btn.title = checkPage ? 'Uncheck everything' : 'Clear completed';
+  btn.onclick = checkPage ? () => window.dash.resetLife() : () => window.dash.clearDoneLife();
+  btn.classList.toggle('is-reset', !!checkPage);
+
+  // items
+  let items = getLife();
+  if (tab !== 'all') items = items.filter(i => (i.cat || 'general') === tab);
+  if (tab === 'packing') items = items.filter(i => i.list === ui.list);
   if (!items.length) {
-    el.innerHTML = `<div class="life-empty">Nothing on the list.</div>`;
+    el.innerHTML = `<div class="life-empty">${tab === 'packing' && !lists.length ? 'No packing lists yet.' : 'Nothing on the list.'}</div>`;
     return;
   }
-  const sorted = [...items].sort((a,b) => (a.done?1:0) - (b.done?1:0));
+  const order = ['general', ...LIFE_PAGES.map(p => p.id)];
+  const sorted = [...items].sort((a, b) => (a.done ? 1 : 0) - (b.done ? 1 : 0)
+    || (tab === 'all' ? order.indexOf(a.cat || 'general') - order.indexOf(b.cat || 'general') : 0));
   el.innerHTML = '';
   sorted.forEach(item => {
     const div = document.createElement('div');
@@ -1662,17 +1773,33 @@ function renderLife() {
     div.innerHTML = `
       <div class="life-check${item.done?' checked':''}" onclick="window.dash.toggleLife('${item.id}')"></div>
       <input class="life-txt" value="${esc(item.text)}" onchange="window.dash.updateLife('${item.id}',this.value)" onkeydown="if(event.key==='Enter')this.blur()"/>
+      ${tab === 'all' ? `<span class="life-tag">${esc(lifeLabel(item))}</span>` : ''}
       <button class="del-btn" onclick="window.dash.delLife('${item.id}')">×</button>`;
     el.appendChild(div);
   });
 }
 
+function setLifeTab(id) { const u = lifeUI(); u.tab = id; saveLifeUI(u); renderLife(); }
+function setLifeList(id) { const u = lifeUI(); u.list = id; saveLifeUI(u); renderLife(); }
+
 function addLife() {
   const inp = $('lifeInput');
   const text = inp.value.trim();
   if (!text) return;
+  const ui = lifeUI();
+  let cat = ui.tab, list;
+  if (cat === 'all') {
+    const [c, l] = $('lifeTarget').value.split(':');
+    cat = c; list = l;
+  } else if (cat === 'packing') {
+    list = ui.list;
+    if (!list) return;
+  }
+  const item = { id: uid(), text, done: false, cat, t: Date.now() };
+  if (list) item.list = list;
   const items = getLife();
-  items.unshift({ id: uid(), text, done: false, t: Date.now() });
+  // checklist pages read top-down in the order you add them; to-dos stack newest first
+  if (lifePage(cat) && lifePage(cat).check) items.push(item); else items.unshift(item);
   saveLife(items);
   inp.value = '';
   renderLife();
@@ -1701,10 +1828,57 @@ function delLife(id) {
 }
 
 function clearDoneLife() {
-  const done = getLife().filter(i => i.done).length;
+  // Never clears items on checklist pages, those are meant to be reset.
+  const keep = i => !i.done || (lifePage(i.cat) && lifePage(i.cat).check);
+  const ui = lifeUI();
+  const inScope = i => ui.tab === 'all' || (i.cat || 'general') === ui.tab;
+  const done = getLife().filter(i => inScope(i) && !keep(i)).length;
   if (!done) return;
   if (!confirm(`Clear ${done} completed item${done>1?'s':''}?`)) return;
-  saveLife(getLife().filter(i => !i.done));
+  saveLife(getLife().filter(i => !inScope(i) || keep(i)));
+  renderLife();
+}
+
+function resetLife() {
+  const ui = lifeUI();
+  const items = getLife();
+  items.forEach(i => {
+    if ((i.cat || 'general') !== ui.tab) return;
+    if (ui.tab === 'packing' && i.list !== ui.list) return;
+    i.done = false;
+  });
+  saveLife(items);
+  renderLife();
+}
+
+function addLifeList() {
+  const name = (prompt('Name for the new packing list?') || '').trim();
+  if (!name) return;
+  const lists = getLifeLists();
+  const id = 'pk-' + uid();
+  lists.push({ id, name });
+  saveLifeLists(lists);
+  setLifeList(id);
+}
+
+function renameLifeList(id) {
+  const lists = getLifeLists();
+  const l = lists.find(x => x.id === id);
+  if (!l) return;
+  const name = (prompt('Rename list', l.name) || '').trim();
+  if (!name) return;
+  l.name = name;
+  saveLifeLists(lists);
+  renderLife();
+}
+
+function delLifeList(id) {
+  const l = getLifeLists().find(x => x.id === id);
+  if (!l) return;
+  if (!confirm(`Delete the "${l.name}" list and all its items?`)) return;
+  saveLifeLists(getLifeLists().filter(x => x.id !== id));
+  saveLife(getLife().filter(i => i.list !== id));
+  const u = lifeUI(); u.list = ''; saveLifeUI(u);
   renderLife();
 }
 
@@ -3556,6 +3730,7 @@ window.dash = {
   renderDates, addDate, delDate, toggleDateTimeRow,
   closeDayQuickAdd, submitDayQuickAdd,
   renderLife, addLife, toggleLife, updateLife, delLife, clearDoneLife,
+  setLifeTab, setLifeList, resetLife, addLifeList, renameLifeList, delLifeList,
   renderShopping, addShopping, toggleShopping, updateShopping, delShopping, clearDoneShopping, toggleShopCategoryGroup,
   renderGoals, switchGoalScope, addGoal, delGoal, cycleGoal,
   renderCurrently, renderCurrentlyTabs, switchCurKind, curPrev, curNext, curGoTo, curAdd, updateCur, cycleCurProgress, finishCur, pickCurImage,

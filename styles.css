@@ -6118,3 +6118,18 @@ body.library-open { overflow: hidden; }
 .dqa-time-row span { color: var(--muted2); font-size: 0.7rem; }
 
 .tomorrow-add .tmr-time { max-width: 108px; }
+
+/* ── LIFE TABS / PILLS ──────────────────────────────────────── */
+.life-tabs, .life-pills { display: flex; gap: 0.3rem; overflow-x: auto; margin-bottom: 0.6rem; padding-bottom: 2px; scrollbar-width: none; }
+.life-tabs::-webkit-scrollbar, .life-pills::-webkit-scrollbar { display: none; }
+.life-tab, .life-pill {
+  flex: 0 0 auto; border: 1px solid var(--border); background: transparent; color: var(--muted);
+  font: inherit; font-size: 0.75rem; padding: 0.25rem 0.65rem; border-radius: 999px; cursor: pointer; white-space: nowrap;
+}
+.life-tab:hover, .life-pill:hover { background: var(--surface3); color: var(--text); }
+.life-tab.active { background: var(--green); border-color: var(--green); color: #fff; }
+.life-pill.active { background: var(--surface3); border-color: var(--green); color: var(--text); }
+.life-pill.add { padding: 0.25rem 0.55rem; }
+.life-tab-n { margin-left: 0.3rem; opacity: 0.7; font-size: 0.68rem; }
+.life-tag { flex: 0 0 auto; font-size: 0.65rem; color: var(--muted); border: 1px solid var(--border); border-radius: 999px; padding: 0.05rem 0.45rem; white-space: nowrap; }
+.life-target { flex: 0 0 auto; max-width: 8.5rem; }
