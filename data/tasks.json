@@ -10,36 +10,6 @@
     "repeat": ""
   },
   {
-    "id": "5g5a55va",
-    "title": "Student and staff meeting",
-    "dueDate": "2026-10-19",
-    "category": "Practicum",
-    "type": "assignment",
-    "priority": false,
-    "completed": false,
-    "repeat": "weekly"
-  },
-  {
-    "id": "hngv708i",
-    "title": "Pick topic and work on it for hours!!!",
-    "dueDate": "2026-10-19",
-    "category": "Practicum",
-    "type": "assignment",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "jdoqw5pw",
-    "title": "Prepare for Session with J, read up on sleep and plan out his next session",
-    "dueDate": "2026-10-19",
-    "category": "Practicum",
-    "type": "assignment",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
     "id": "xzoy0xpa",
     "title": "Read Ch. 6",
     "dueDate": "2026-10-19",
@@ -60,11 +30,31 @@
     "repeat": ""
   },
   {
-    "id": "45jkffp6",
-    "title": "Module 7 quiz (Self-harm & suicide / DBT)",
-    "dueDate": "2026-10-20",
-    "category": "clinical practicum 1",
-    "type": "quiz",
+    "id": "jdoqw5pw",
+    "title": "Prepare for Session with J, read up on sleep and plan out his next session",
+    "dueDate": "2026-10-19",
+    "category": "Practicum",
+    "type": "assignment",
+    "priority": false,
+    "completed": false,
+    "repeat": ""
+  },
+  {
+    "id": "5g5a55va",
+    "title": "Student and staff meeting",
+    "dueDate": "2026-10-19",
+    "category": "Practicum",
+    "type": "assignment",
+    "priority": false,
+    "completed": false,
+    "repeat": "weekly"
+  },
+  {
+    "id": "hngv708i",
+    "title": "Pick topic and work on it for hours!!!",
+    "dueDate": "2026-10-19",
+    "category": "Practicum",
+    "type": "assignment",
     "priority": false,
     "completed": false,
     "repeat": ""
@@ -78,6 +68,16 @@
     "priority": false,
     "completed": false,
     "repeat": "weekly"
+  },
+  {
+    "id": "45jkffp6",
+    "title": "Module 7 quiz (Self-harm & suicide / DBT)",
+    "dueDate": "2026-10-20",
+    "category": "clinical practicum 1",
+    "type": "quiz",
+    "priority": false,
+    "completed": false,
+    "repeat": ""
   },
   {
     "id": "fku8mwm1",
