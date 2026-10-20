@@ -1703,8 +1703,8 @@ function lifeTargets() {
   // [{value, label}] for the add dropdown on the All tab
   const out = [{ value: 'general', label: 'General' }];
   lifePages().forEach(p => {
-    if (p.id === 'packing') getLifeLists().forEach(l => out.push({ value: 'packing:' + l.id, label: 'Packing · ' + l.name }));
-    else out.push({ value: p.id, label: p.name });
+    if (p.id === 'packing') return; // packing lists stay off the All tab
+    out.push({ value: p.id, label: p.name });
   });
   return out;
 }
@@ -1731,7 +1731,7 @@ function renderLife() {
   // tabs
   const counts = {};
   getLife().forEach(i => { if (!i.done) counts[i.cat || 'general'] = (counts[i.cat || 'general'] || 0) + 1; });
-  const totalLeft = getLife().filter(i => !i.done).length;
+  const totalLeft = getLife().filter(i => !i.done && i.cat !== 'packing').length;
   const tabBtn = (id, name, n) => `<button class="life-tab${tab === id ? ' active' : ''}" onclick="window.dash.setLifeTab('${id}')">${esc(name)}${n ? `<span class="life-tab-n">${n}</span>` : ''}</button>`;
   const starLeft = getLife().filter(i => i.star && !i.done).length;
   $('lifeTabs').innerHTML = tabBtn('all', 'All', totalLeft) + tabBtn('starred', '★ Starred', starLeft) + lifePages().map(p => tabBtn(p.id, p.name, counts[p.id])).join('')
@@ -1772,7 +1772,8 @@ function renderLife() {
   // items
   let items = getLife();
   if (tab === 'starred') items = items.filter(i => i.star);
-  else if (tab !== 'all') items = items.filter(i => (i.cat || 'general') === tab);
+  else if (tab === 'all') items = items.filter(i => i.cat !== 'packing'); // packing lists live on their own tab
+  else items = items.filter(i => (i.cat || 'general') === tab);
   if (tab === 'packing') items = items.filter(i => i.list === ui.list);
   if (!items.length) {
     el.innerHTML = `<div class="life-empty">${tab === 'packing' && !lists.length ? 'No packing lists yet.' : 'Nothing on the list.'}</div>`;
@@ -1900,7 +1901,7 @@ function clearDoneLife() {
   const ui = lifeUI();
   const broad = ui.tab === 'all' || ui.tab === 'starred';
   const keep = i => !i.done || (broad && lifePage(i.cat) && lifePage(i.cat).check);
-  const inScope = i => ui.tab === 'all' || (ui.tab === 'starred' ? !!i.star : (i.cat || 'general') === ui.tab);
+  const inScope = i => ui.tab === 'all' ? i.cat !== 'packing' : (ui.tab === 'starred' ? !!i.star : (i.cat || 'general') === ui.tab);
   const done = getLife().filter(i => inScope(i) && !keep(i)).length;
   if (!done) return;
   if (!confirm(`Clear ${done} completed item${done>1?'s':''}?`)) return;
@@ -1915,7 +1916,8 @@ function resetLife() {
   const items = getLife();
   items.forEach(i => {
     if (ui.tab === 'starred') { if (!i.star) return; }
-    else if (ui.tab !== 'all') {
+    else if (ui.tab === 'all') { if (i.cat === 'packing') return; }
+    else {
       if ((i.cat || 'general') !== ui.tab) return;
       if (ui.tab === 'packing' && i.list !== ui.list) return;
     }
