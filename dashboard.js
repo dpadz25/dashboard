@@ -1763,13 +1763,11 @@ function renderLife() {
   }
   $('lifeInput').placeholder = tab === 'packing' && !lists.length ? 'add a list first (+)' : tab === 'all' ? 'something to do' : tab === 'starred' ? 'add a starred item' : 'add to ' + (lifePage(tab).name);
 
-  // header actions: Uncheck all (always, keeps items) and Clear completed
-  // (hidden on checklist pages, since those are meant to be reset).
-  const checkPage = tab !== 'all' && tab !== 'starred' && lifePage(tab).check;
+  // header actions: Uncheck all (keeps items) and Clear completed (deletes
+  // checked items). Both show on every tab.
   const btn = $('lifeAction');
   btn.title = 'Clear completed (deletes checked items)';
   btn.onclick = () => window.dash.clearDoneLife();
-  btn.style.display = checkPage ? 'none' : '';
 
   // items
   let items = getLife();
@@ -1896,9 +1894,12 @@ function delLife(id) {
 }
 
 function clearDoneLife() {
-  // Never clears items on checklist pages, those are meant to be reset.
-  const keep = i => !i.done || (lifePage(i.cat) && lifePage(i.cat).check);
+  // On All and Starred, checked items on checklist pages (packing etc.) are
+  // left alone so one tap doesn't empty your packing lists. Open the page
+  // itself to delete its checked items.
   const ui = lifeUI();
+  const broad = ui.tab === 'all' || ui.tab === 'starred';
+  const keep = i => !i.done || (broad && lifePage(i.cat) && lifePage(i.cat).check);
   const inScope = i => ui.tab === 'all' || (ui.tab === 'starred' ? !!i.star : (i.cat || 'general') === ui.tab);
   const done = getLife().filter(i => inScope(i) && !keep(i)).length;
   if (!done) return;
