@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300;12..96,400;12..96,700;12..96,800&family=Inter:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&family=Hanken+Grotesk:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&family=Caveat:wght@500;600&family=Fraunces:opsz,wght@9..144,500;9..144,600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=24">
+  <link rel="stylesheet" href="styles.css?v=25">
   <link rel="stylesheet" href="blocks.css?v=11">
   <link rel="stylesheet" href="widgets.css?v=7">
   <link rel="stylesheet" href="redesign.css?v=4">
@@ -397,7 +397,7 @@
       </div>
       <div class="life-tabs" id="lifeTabs"></div>
       <div class="life-pills" id="lifePills" style="display:none"></div>
-      <div style="display:flex;gap:0.375rem;margin-bottom:0.75rem">
+      <div class="life-add" style="display:flex;gap:0.375rem;margin-bottom:0.75rem">
         <select class="t-input life-target" id="lifeTarget" style="display:none"></select>
         <input class="t-input" id="lifeInput" placeholder="something to do" style="flex:1;min-width:0" onkeydown="if(event.key==='Enter')dash.addLife()"/>
         <button class="btn-add" onclick="dash.addLife()">Add</button>
@@ -710,7 +710,7 @@
 
 <script src="firebase-sync.js?v=10"></script>
 <script src="icons.js?v=2"></script>
-<script src="dashboard.js?v=44"></script>
+<script src="dashboard.js?v=45"></script>
 <script src="extras.js?v=25"></script>
 <script src="tweaks.js?v=16"></script>
 <script src="blocks.js?v=15"></script>

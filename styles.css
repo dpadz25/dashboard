@@ -6132,5 +6132,9 @@ body.library-open { overflow: hidden; }
 .life-pill.add { padding: 0.25rem 0.55rem; }
 .life-tab-n { margin-left: 0.3rem; opacity: 0.7; font-size: 0.68rem; }
 .life-tag { flex: 0 0 auto; font-size: 0.65rem; color: var(--muted); border: 1px solid var(--border); border-radius: 999px; padding: 0.05rem 0.45rem; white-space: nowrap; }
-.life-target { flex: 0 0 auto; max-width: 8.5rem; }
+.life-add { flex-wrap: wrap; }
+.life-target { flex: 1 1 100%; }
 .life-tab.add { border-style: dashed; }
+.life-star { flex: 0 0 auto; background: none; border: 0; cursor: pointer; color: var(--muted); font-size: 1rem; line-height: 1; padding: 0 0.15rem; opacity: 0.55; }
+.life-star:hover { opacity: 1; color: #d9a441; }
+.life-star.on { color: #d9a441; opacity: 1; }

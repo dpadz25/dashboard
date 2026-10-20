@@ -1724,7 +1724,7 @@ function renderLife() {
   seedLife();
   const ui = lifeUI();
   const lists = getLifeLists();
-  if (ui.tab !== 'all' && !lifePage(ui.tab)) ui.tab = 'all';
+  if (ui.tab !== 'all' && ui.tab !== 'starred' && !lifePage(ui.tab)) ui.tab = 'all';
   if (ui.tab === 'packing' && !lists.some(l => l.id === ui.list)) ui.list = lists[0] ? lists[0].id : '';
   const tab = ui.tab;
 
@@ -1733,7 +1733,8 @@ function renderLife() {
   getLife().forEach(i => { if (!i.done) counts[i.cat || 'general'] = (counts[i.cat || 'general'] || 0) + 1; });
   const totalLeft = getLife().filter(i => !i.done).length;
   const tabBtn = (id, name, n) => `<button class="life-tab${tab === id ? ' active' : ''}" onclick="window.dash.setLifeTab('${id}')">${esc(name)}${n ? `<span class="life-tab-n">${n}</span>` : ''}</button>`;
-  $('lifeTabs').innerHTML = tabBtn('all', 'All', totalLeft) + lifePages().map(p => tabBtn(p.id, p.name, counts[p.id])).join('')
+  const starLeft = getLife().filter(i => i.star && !i.done).length;
+  $('lifeTabs').innerHTML = tabBtn('all', 'All', totalLeft) + tabBtn('starred', '★ Starred', starLeft) + lifePages().map(p => tabBtn(p.id, p.name, counts[p.id])).join('')
     + `<button class="life-tab add" onclick="window.dash.addLifePage()" title="New filter">+</button>`;
 
   // packing sub-list pills
@@ -1760,11 +1761,11 @@ function renderLife() {
   } else {
     sel.style.display = 'none';
   }
-  $('lifeInput').placeholder = tab === 'packing' && !lists.length ? 'add a list first (+)' : tab === 'all' ? 'something to do' : 'add to ' + (lifePage(tab).name);
+  $('lifeInput').placeholder = tab === 'packing' && !lists.length ? 'add a list first (+)' : tab === 'all' ? 'something to do' : tab === 'starred' ? 'add a starred item' : 'add to ' + (lifePage(tab).name);
 
   // header actions: Uncheck all (always, keeps items) and Clear completed
   // (hidden on checklist pages, since those are meant to be reset).
-  const checkPage = tab !== 'all' && lifePage(tab).check;
+  const checkPage = tab !== 'all' && tab !== 'starred' && lifePage(tab).check;
   const btn = $('lifeAction');
   btn.title = 'Clear completed (deletes checked items)';
   btn.onclick = () => window.dash.clearDoneLife();
@@ -1772,7 +1773,8 @@ function renderLife() {
 
   // items
   let items = getLife();
-  if (tab !== 'all') items = items.filter(i => (i.cat || 'general') === tab);
+  if (tab === 'starred') items = items.filter(i => i.star);
+  else if (tab !== 'all') items = items.filter(i => (i.cat || 'general') === tab);
   if (tab === 'packing') items = items.filter(i => i.list === ui.list);
   if (!items.length) {
     el.innerHTML = `<div class="life-empty">${tab === 'packing' && !lists.length ? 'No packing lists yet.' : 'Nothing on the list.'}</div>`;
@@ -1784,7 +1786,8 @@ function renderLife() {
   // first, to-dos newest first.
   const isCheck = i => !!(lifePage(i.cat) && lifePage(i.cat).check);
   const sorted = [...items].sort((a, b) => (a.done ? 1 : 0) - (b.done ? 1 : 0)
-    || (tab === 'all' ? order.indexOf(a.cat || 'general') - order.indexOf(b.cat || 'general') : 0)
+    || (b.star ? 1 : 0) - (a.star ? 1 : 0)
+    || (tab === 'all' || tab === 'starred' ? order.indexOf(a.cat || 'general') - order.indexOf(b.cat || 'general') : 0)
     || ((a.t || 0) - (b.t || 0)) * (isCheck(a) ? 1 : -1));
   el.innerHTML = '';
   sorted.forEach(item => {
@@ -1794,7 +1797,8 @@ function renderLife() {
     div.innerHTML = `
       <div class="life-check${item.done?' checked':''}" onclick="window.dash.toggleLife('${item.id}')"></div>
       <input class="life-txt" value="${esc(item.text)}" onchange="window.dash.updateLife('${item.id}',this.value)" onkeydown="if(event.key==='Enter')this.blur()"/>
-      ${tab === 'all' ? `<span class="life-tag">${esc(lifeLabel(item))}</span>` : ''}
+      ${tab === 'all' || tab === 'starred' ? `<span class="life-tag">${esc(lifeLabel(item))}</span>` : ''}
+      <button class="life-star${item.star?' on':''}" onclick="window.dash.toggleLifeStar('${item.id}')" title="${item.star?'Unstar':'Star'}">${item.star?'★':'☆'}</button>
       <button class="del-btn" onclick="window.dash.delLife('${item.id}')">×</button>`;
     el.appendChild(div);
   });
@@ -1832,6 +1836,15 @@ function delLifePage(id) {
   setLifeTab('all');
 }
 
+function toggleLifeStar(id) {
+  const items = getLife();
+  const i = items.find(x => x.id === id);
+  if (!i) return;
+  i.star = !i.star;
+  saveLife(items);
+  renderLife();
+}
+
 function setLifeTab(id) { const u = lifeUI(); u.tab = id; saveLifeUI(u); renderLife(); }
 function setLifeList(id) { const u = lifeUI(); u.list = id; saveLifeUI(u); renderLife(); }
 
@@ -1840,8 +1853,9 @@ function addLife() {
   const text = inp.value.trim();
   if (!text) return;
   const ui = lifeUI();
-  let cat = ui.tab, list;
-  if (cat === 'all') {
+  let cat = ui.tab, list, star = false;
+  if (cat === 'starred') { cat = 'general'; star = true; }
+  else if (cat === 'all') {
     const [c, l] = $('lifeTarget').value.split(':');
     cat = c; list = l;
   } else if (cat === 'packing') {
@@ -1850,6 +1864,7 @@ function addLife() {
   }
   const item = { id: uid(), text, done: false, cat, t: Date.now() };
   if (list) item.list = list;
+  if (star) item.star = true;
   const items = getLife();
   // checklist pages read top-down in the order you add them; to-dos stack newest first
   if (lifePage(cat) && lifePage(cat).check) items.push(item); else items.unshift(item);
@@ -1884,7 +1899,7 @@ function clearDoneLife() {
   // Never clears items on checklist pages, those are meant to be reset.
   const keep = i => !i.done || (lifePage(i.cat) && lifePage(i.cat).check);
   const ui = lifeUI();
-  const inScope = i => ui.tab === 'all' || (i.cat || 'general') === ui.tab;
+  const inScope = i => ui.tab === 'all' || (ui.tab === 'starred' ? !!i.star : (i.cat || 'general') === ui.tab);
   const done = getLife().filter(i => inScope(i) && !keep(i)).length;
   if (!done) return;
   if (!confirm(`Clear ${done} completed item${done>1?'s':''}?`)) return;
@@ -1898,7 +1913,8 @@ function resetLife() {
   const ui = lifeUI();
   const items = getLife();
   items.forEach(i => {
-    if (ui.tab !== 'all') {
+    if (ui.tab === 'starred') { if (!i.star) return; }
+    else if (ui.tab !== 'all') {
       if ((i.cat || 'general') !== ui.tab) return;
       if (ui.tab === 'packing' && i.list !== ui.list) return;
     }
@@ -3787,7 +3803,7 @@ window.dash = {
   renderDates, addDate, delDate, toggleDateTimeRow,
   closeDayQuickAdd, submitDayQuickAdd,
   renderLife, addLife, toggleLife, updateLife, delLife, clearDoneLife,
-  setLifeTab, addLifePage, renameLifePage, delLifePage, setLifeList, resetLife, addLifeList, renameLifeList, delLifeList,
+  setLifeTab, toggleLifeStar, addLifePage, renameLifePage, delLifePage, setLifeList, resetLife, addLifeList, renameLifeList, delLifeList,
   renderShopping, addShopping, toggleShopping, updateShopping, delShopping, clearDoneShopping, toggleShopCategoryGroup,
   renderGoals, switchGoalScope, addGoal, delGoal, cycleGoal,
   renderCurrently, renderCurrentlyTabs, switchCurKind, curPrev, curNext, curGoTo, curAdd, updateCur, cycleCurProgress, finishCur, pickCurImage,
