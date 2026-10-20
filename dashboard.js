@@ -1762,12 +1762,13 @@ function renderLife() {
   }
   $('lifeInput').placeholder = tab === 'packing' && !lists.length ? 'add a list first (+)' : tab === 'all' ? 'something to do' : 'add to ' + (lifePage(tab).name);
 
-  // header action: Reset (checklist pages) or Clear done
+  // header actions: Uncheck all (always, keeps items) and Clear completed
+  // (hidden on checklist pages, since those are meant to be reset).
   const checkPage = tab !== 'all' && lifePage(tab).check;
   const btn = $('lifeAction');
-  btn.title = checkPage ? 'Uncheck everything' : 'Clear completed';
-  btn.onclick = checkPage ? () => window.dash.resetLife() : () => window.dash.clearDoneLife();
-  btn.classList.toggle('is-reset', !!checkPage);
+  btn.title = 'Clear completed (deletes checked items)';
+  btn.onclick = () => window.dash.clearDoneLife();
+  btn.style.display = checkPage ? 'none' : '';
 
   // items
   let items = getLife();
@@ -1892,11 +1893,15 @@ function clearDoneLife() {
 }
 
 function resetLife() {
+  // Unchecks everything in view and keeps every item. On All it unchecks
+  // every item on every page.
   const ui = lifeUI();
   const items = getLife();
   items.forEach(i => {
-    if ((i.cat || 'general') !== ui.tab) return;
-    if (ui.tab === 'packing' && i.list !== ui.list) return;
+    if (ui.tab !== 'all') {
+      if ((i.cat || 'general') !== ui.tab) return;
+      if (ui.tab === 'packing' && i.list !== ui.list) return;
+    }
     i.done = false;
   });
   saveLife(items);
