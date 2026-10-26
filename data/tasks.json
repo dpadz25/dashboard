@@ -10,131 +10,11 @@
     "repeat": ""
   },
   {
-    "id": "xzoy0xpa",
-    "title": "Read Ch. 6",
-    "dueDate": "2026-10-19",
-    "category": "Assessment 1",
-    "type": "reading",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "981d3hwr",
-    "title": "Pre-class Survey 7: Social Class",
-    "dueDate": "2026-10-19",
-    "category": "cultural issues",
-    "type": "discussion",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "jdoqw5pw",
-    "title": "Prepare for Session with J, read up on sleep and plan out his next session",
-    "dueDate": "2026-10-19",
-    "category": "Practicum",
+    "id": "gukgz69j",
+    "title": "prepare for J",
+    "dueDate": "2026-10-26",
+    "category": "General",
     "type": "assignment",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "5g5a55va",
-    "title": "Student and staff meeting",
-    "dueDate": "2026-10-19",
-    "category": "Practicum",
-    "type": "assignment",
-    "priority": false,
-    "completed": false,
-    "repeat": "weekly"
-  },
-  {
-    "id": "hngv708i",
-    "title": "Pick topic and work on it for hours!!!",
-    "dueDate": "2026-10-19",
-    "category": "Practicum",
-    "type": "assignment",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "z720s2hp",
-    "title": "Session with J 4:30",
-    "dueDate": "2026-10-20",
-    "category": "Practicum",
-    "type": "discussion",
-    "priority": false,
-    "completed": false,
-    "repeat": "weekly"
-  },
-  {
-    "id": "45jkffp6",
-    "title": "Module 7 quiz (Self-harm & suicide / DBT)",
-    "dueDate": "2026-10-20",
-    "category": "clinical practicum 1",
-    "type": "quiz",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "fku8mwm1",
-    "title": "Journal Entry, Week 9",
-    "dueDate": "2026-10-21",
-    "category": "Dev. Psych",
-    "type": "assignment",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "gqmvlz5c",
-    "title": "Week 9, DSM-5-TR PTSD criteria",
-    "dueDate": "2026-10-21",
-    "category": "Dev. Psych",
-    "type": "reading",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "a2qkkz35",
-    "title": "Week 9, Powers et al. (2016), childhood trauma, PTSD, and psychosis",
-    "dueDate": "2026-10-21",
-    "category": "Dev. Psych",
-    "type": "reading",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "e9x4ulr3",
-    "title": "Week 9, Brockie et al. (2015), ACEs and PTSD, depression, poly-drug use in Native American adolescents",
-    "dueDate": "2026-10-21",
-    "category": "Dev. Psych",
-    "type": "reading",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "c6sf05pd",
-    "title": "Quiz 2 (Ch 4-6)",
-    "dueDate": "2026-10-22",
-    "category": "Assessment 1",
-    "type": "quiz",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "kfd3043e",
-    "title": "Read Ch. 20",
-    "dueDate": "2026-10-22",
-    "category": "Dev. Psych",
-    "type": "reading",
     "priority": false,
     "completed": false,
     "repeat": ""
@@ -150,6 +30,16 @@
     "repeat": ""
   },
   {
+    "id": "y5w81f0x",
+    "title": "Practicum Journal 2 (500-800 words, 10 pts)",
+    "dueDate": "2026-10-26",
+    "category": "clinical practicum 1",
+    "type": "assignment",
+    "priority": false,
+    "completed": false,
+    "repeat": ""
+  },
+  {
     "id": "ptwozmp5",
     "title": "Pre-class Survey 8: Power, Privilege & Oppression",
     "dueDate": "2026-10-26",
@@ -158,6 +48,36 @@
     "priority": false,
     "completed": false,
     "repeat": ""
+  },
+  {
+    "id": "5g5a55va",
+    "title": "Student and staff meeting",
+    "dueDate": "2026-10-26",
+    "category": "Practicum",
+    "type": "assignment",
+    "priority": false,
+    "completed": false,
+    "repeat": "weekly"
+  },
+  {
+    "id": "hngv708i",
+    "title": "Pick topic and work on it for hours!!!",
+    "dueDate": "2026-10-26",
+    "category": "Practicum",
+    "type": "assignment",
+    "priority": false,
+    "completed": false,
+    "repeat": ""
+  },
+  {
+    "id": "z720s2hp",
+    "title": "Session with J 4:30",
+    "dueDate": "2026-10-27",
+    "category": "Practicum",
+    "type": "discussion",
+    "priority": false,
+    "completed": false,
+    "repeat": "weekly"
   },
   {
     "id": "fce5wqms",
@@ -170,18 +90,8 @@
     "repeat": ""
   },
   {
-    "id": "y5w81f0x",
-    "title": "Practicum Journal 2 (500-800 words, 10 pts)",
-    "dueDate": "2026-10-27",
-    "category": "clinical practicum 1",
-    "type": "assignment",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "y69z23rt",
-    "title": "Journal Entry, Week 10",
+    "id": "fku8mwm1",
+    "title": "Journal Entry, Week 9",
     "dueDate": "2026-10-28",
     "category": "Dev. Psych",
     "type": "assignment",
@@ -190,8 +100,8 @@
     "repeat": ""
   },
   {
-    "id": "5ks1xv1s",
-    "title": "Week 10, DSM-5-TR ASD and Early Onset Schizophrenia criteria",
+    "id": "gqmvlz5c",
+    "title": "Week 9, DSM-5-TR PTSD criteria",
     "dueDate": "2026-10-28",
     "category": "Dev. Psych",
     "type": "reading",
@@ -200,8 +110,8 @@
     "repeat": ""
   },
   {
-    "id": "xzsn5ybu",
-    "title": "Week 10, Salinger et al. (2018), family communication with teens at clinical high-risk for psychosis or bipolar",
+    "id": "a2qkkz35",
+    "title": "Week 9, Powers et al. (2016), childhood trauma, PTSD, and psychosis",
     "dueDate": "2026-10-28",
     "category": "Dev. Psych",
     "type": "reading",
@@ -210,8 +120,28 @@
     "repeat": ""
   },
   {
-    "id": "hd04iwjt",
-    "title": "Read Ch. 22 & 23",
+    "id": "e9x4ulr3",
+    "title": "Week 9, Brockie et al. (2015), ACEs and PTSD, depression, poly-drug use in Native American adolescents",
+    "dueDate": "2026-10-28",
+    "category": "Dev. Psych",
+    "type": "reading",
+    "priority": false,
+    "completed": false,
+    "repeat": ""
+  },
+  {
+    "id": "c6sf05pd",
+    "title": "Quiz 2 (Ch 4-6)",
+    "dueDate": "2026-10-29",
+    "category": "Assessment 1",
+    "type": "quiz",
+    "priority": false,
+    "completed": false,
+    "repeat": ""
+  },
+  {
+    "id": "kfd3043e",
+    "title": "Read Ch. 20",
     "dueDate": "2026-10-29",
     "category": "Dev. Psych",
     "type": "reading",
@@ -260,8 +190,8 @@
     "repeat": ""
   },
   {
-    "id": "cf6zvljv",
-    "title": "Journal Entry, Week 11",
+    "id": "y69z23rt",
+    "title": "Journal Entry, Week 10",
     "dueDate": "2026-11-04",
     "category": "Dev. Psych",
     "type": "assignment",
@@ -270,8 +200,8 @@
     "repeat": ""
   },
   {
-    "id": "hsp77xfh",
-    "title": "Week 11, DSM-5-TR Eating Disorders and Personality Disorders criteria",
+    "id": "5ks1xv1s",
+    "title": "Week 10, DSM-5-TR ASD and Early Onset Schizophrenia criteria",
     "dueDate": "2026-11-04",
     "category": "Dev. Psych",
     "type": "reading",
@@ -280,8 +210,8 @@
     "repeat": ""
   },
   {
-    "id": "0j6wn4ga",
-    "title": "Week 11, Frieiro et al. (2022), self-esteem and socialisation in social networks and adolescent eating disorders",
+    "id": "xzsn5ybu",
+    "title": "Week 10, Salinger et al. (2018), family communication with teens at clinical high-risk for psychosis or bipolar",
     "dueDate": "2026-11-04",
     "category": "Dev. Psych",
     "type": "reading",
@@ -290,18 +220,8 @@
     "repeat": ""
   },
   {
-    "id": "ysyzxqnm",
-    "title": "Week 11, Bo & Lind (2023), personality disorder and adolescents",
-    "dueDate": "2026-11-04",
-    "category": "Dev. Psych",
-    "type": "reading",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "fs1r26di",
-    "title": "Read Ch. 19 & 24",
+    "id": "hd04iwjt",
+    "title": "Read Ch. 22 & 23",
     "dueDate": "2026-11-05",
     "category": "Dev. Psych",
     "type": "reading",
@@ -360,11 +280,41 @@
     "repeat": ""
   },
   {
-    "id": "0d6lmih7",
-    "title": "Journal Entry, Week 12",
+    "id": "cf6zvljv",
+    "title": "Journal Entry, Week 11",
     "dueDate": "2026-11-11",
     "category": "Dev. Psych",
     "type": "assignment",
+    "priority": false,
+    "completed": false,
+    "repeat": ""
+  },
+  {
+    "id": "hsp77xfh",
+    "title": "Week 11, DSM-5-TR Eating Disorders and Personality Disorders criteria",
+    "dueDate": "2026-11-11",
+    "category": "Dev. Psych",
+    "type": "reading",
+    "priority": false,
+    "completed": false,
+    "repeat": ""
+  },
+  {
+    "id": "0j6wn4ga",
+    "title": "Week 11, Frieiro et al. (2022), self-esteem and socialisation in social networks and adolescent eating disorders",
+    "dueDate": "2026-11-11",
+    "category": "Dev. Psych",
+    "type": "reading",
+    "priority": false,
+    "completed": false,
+    "repeat": ""
+  },
+  {
+    "id": "ysyzxqnm",
+    "title": "Week 11, Bo & Lind (2023), personality disorder and adolescents",
+    "dueDate": "2026-11-11",
+    "category": "Dev. Psych",
+    "type": "reading",
     "priority": false,
     "completed": false,
     "repeat": ""
@@ -380,11 +330,11 @@
     "repeat": ""
   },
   {
-    "id": "aumt3m38",
-    "title": "Exam II",
+    "id": "fs1r26di",
+    "title": "Read Ch. 19 & 24",
     "dueDate": "2026-11-12",
     "category": "Dev. Psych",
-    "type": "exam",
+    "type": "reading",
     "priority": false,
     "completed": false,
     "repeat": ""
@@ -440,8 +390,8 @@
     "repeat": ""
   },
   {
-    "id": "nsj2zcvv",
-    "title": "Journal Entry, Week 13",
+    "id": "0d6lmih7",
+    "title": "Journal Entry, Week 12",
     "dueDate": "2026-11-18",
     "category": "Dev. Psych",
     "type": "assignment",
@@ -450,11 +400,11 @@
     "repeat": ""
   },
   {
-    "id": "3j830ewj",
-    "title": "Community Workshop, Final Submission",
+    "id": "aumt3m38",
+    "title": "Exam II",
     "dueDate": "2026-11-19",
     "category": "Dev. Psych",
-    "type": "project",
+    "type": "exam",
     "priority": false,
     "completed": false,
     "repeat": ""
@@ -500,8 +450,8 @@
     "repeat": ""
   },
   {
-    "id": "tuxevefq",
-    "title": "Journal Entry, Week 14",
+    "id": "nsj2zcvv",
+    "title": "Journal Entry, Week 13",
     "dueDate": "2026-11-25",
     "category": "Dev. Psych",
     "type": "assignment",
@@ -570,8 +520,8 @@
     "repeat": ""
   },
   {
-    "id": "2iv238u2",
-    "title": "Journal Entry, Week 15",
+    "id": "tuxevefq",
+    "title": "Journal Entry, Week 14",
     "dueDate": "2026-12-02",
     "category": "Dev. Psych",
     "type": "assignment",
@@ -590,8 +540,8 @@
     "repeat": ""
   },
   {
-    "id": "6fym071j",
-    "title": "Community Workshop, Peer Reviews Due",
+    "id": "3j830ewj",
+    "title": "Community Workshop, Final Submission",
     "dueDate": "2026-12-03",
     "category": "Dev. Psych",
     "type": "project",
@@ -630,11 +580,31 @@
     "repeat": ""
   },
   {
+    "id": "2iv238u2",
+    "title": "Journal Entry, Week 15",
+    "dueDate": "2026-12-09",
+    "category": "Dev. Psych",
+    "type": "assignment",
+    "priority": false,
+    "completed": false,
+    "repeat": ""
+  },
+  {
     "id": "ohbxi4ds",
     "title": "Quiz 5 (Ch 13-15)",
     "dueDate": "2026-12-10",
     "category": "Assessment 1",
     "type": "quiz",
+    "priority": false,
+    "completed": false,
+    "repeat": ""
+  },
+  {
+    "id": "6fym071j",
+    "title": "Community Workshop, Peer Reviews Due",
+    "dueDate": "2026-12-10",
+    "category": "Dev. Psych",
+    "type": "project",
     "priority": false,
     "completed": false,
     "repeat": ""
