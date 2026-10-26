@@ -982,7 +982,7 @@ function buildTabbar() {
     ['Home', 'M3 11l9-8 9 8M5 10v10h5v-6h4v6h5V10', () => window.scrollTo({ top: 0, behavior: 'smooth' })],
     ['Planner', 'M9 6h11M9 12h11M9 18h11M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2', () => window.dashUtil.scrollToCard('planner')],
     ['Calendar', 'M3 5h18v16H3zM3 10h18M8 3v4M16 3v4', () => window.dashUtil.scrollToCard('agenda')],
-    ['Habits', 'M20 6L9 17l-5-5', () => window.dashUtil.scrollToCard('habits')],
+    ['Life', 'M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10zM2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12', () => window.dashUtil.scrollToCard('life')],
     ['Links', 'M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7', () => window.dash.toggleMobileLinks()],
   ];
   bar.innerHTML = tabs.map((t, i) => `<button type="button" data-t="${i}">${svgI(t[1])}<span>${t[0]}</span></button>`).join('');
