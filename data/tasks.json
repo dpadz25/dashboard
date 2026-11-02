@@ -1,5 +1,45 @@
 [
   {
+    "id": "m5v0yfpu",
+    "title": "prepare case presentation",
+    "dueDate": "2026-11-02",
+    "category": "General",
+    "type": "assignment",
+    "priority": false,
+    "completed": false,
+    "repeat": ""
+  },
+  {
+    "id": "ickf7vtb",
+    "title": "finish intake form",
+    "dueDate": "2026-11-02",
+    "category": "Practicum",
+    "type": "assignment",
+    "priority": false,
+    "completed": false,
+    "repeat": ""
+  },
+  {
+    "id": "rzztxmmx",
+    "title": "dinner",
+    "dueDate": "2026-11-02",
+    "category": "Practicum",
+    "type": "assignment",
+    "priority": false,
+    "completed": false,
+    "repeat": ""
+  },
+  {
+    "id": "zd9lv82c",
+    "title": "laundry",
+    "dueDate": "2026-11-02",
+    "category": "Practicum",
+    "type": "assignment",
+    "priority": false,
+    "completed": false,
+    "repeat": ""
+  },
+  {
     "id": "78kz27sv",
     "title": "Pre-class Survey 9: Spirituality & Religion",
     "dueDate": "2026-11-02",
