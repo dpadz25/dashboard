@@ -1,35 +1,5 @@
 [
   {
-    "id": "gfjoqtld",
-    "title": "therapy",
-    "dueDate": "2026-11-02",
-    "category": "Practicum",
-    "type": "assignment",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "k210mbsx",
-    "title": "dream reading",
-    "dueDate": "2026-11-02",
-    "category": "Practicum",
-    "type": "assignment",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "ut2a3k9a",
-    "title": "Read Ch. 8",
-    "dueDate": "2026-11-02",
-    "category": "Assessment 1",
-    "type": "reading",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
     "id": "78kz27sv",
     "title": "Pre-class Survey 9: Spirituality & Religion",
     "dueDate": "2026-11-02",
