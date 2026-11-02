@@ -1,68 +1,8 @@
 [
   {
-    "id": "b1mtse1u",
-    "title": "Test",
-    "dueDate": "2026-10-06",
-    "category": "clinical practicum 1",
-    "type": "assignment",
-    "priority": false,
-    "completed": true,
-    "repeat": ""
-  },
-  {
-    "id": "gukgz69j",
-    "title": "prepare for J",
-    "dueDate": "2026-10-26",
-    "category": "General",
-    "type": "assignment",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "gs7l257l",
-    "title": "Read Ch. 7",
-    "dueDate": "2026-10-26",
-    "category": "Assessment 1",
-    "type": "reading",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "y5w81f0x",
-    "title": "Practicum Journal 2 (500-800 words, 10 pts)",
-    "dueDate": "2026-10-26",
-    "category": "clinical practicum 1",
-    "type": "assignment",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "ptwozmp5",
-    "title": "Pre-class Survey 8: Power, Privilege & Oppression",
-    "dueDate": "2026-10-26",
-    "category": "cultural issues",
-    "type": "discussion",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "5g5a55va",
-    "title": "Student and staff meeting",
-    "dueDate": "2026-10-26",
-    "category": "Practicum",
-    "type": "assignment",
-    "priority": false,
-    "completed": false,
-    "repeat": "weekly"
-  },
-  {
-    "id": "hngv708i",
-    "title": "Pick topic and work on it for hours!!!",
-    "dueDate": "2026-10-26",
+    "id": "gfjoqtld",
+    "title": "therapy",
+    "dueDate": "2026-11-02",
     "category": "Practicum",
     "type": "assignment",
     "priority": false,
@@ -70,81 +10,11 @@
     "repeat": ""
   },
   {
-    "id": "z720s2hp",
-    "title": "Session with J 4:30",
-    "dueDate": "2026-10-27",
+    "id": "k210mbsx",
+    "title": "dream reading",
+    "dueDate": "2026-11-02",
     "category": "Practicum",
-    "type": "discussion",
-    "priority": false,
-    "completed": false,
-    "repeat": "weekly"
-  },
-  {
-    "id": "fce5wqms",
-    "title": "Module 8 quiz (Personality disorders)",
-    "dueDate": "2026-10-20",
-    "category": "clinical practicum 1",
-    "type": "quiz",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "fku8mwm1",
-    "title": "Journal Entry, Week 9",
-    "dueDate": "2026-10-28",
-    "category": "Dev. Psych",
     "type": "assignment",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "gqmvlz5c",
-    "title": "Week 9, DSM-5-TR PTSD criteria",
-    "dueDate": "2026-10-28",
-    "category": "Dev. Psych",
-    "type": "reading",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "a2qkkz35",
-    "title": "Week 9, Powers et al. (2016), childhood trauma, PTSD, and psychosis",
-    "dueDate": "2026-10-28",
-    "category": "Dev. Psych",
-    "type": "reading",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "e9x4ulr3",
-    "title": "Week 9, Brockie et al. (2015), ACEs and PTSD, depression, poly-drug use in Native American adolescents",
-    "dueDate": "2026-10-28",
-    "category": "Dev. Psych",
-    "type": "reading",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "c6sf05pd",
-    "title": "Quiz 2 (Ch 4-6)",
-    "dueDate": "2026-10-29",
-    "category": "Assessment 1",
-    "type": "quiz",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "kfd3043e",
-    "title": "Read Ch. 20",
-    "dueDate": "2026-10-29",
-    "category": "Dev. Psych",
-    "type": "reading",
     "priority": false,
     "completed": false,
     "repeat": ""
@@ -170,6 +40,16 @@
     "repeat": ""
   },
   {
+    "id": "5g5a55va",
+    "title": "Student and staff meeting",
+    "dueDate": "2026-11-02",
+    "category": "Practicum",
+    "type": "assignment",
+    "priority": false,
+    "completed": false,
+    "repeat": "weekly"
+  },
+  {
     "id": "zwiiea8f",
     "title": "case presentation",
     "dueDate": "2026-11-03",
@@ -180,14 +60,24 @@
     "repeat": ""
   },
   {
-    "id": "8sx55ysc",
-    "title": "Module 9 quiz (CBT formulation deep dive A)",
-    "dueDate": "2026-10-27",
+    "id": "0c1pz37j",
+    "title": "Module 10 quiz (CBT formulation deep dive B)",
+    "dueDate": "2026-11-03",
     "category": "clinical practicum 1",
     "type": "quiz",
     "priority": false,
     "completed": false,
     "repeat": ""
+  },
+  {
+    "id": "z720s2hp",
+    "title": "Session with J 4:30",
+    "dueDate": "2026-11-04",
+    "category": "Practicum",
+    "type": "discussion",
+    "priority": false,
+    "completed": false,
+    "repeat": "weekly"
   },
   {
     "id": "y69z23rt",
@@ -260,9 +150,9 @@
     "repeat": ""
   },
   {
-    "id": "0c1pz37j",
-    "title": "Module 10 quiz (CBT formulation deep dive B)",
-    "dueDate": "2026-11-03",
+    "id": "5x6s2sib",
+    "title": "Module 11 quiz (CBT deep dive C / common factors)",
+    "dueDate": "2026-11-10",
     "category": "clinical practicum 1",
     "type": "quiz",
     "priority": false,
@@ -340,6 +230,16 @@
     "repeat": ""
   },
   {
+    "id": "zn5w9qx3",
+    "title": "Week 11-Personal and Social Identity paper",
+    "dueDate": "2026-11-15",
+    "category": "cultural issues",
+    "type": "essay",
+    "priority": false,
+    "completed": false,
+    "repeat": ""
+  },
+  {
     "id": "6qqxvgzm",
     "title": "Read Ch. 10",
     "dueDate": "2026-11-16",
@@ -365,16 +265,6 @@
     "dueDate": "2026-11-16",
     "category": "cultural issues",
     "type": "discussion",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "5x6s2sib",
-    "title": "Module 11 quiz (CBT deep dive C / common factors)",
-    "dueDate": "2026-11-10",
-    "category": "clinical practicum 1",
-    "type": "quiz",
     "priority": false,
     "completed": false,
     "repeat": ""
@@ -430,6 +320,26 @@
     "repeat": ""
   },
   {
+    "id": "08qkqaax",
+    "title": "Module 12 quiz (Treatment planning)",
+    "dueDate": "2026-11-24",
+    "category": "clinical practicum 1",
+    "type": "quiz",
+    "priority": false,
+    "completed": false,
+    "repeat": ""
+  },
+  {
+    "id": "kcy9wc5w",
+    "title": "Module 13 quiz (Diversity factors in case formulation)",
+    "dueDate": "2026-11-24",
+    "category": "clinical practicum 1",
+    "type": "quiz",
+    "priority": false,
+    "completed": false,
+    "repeat": ""
+  },
+  {
     "id": "vabu7py9",
     "title": "Written Case Report (40 pts) - due 1 week after presentation feedback",
     "dueDate": "2026-11-24",
@@ -475,26 +385,6 @@
     "dueDate": "2026-11-30",
     "category": "cultural issues",
     "type": "discussion",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "08qkqaax",
-    "title": "Module 12 quiz (Treatment planning)",
-    "dueDate": "2026-11-24",
-    "category": "clinical practicum 1",
-    "type": "quiz",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "kcy9wc5w",
-    "title": "Module 13 quiz (Diversity factors in case formulation)",
-    "dueDate": "2026-11-24",
-    "category": "clinical practicum 1",
-    "type": "quiz",
     "priority": false,
     "completed": false,
     "repeat": ""
@@ -615,16 +505,6 @@
     "dueDate": "2026-12-15",
     "category": "cultural issues",
     "type": "discussion",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "wjq8hwd6",
-    "title": "after practicum schedule apply for job",
-    "dueDate": null,
-    "category": "General",
-    "type": "assignment",
     "priority": false,
     "completed": false,
     "repeat": ""
