@@ -6138,3 +6138,13 @@ body.library-open { overflow: hidden; }
 .life-star { flex: 0 0 auto; background: none; border: 0; cursor: pointer; color: var(--muted); font-size: 1rem; line-height: 1; padding: 0 0.15rem; opacity: 0.55; }
 .life-star:hover { opacity: 1; color: #d9a441; }
 .life-star.on { color: #d9a441; opacity: 1; }
+
+/* Editable type/class badges + type menu */
+.type-badge.editable, .class-badge.editable { cursor: pointer; }
+.type-badge.editable:hover, .class-badge.editable:hover { filter: brightness(.95); outline: 1px solid currentColor; }
+.type-badge.empty { opacity: .6; border: 1px dashed currentColor; background: transparent; }
+.type-menu { min-width: 240px; max-width: 280px; }
+.type-menu .t-select, .type-menu .t-input { width: 100%; }
+.type-menu-chips { display: flex; flex-wrap: wrap; gap: .3rem; margin: .1rem 0 .3rem; }
+.type-chip { border: 1px solid var(--border, #ccc); background: transparent; color: inherit; border-radius: 999px; padding: 2px 8px; font-size: .68rem; cursor: pointer; }
+.type-chip:hover, .type-chip.active { background: var(--accent-dim); color: var(--accent); border-color: var(--accent); }

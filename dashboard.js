@@ -1272,8 +1272,8 @@ function renderPlanner() {
         <span class="status-lbl">${meta.label}</span>
         <svg class="status-caret" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
       </button>
-        ${classBadge}
-        ${t.type ? `<span class="type-badge ${cat}">${esc(t.type)}</span>` : ''}
+        ${classBadge ? classBadge.replace('<span class="class-badge"', `<span class="class-badge editable" onclick="window.dash.openTypeMenu('${t.id}',event)" title="Change class or type"`) : ''}
+        <span class="type-badge editable ${cat}${t.type ? '' : ' empty'}" onclick="window.dash.openTypeMenu('${t.id}',event)" title="Change type or class">${t.type ? esc(t.type) : '+ type'}</span>
         ${t.repeat ? `<span class="repeat-badge" title="Repeats: ${REPEAT_LABELS[t.repeat] || t.repeat}">↻</span>` : ''}
         ${pill
           ? `<button class="days-pill ${pill.cls}" onclick="window.dash.openDueMenu('${t.id}',event)" title="${dueTitle(t.dueDate)}">${pill.label}</button>`
@@ -1374,6 +1374,74 @@ function openDueMenu(id, ev) {
 function closeDueMenu() {
   const m = document.getElementById('dueMenu');
   if (m) m.remove();
+}
+
+// ── Type / class popover: click a task's type or class badge ──────
+// Pick a type from the list (same options as the add form) or type your own.
+function openTypeMenu(id, ev) {
+  if (ev) ev.stopPropagation();
+  const t = getTasks().find(x => x.id === id);
+  if (!t) return;
+  closeStatusMenu(); closeDueMenu(); closeTypeMenu();
+  const typeSel = $('taskType');
+  const types = typeSel ? Array.from(typeSel.options).map(o => ({ v: o.value, l: o.textContent })) : [];
+  const classes = getClasses();
+  const menu = document.createElement('div');
+  menu.className = 'status-menu due-menu type-menu';
+  menu.id = 'typeMenu';
+  menu.onclick = e => e.stopPropagation();
+  menu.innerHTML = `
+    <div class="due-menu-title">Class</div>
+    <select class="t-select" id="typeMenuClass">
+      <option value="">No class</option>
+      ${classes.map(c => `<option value="${esc(c.id)}"${c.id === t.classId ? ' selected' : ''}>${esc(c.name)}</option>`).join('')}
+    </select>
+    <div class="due-menu-title">Type</div>
+    <input class="t-input" id="typeMenuType" list="typeMenuList" placeholder="Type or pick…" value="${esc(t.type || '')}"/>
+    <datalist id="typeMenuList">${types.map(o => `<option value="${esc(o.v)}">${esc(o.l)}</option>`).join('')}</datalist>
+    <div class="type-menu-chips">${types.filter(o => o.v).map(o => `<button type="button" class="type-chip${(t.type||'').toLowerCase() === o.v ? ' active' : ''}" data-v="${esc(o.v)}">${esc(o.l)}</button>`).join('')}</div>
+    <div class="due-menu-actions">
+      <button class="btn-ghost" onclick="window.dash.saveTaskType('${id}','')">No type</button>
+      <button class="btn-add" onclick="window.dash.saveTaskType('${id}')">Save</button>
+    </div>`;
+  menu.querySelectorAll('.type-chip').forEach(b => b.addEventListener('click', () => saveTaskType(id, b.dataset.v)));
+  const inp = menu.querySelector('#typeMenuType');
+  inp.addEventListener('keydown', e => { if (e.key === 'Enter') saveTaskType(id); else if (e.key === 'Escape') closeTypeMenu(); });
+  document.body.appendChild(menu);
+
+  const pill = ev && ev.currentTarget ? ev.currentTarget
+    : document.querySelector(`#plannerList .task-item[data-id="${id}"] .type-badge`);
+  const r = pill.getBoundingClientRect();
+  const mw = menu.offsetWidth, mh = menu.offsetHeight;
+  let left = r.left;
+  if (left + mw > window.innerWidth - 8) left = window.innerWidth - mw - 8;
+  let top = r.bottom + 6;
+  if (top + mh > window.innerHeight - 8) top = r.top - mh - 6;
+  menu.style.left = Math.max(8, left) + 'px';
+  menu.style.top  = Math.max(8, top) + 'px';
+  requestAnimationFrame(() => { menu.classList.add('open'); inp.focus(); });
+  setTimeout(() => document.addEventListener('click', closeTypeMenu, { once: true }), 0);
+}
+
+function closeTypeMenu() {
+  const m = document.getElementById('typeMenu');
+  if (m) m.remove();
+}
+
+// typeOverride: a string to use as the type; undefined = read the text box.
+function saveTaskType(id, typeOverride) {
+  const clsEl = document.getElementById('typeMenuClass');
+  const typeEl = document.getElementById('typeMenuType');
+  const type = (typeOverride !== undefined ? typeOverride : (typeEl ? typeEl.value : '')).trim().toLowerCase();
+  const classId = clsEl ? (clsEl.value || null) : undefined;
+  closeTypeMenu();
+  const tasks = getTasks();
+  const t = tasks.find(x => x.id === id);
+  if (!t) return;
+  t.type = type;
+  if (classId !== undefined) t.classId = classId;
+  saveTasks(tasks);
+  renderPlanner(); renderAgenda();
 }
 
 function saveDueDate(id) {
@@ -3800,6 +3868,7 @@ window.dash = {
   startTaskRename, renameTask, startTileRename, toggleTaskDetails,
   openStatusMenu, closeStatusMenu, setTaskStatus,
   openDueMenu, closeDueMenu, saveDueDate, clearDueDate,
+  openTypeMenu, closeTypeMenu, saveTaskType,
   openClassesModal, closeClassesModal, addClass, updateClass, deleteClass, removeClassTab,
   renderAgenda, switchAgendaView, calNavMonth, quickAddAgendaEvent, delAgendaEvent,
   jumpToWeek,
