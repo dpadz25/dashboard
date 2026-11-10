@@ -294,6 +294,12 @@
     firebase.initializeApp(FIREBASE_CONFIG);
     db = firebase.firestore();
 
+    // Mobile Safari / home-screen apps often break Firestore's websocket
+    // channel (cellular, content blockers, suspended tabs), so the live
+    // listener silently never delivers other devices' edits. Auto-detecting
+    // long-polling falls back to a transport that survives that.
+    try { db.settings({ experimentalAutoDetectLongPolling: true, merge: true }); } catch (e) {}
+
     // Offline persistence: writes made while the connection is flaky (or
     // while iOS Safari suspends the tab) are stored on-device and sent
     // automatically next time the page is online — instead of being lost.
@@ -366,6 +372,37 @@
       listen();       // start real-time listener
     }).catch(function (e) { syncError('pull', e); });
   }
+
+  // Re-fetch everything from the SERVER and merge it in. Used when the page
+  // wakes up (phone unlocked, app switched back to) because the live
+  // listener is frozen while the page is suspended and can stay dead.
+  var resyncing = false, lastResync = 0;
+  function resync() {
+    if (!db || !user || !ready || resyncing) return;
+    if (Date.now() - lastResync < 3000) return;
+    resyncing = true; lastResync = Date.now();
+    userCol().get({ source: 'server' }).then(function (snap) {
+      var changed = false;
+      snap.forEach(function (doc) {
+        var data = doc.data();
+        if (data.d === undefined) return;
+        if (applyRemote(doc.id, data.d, parseJSON(data.x))) changed = true;
+      });
+      if (changed) rerender();
+      clearSyncError();
+      // Restart the live listener in case its connection died.
+      listen();
+    }).catch(function (e) { console.warn('[sync] resync failed', e); })
+      .then(function () { resyncing = false; });
+  }
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'visible') resync();
+  });
+  window.addEventListener('pageshow', resync);
+  window.addEventListener('focus', resync);
+  window.addEventListener('online', resync);
+  // Safety net while the page stays open and visible.
+  setInterval(function () { if (document.visibilityState === 'visible') resync(); }, 60000);
 
   // Push queued early writes now that sync is ready. Push the CURRENT
   // local value, not the queued raw — the pull may have merged cloud
@@ -588,7 +625,7 @@
     [
       'initHeader', 'renderQlinks', 'applySideRailBg', 'renderHabits',
       'renderPlannerTabs', 'renderTaskClassSelect', 'renderPlanner',
-      'renderLife', 'renderShopping', 'renderCurrentlyTabs', 'renderAgenda',
+      'renderDailies', 'renderLife', 'renderShopping', 'renderCurrentlyTabs', 'renderAgenda',
       'renderDates', 'renderGoals', 'renderCurrently', 'renderHealth',
       'renderPeople', 'applyAllCardBgs'
     ].forEach(function (fn) {
