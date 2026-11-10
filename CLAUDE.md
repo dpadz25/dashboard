@@ -91,6 +91,22 @@ Plain HTML/CSS/JS, no build step.
 - iPhone only receives push as a home-screen app (Safari → Share →
   Add to Home Screen), iOS 16.4+.
 
+## Planner snapshot + Morning Brief
+- `data/tasks.json` is a public snapshot of the planner (title, due date,
+  class, type). `.github/workflows/sync-tasks.yml` runs twice an hour ->
+  `scripts/export-tasks.mjs` reads `plannerTasks` + `schoolClasses` from
+  Firestore (same `FIREBASE_SERVICE_ACCOUNT` secret as notify) and commits
+  the file only when it changed. The dashboard's manual "GitHub" button
+  (`github-sync.js`) writes the same file in the same shape; keep
+  `buildTasks` in both files identical.
+- Those bot commits land on `main`, so always fetch before pushing.
+- The Morning Brief is a claude.ai artifact refreshed by a scheduled task
+  (about 7:45 AM and 8:45 PM Eastern). It reads the snapshot from
+  `raw.githubusercontent.com` (the `dpadz25.github.io` host is blocked from
+  cloud sessions) plus Google Calendar, and only swaps the JSON data block
+  in the page. `brief/template.html` is the backup copy of that page's
+  design, with no personal data in it.
+
 ## Workflow notes
 - Use the `dashboard-update` skill when merging a new design export.
   Design exports know nothing about the hosted-only files

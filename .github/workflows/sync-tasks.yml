@@ -1,0 +1,53 @@
+name: Sync planner
+
+# Keeps data/tasks.json current without the dashboard's manual "GitHub"
+# button: reads the planner from Firestore and commits the file only when
+# it changed. The scheduled Morning Brief reads that file.
+
+on:
+  schedule:
+    # Twice an hour, off the busy :00/:30 marks (GitHub cron can drift).
+    - cron: '7,37 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-tasks
+  cancel-in-progress: false
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install exporter deps
+        run: npm install --no-save firebase-admin@12
+      - name: Export planner from Firestore
+        id: export
+        run: node scripts/export-tasks.mjs
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+      - name: Commit if the planner changed
+        run: |
+          if [ -z "$(git status --porcelain -- data/tasks.json)" ]; then
+            echo "No planner changes."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/tasks.json
+          git commit -m "Auto-sync planner -> tasks.json (${{ steps.export.outputs.count }} tasks)"
+          # Another push may land between checkout and here; rebase and
+          # retry a fixed number of times, then give up until the next run.
+          for attempt in 1 2 3; do
+            if git push; then exit 0; fi
+            git pull --rebase
+          done
+          echo "Could not push after 3 attempts." >&2
+          exit 1
