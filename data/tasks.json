@@ -1,20 +1,20 @@
 [
   {
-    "id": "zd9lv82c",
-    "title": "laundry",
-    "dueDate": "2026-11-09",
-    "category": "Practicum",
+    "id": "rc4cv8t5",
+    "title": "check on dashboard and movewell limits claude",
+    "dueDate": "2026-11-10",
+    "category": "General",
     "type": "assignment",
     "priority": false,
     "completed": false,
     "repeat": ""
   },
   {
-    "id": "8fkou0km",
-    "title": "EV Project, Part II Draft",
-    "dueDate": "2026-11-09",
-    "category": "Assessment 1",
-    "type": "project",
+    "id": "mwgcry95",
+    "title": "laundry",
+    "dueDate": "2026-11-10",
+    "category": "General",
+    "type": "assignment",
     "priority": false,
     "completed": false,
     "repeat": ""
@@ -23,7 +23,7 @@
     "id": "r9vksa64",
     "title": "respond to idarmy",
     "dueDate": "2026-11-10",
-    "category": "General",
+    "category": "Practicum",
     "type": "assignment",
     "priority": false,
     "completed": false,
@@ -405,6 +405,16 @@
     "dueDate": "2026-12-15",
     "category": "cultural issues",
     "type": "discussion",
+    "priority": false,
+    "completed": false,
+    "repeat": ""
+  },
+  {
+    "id": "zd9lv82c",
+    "title": "laundry",
+    "dueDate": null,
+    "category": "Practicum",
+    "type": "assignment",
     "priority": false,
     "completed": false,
     "repeat": ""
