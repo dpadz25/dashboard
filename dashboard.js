@@ -1519,11 +1519,64 @@ function addTask() {
   renderPlanner(); renderAgenda();
 }
 
+// ── Day-cleared celebration ─────────────────────────────────────
+// Fires when the task being completed is the last unfinished one in its
+// day group (Overdue / Today / Tomorrow / a dated day) in "By day" mode.
+function dayGroupKey(t) {
+  if (!t.dueDate) return null;
+  return t.dueDate < todayStr() ? 'over' : t.dueDate;
+}
+function dayGroupLabel(key) {
+  if (key === 'over') return 'Overdue';
+  if (key === todayStr()) return 'Today';
+  const pill = getDaysPill(key);
+  if (pill && pill.label === 'Tomorrow') return 'Tomorrow';
+  const [y, m, d] = key.split('-').map(Number);
+  const dt = new Date(y, m - 1, d);
+  return dt.toLocaleDateString(undefined, { weekday: 'long' }) + ' ' + dt.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+function celebrateDay(label, originEl) {
+  if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const layer = document.createElement('div');
+  layer.className = 'celebrate-layer';
+  const toast = document.createElement('div');
+  toast.className = 'celebrate-toast';
+  toast.textContent = label + ' cleared \u{1F389}';
+  layer.appendChild(toast);
+  const r = originEl ? originEl.getBoundingClientRect() : null;
+  const ox = r ? r.left + r.width / 2 : innerWidth / 2;
+  const oy = r ? r.top + r.height / 2 : innerHeight / 3;
+  const colors = ['#b8501f', '#e0a43a', '#6fa88f', '#4a86b8', '#c767b0', '#e0584a'];
+  for (let i = 0; i < 44; i++) {
+    const c = document.createElement('i');
+    c.className = 'celebrate-bit';
+    c.style.background = colors[i % colors.length];
+    c.style.left = ox + 'px'; c.style.top = oy + 'px';
+    layer.appendChild(c);
+    const ang = Math.random() * Math.PI * 2, dist = 70 + Math.random() * 150;
+    const dx = Math.cos(ang) * dist, dy = Math.sin(ang) * dist - 60;
+    c.animate([
+      { transform: 'translate(0,0) rotate(0) scale(1)', opacity: 1 },
+      { transform: `translate(${dx}px,${dy}px) rotate(${Math.random() * 540}deg) scale(1)`, opacity: 1, offset: 0.55 },
+      { transform: `translate(${dx * 1.15}px,${dy + 140}px) rotate(${Math.random() * 720}deg) scale(.7)`, opacity: 0 }
+    ], { duration: 1200 + Math.random() * 500, easing: 'cubic-bezier(.2,.7,.4,1)', fill: 'forwards' });
+  }
+  document.body.appendChild(layer);
+  setTimeout(() => layer.remove(), 2400);
+}
+
 function toggleTask(id) {
   const tasks = getTasks();
   const t = tasks.find(t => t.id === id);
   if (!t) return;
   if (taskStatus(t) !== 'done') {
+    // Was this the last unfinished task of its day? Decide before mutating.
+    const gk = plannerGroup === 'class' ? null : dayGroupKey(t);
+    const clearsDay = !!gk && !tasks.some(x => x.id !== id && taskStatus(x) !== 'done' && dayGroupKey(x) === gk);
+    if (clearsDay) {
+      const row = document.querySelector(`#plannerList .task-item[data-id="${id}"] .tcheck`);
+      celebrateDay(dayGroupLabel(gk), row);
+    }
     logTaskCompletion(t);
     if (t.repeat) {
       // Recurring: advance to the next occurrence instead of deleting it.

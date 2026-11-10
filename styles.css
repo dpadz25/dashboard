@@ -6148,3 +6148,20 @@ body.library-open { overflow: hidden; }
 .type-menu-chips { display: flex; flex-wrap: wrap; gap: .3rem; margin: .1rem 0 .3rem; }
 .type-chip { border: 1px solid var(--border, #ccc); background: transparent; color: inherit; border-radius: 999px; padding: 2px 8px; font-size: .68rem; cursor: pointer; }
 .type-chip:hover, .type-chip.active { background: var(--accent-dim); color: var(--accent); border-color: var(--accent); }
+
+/* Day-cleared celebration */
+.celebrate-layer { position: fixed; inset: 0; pointer-events: none; z-index: 10000; overflow: hidden; }
+.celebrate-bit { position: fixed; width: 8px; height: 12px; border-radius: 2px; will-change: transform, opacity; }
+.celebrate-toast {
+  position: fixed; left: 50%; top: 18px; transform: translateX(-50%);
+  padding: 10px 20px; border-radius: 999px; background: #2a211b; color: #fff;
+  font: 600 15px/1.2 var(--font-b, sans-serif); box-shadow: 0 6px 24px rgba(0,0,0,.3);
+  animation: celebrate-pop 2.2s ease forwards;
+}
+@keyframes celebrate-pop {
+  0% { opacity: 0; transform: translate(-50%, -16px) scale(.9); }
+  12% { opacity: 1; transform: translate(-50%, 0) scale(1.05); }
+  20% { transform: translate(-50%, 0) scale(1); }
+  85% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -8px); }
+}
