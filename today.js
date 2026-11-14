@@ -57,34 +57,122 @@ function close() {
 }
 function switchView(v) { activeView = v; render(); }
 
+/* ── SMALL TEMPLATE HELPERS (look only) ──────────────────────── */
+const IC = {
+  back: '<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>',
+  check: '<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>',
+  star: '<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="m12 2.5 2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3 6.1 20.6l1.3-6.6L2.5 9.4l6.6-.8z"/></svg>',
+  cal: '<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="3"/><path d="M3 10h18M8 2.5v4M16 2.5v4"/></svg>',
+  grip: '<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></svg>',
+  dots: '<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>',
+};
+
+function isoWeek(d) {
+  const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const dow = t.getUTCDay() || 7;
+  t.setUTCDate(t.getUTCDate() + 4 - dow);
+  return Math.ceil(((t - Date.UTC(t.getUTCFullYear(), 0, 1)) / 86400000 + 1) / 7);
+}
+function parseKey(k) { const [y, m, d] = k.split('-').map(Number); return new Date(y, m - 1, d); }
+function shortDate(k) { return parseKey(k).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); }
+
+// Every section is one of these: grip + serif title on the left, optional
+// count pill and options button on the right. Grip and options are visual only
+// in this phase, so they are hidden from assistive tech and not focusable.
+function card(id, title, body, opts) {
+  opts = opts || {};
+  return `
+    <section class="td-card${opts.cls ? ' ' + opts.cls : ''}" data-sec="${id}" aria-labelledby="tdt-${id}">
+      <header class="td-card-head">
+        <span class="td-grip">${IC.grip}</span>
+        <h2 class="td-card-title" id="tdt-${id}">${title}</h2>
+        ${opts.pill ? `<span class="td-pill">${opts.pill}</span>` : ''}
+        <span class="td-opts">${IC.dots}</span>
+      </header>
+      ${body}
+    </section>`;
+}
+function bar(pct, cls) {
+  const p = Math.max(0, Math.min(100, Math.round(+pct || 0)));
+  return `<div class="td-bar ${cls || ''}" role="img" aria-label="${p} percent complete"><div class="td-bar-fill" style="width:${p}%"></div></div>`;
+}
+function empty(text) { return `<div class="td-empty">${text}</div>`; }
+
 /* ── RENDER ──────────────────────────────────────────────────── */
 function render() {
   const page = $('todayPage');
   if (!page) return;
+  const now = new Date();
+  const sub = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) + ' · Week ' + isoWeek(now);
   page.innerHTML = `
     <div class="today-inner">
-      <div class="library-head">
-        <button class="icon-btn library-back" onclick="window.today.close()" title="Back to dashboard">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-        </button>
-        <div class="library-title">${activeView === 'today' ? 'Today' : 'This Week'}</div>
-        <div class="tabs">
-          <button class="tab ${activeView === 'today' ? 'active' : ''}" onclick="window.today.switchView('today')">Today</button>
-          <button class="tab ${activeView === 'week' ? 'active' : ''}" onclick="window.today.switchView('week')">This Week</button>
+      <header class="td-top">
+        <button class="td-back" onclick="window.today.close()" title="Back to dashboard" aria-label="Back to dashboard">${IC.back}</button>
+        <div class="td-top-title">
+          <h1 class="td-h1">${activeView === 'today' ? 'Today' : 'This Week'}</h1>
+          <div class="td-sub">${esc(sub)}</div>
         </div>
-      </div>
-      <div id="todayBody"></div>
+        <div class="td-seg" role="group" aria-label="View">
+          <button class="td-seg-btn${activeView === 'today' ? ' on' : ''}" aria-pressed="${activeView === 'today'}" onclick="window.today.switchView('today')">Today</button>
+          <button class="td-seg-btn${activeView === 'week' ? ' on' : ''}" aria-pressed="${activeView === 'week'}" onclick="window.today.switchView('week')">This Week</button>
+        </div>
+      </header>
+      <div id="todayBody">${activeView === 'today' ? renderTodayView() : renderWeekView()}</div>
     </div>`;
-  const body = $('todayBody');
-  body.innerHTML = activeView === 'today' ? renderTodayView() : renderWeekView();
 }
 
 /* ── TODAY TAB ───────────────────────────────────────────────── */
+function weekStrip(allTasks) {
+  const base = new Date(); base.setHours(0, 0, 0, 0);
+  const tiles = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(base); d.setDate(base.getDate() + i);
+    const k = dateKey(d);
+    const n = allTasks.filter(t => t.dueDate === k).length;
+    const wd = i === 0 ? 'Today' : d.toLocaleDateString('en-US', { weekday: 'short' });
+    return `<div class="td-day${i === 0 ? ' now' : ''}">
+      <span class="td-day-lbl">${wd}</span>
+      <span class="td-day-num">${d.getDate()}</span>
+      <span class="td-day-count"><i class="td-day-dot${n ? ' has' : ''}"></i>${n ? n + ' due' : 'Free'}</span>
+    </div>`;
+  }).join('');
+  return `<section class="td-card td-strip" aria-label="Next seven days"><div class="td-days">${tiles}</div></section>`;
+}
+
+function ring(done, total, label, cls) {
+  const R = 39, C = 2 * Math.PI * R;
+  const frac = total ? done / total : 0;
+  return `
+    <div class="td-ring ${cls}" role="img" aria-label="${label}: ${done} of ${total} done">
+      <svg aria-hidden="true" viewBox="0 0 96 96" width="96" height="96">
+        <circle class="td-ring-track" cx="48" cy="48" r="${R}" fill="none" stroke-width="9"/>
+        <circle class="td-ring-fill" cx="48" cy="48" r="${R}" fill="none" stroke-width="9" stroke-linecap="round"
+          stroke-dasharray="${(C * frac).toFixed(1)} ${C.toFixed(1)}" transform="rotate(-90 48 48)"/>
+      </svg>
+      <span class="td-ring-num">${done}<small>/${total}</small></span>
+      <span class="td-ring-lbl">${label}</span>
+    </div>`;
+}
+
+// Calm one-liner from simple rules: counts, the first undone names, a gentle close.
+function rhythmSentence(done, total, undone) {
+  if (!total) return '';
+  const h = new Date().getHours();
+  const close = h >= 17 ? 'Take it easy tonight.' : h >= 12 ? 'Keep it gentle this afternoon.' : 'A calm start is plenty.';
+  if (!undone.length) return `${done} of ${total} done. Everything is checked off. Enjoy the rest of your day.`;
+  const names = undone.slice(0, 2).map((l, i) => esc(i ? l.charAt(0).toLowerCase() + l.slice(1) : l));
+  const list = names.length === 2 ? names[0] + ' and ' + names[1] : names[0];
+  return `${done} of ${total} done. ${list} ${names.length === 2 ? 'are' : 'is'} next. ${close}`;
+}
+
+function chip(label, on, minor, handler) {
+  return `<button class="td-chip${on ? ' done' : ''}" aria-pressed="${on ? 'true' : 'false'}" onclick="${handler}">${on ? IC.check : ''}<span>${esc(label)}${minor ? ' (min)' : ''}</span></button>`;
+}
+
 function renderTodayView() {
   const key = todayStr();
-  const tasks = load('plannerTasks', []).filter(t => !t.done);
-  const overdue = tasks.filter(t => t.dueDate && t.dueDate < key).sort((a,b) => a.dueDate.localeCompare(b.dueDate));
-  const dueToday = tasks.filter(t => t.dueDate === key);
+  const allTasks = load('plannerTasks', []).filter(t => !t.done);
+  const overdue = allTasks.filter(t => t.dueDate && t.dueDate < key).sort((a,b) => a.dueDate.localeCompare(b.dueDate));
+  const dueToday = allTasks.filter(t => t.dueDate === key);
 
   const events = [
     ...load('agendaEvents', []).map(e => ({ ...e, _star: false })),
@@ -107,74 +195,129 @@ function renderTodayView() {
 
   const peopleDue = window.dash.getPeopleDue ? window.dash.getPeopleDue() : [];
 
-  return `
-    ${focus ? `<div class="today-focus">
-      <div class="today-focus-label">Focus goal \u00B7 ${esc(SC[focus.scope] || '')}</div>
-      <div class="today-focus-text">${esc(focus.text)}</div>
-      ${focus.next ? `<div class="today-focus-next"><b>Next</b> ${esc(focus.next)}</div>` : `<div class="today-focus-next muted">No next step yet. Add one in the Goals card.</div>`}
-      <div class="today-focus-pct">${focus.pct}%</div>
-    </div>` : ''}
-    ${taskSection('Overdue', overdue, true)}
-    ${taskSection('Due Today', dueToday, false)}
-    <div class="today-section">
-      <div class="today-section-title">Today's Events</div>
-      ${events.length ? `<div class="today-events">${events.map(e => `
-        <div class="today-event-row">${e._star ? '★ ' : ''}${e.start ? `<span class="today-event-time">${window.dashUtil.fmtTime(e.start)}</span>` : ''}<span>${esc(e.label)}</span></div>
-      `).join('')}</div>` : `<div class="empty">Nothing on the calendar today.</div>`}
-    </div>
-    <div class="today-section">
-      <div class="today-section-title">Non-Negotiables${habits.length ? ` \u00B7 ${habits.filter(h => habitState[h.id]).length}/${habits.length}` : ''}</div>
-      ${habits.length ? `<div class="today-habits">${habits.map(h => `
-        <button class="today-habit-chip${habitState[h.id] ? ' done' : ''}" onclick="window.today.toggleHabit('${h.id}')">${esc(h.label)}${habitState[h.id] === 'min' ? ' (min)' : ''}</button>
-      `).join('')}</div>` : `<div class="empty">No habits set up yet.</div>`}
-    </div>
-    <div class="today-section">
-      <div class="today-section-title">Dailies${dailies.length ? ` \u00B7 ${dailies.filter(d => dailyState[d.id]).length}/${dailies.length}` : ''}</div>
-      ${dailies.length ? groups.map(([gk, gl]) => {
-        const items = dailies.filter(d => d.group === gk);
-        return items.length ? `<div class="today-daily-group"><span class="today-daily-label">${gl}</span><div class="today-habits">${items.map(d => `
-          <button class="today-habit-chip${dailyState[d.id] ? ' done' : ''}" onclick="window.today.toggleDaily('${d.id}')">${esc(d.label)}${dailyState[d.id] === 'min' ? ' (min)' : ''}</button>`).join('')}</div></div>` : '';
-      }).join('') : `<div class="empty">No dailies set up yet.</div>`}
-    </div>
-    <div class="today-section">
-      <div class="today-section-title">People to reach out to${peopleDue.length ? ` \u00B7 ${peopleDue.length}` : ''}</div>
-      ${peopleDue.length ? `<div class="today-people">${peopleDue.slice(0, 8).map(p => `
-        <div class="today-person-row">
-          <span class="today-person-name">${esc(p.name)}</span>
-          <span class="today-person-note">${p.notes ? esc(p.notes) : ''}</span>
-          <span class="person-since ${p.cls}">${esc(p.label)}</span>
-          <button class="checkin-btn" onclick="window.today.reachOut('${p.id}')" title="I reached out">\u2713</button>
-        </div>`).join('')}</div>` : `<div class="empty">Nobody is due. Nice.</div>`}
-    </div>
-    <div class="today-section">
-      <div class="today-section-title">Goal Progress</div>
-      ${goalRows.length ? `<div class="today-goals">${goalRows.map(g => `
-        <div class="today-goal-row">
-          <span class="today-goal-scope">${g.scope}</span>
-          <span class="today-goal-text">${esc(g.text)}</span>
-          <button class="goal-pct${g.pct >= 100 ? ' full' : ''}" onclick="window.today.bumpGoal('${g.id}')" title="Click to increment">${g.pct}%</button>
-        </div>
-      `).join('')}</div>` : `<div class="empty">No goals set yet.</div>`}
-    </div>`;
-}
+  const habitsDone = habits.filter(h => habitState[h.id]).length;
+  const dailiesDone = dailies.filter(d => dailyState[d.id]).length;
 
-function taskSection(title, list, isOverdue) {
+  /* Focus goal (hidden when nothing is starred) */
+  const focusCard = focus ? `
+    <section class="td-focus" data-sec="focus" aria-labelledby="tdt-focus">
+      <div class="td-label td-focus-label"><span class="td-focus-star">${IC.star}</span><span id="tdt-focus">Focus goal · ${esc(SC[focus.scope] || '')}</span></div>
+      <div class="td-focus-row">
+        <div class="td-focus-title">${esc(focus.text)}</div>
+        <div class="td-focus-pct">${focus.pct}%</div>
+      </div>
+      ${bar(focus.pct, 'lg')}
+      <div class="td-next">
+        <div class="td-next-main">
+          <div class="td-label">Next step</div>
+          <div class="td-next-text${focus.next ? '' : ' none'}">${focus.next ? esc(focus.next) : 'No next step yet. Add one in the Goals card.'}</div>
+        </div>
+        ${focus.pct < 100 ? `<button class="td-iconbtn solid" onclick="window.today.bumpGoal('${focus.id}')" aria-label="Log a step of progress on the focus goal" title="Log progress">${IC.check}</button>` : ''}
+      </div>
+    </section>` : '';
+
+  /* Due today + overdue, one card */
+  const openCount = overdue.length + dueToday.length;
+  const dueBody = `
+    ${overdue.length ? `<div class="td-sublabel rose">Overdue</div><div class="td-list">${overdue.map(t => taskRow(t, true)).join('')}</div>`
+      : `<div class="td-banner">Nothing overdue. Nicely done.</div>`}
+    ${overdue.length ? `<div class="td-sublabel">Due today</div>` : ''}
+    ${dueToday.length ? `<div class="td-list">${dueToday.map(t => taskRow(t, false)).join('')}</div>`
+      : empty('Nothing due today.')}`;
+  const dueCard = card('due', 'Due today', dueBody, { pill: openCount ? openCount + ' open' : '' });
+
+  /* Today's events */
+  const eventsBody = events.length ? `<div class="td-list">${events.map(e => `
+      <div class="today-event-row td-row td-event">
+        <span class="td-event-time">${e.start ? window.dashUtil.fmtTime(e.start) + (e.end ? `<small>${window.dashUtil.fmtTime(e.end)}</small>` : '') : 'All day'}</span>
+        <span class="td-event-title">${e._star ? `<span class="td-event-star" title="Important date">${IC.star}</span>` : ''}${esc(e.label)}</span>
+      </div>`).join('')}</div>`
+    : `<div class="td-empty-state"><span class="td-empty-ic">${IC.cal}</span>${empty('Nothing on the calendar today.')}</div>`;
+  const eventsCard = card('events', 'Today’s events', eventsBody, { pill: events.length ? String(events.length) : '' });
+
+  /* Non-negotiables and dailies */
+  const habitsCard = card('habits', 'Non-negotiables',
+    habits.length ? `<div class="td-chips">${habits.map(h => chip(h.label, habitState[h.id], habitState[h.id] === 'min', `window.today.toggleHabit('${h.id}')`)).join('')}</div>` : empty('No habits set up yet.'),
+    { pill: habits.length ? `${habitsDone} of ${habits.length}` : '' });
+
+  const dailiesBody = dailies.length ? `<div class="td-groups">${groups.map(([gk, gl]) => {
+    const items = dailies.filter(d => d.group === gk);
+    if (!items.length) return '';
+    const n = items.filter(d => dailyState[d.id]).length;
+    return `<div class="today-daily-group td-group"><div class="td-group-head"><span class="td-label">${gl}</span><span class="td-group-count">${n} of ${items.length}</span></div>
+      <div class="td-chips">${items.map(d => chip(d.label, dailyState[d.id], dailyState[d.id] === 'min', `window.today.toggleDaily('${d.id}')`)).join('')}</div></div>`;
+  }).join('')}</div>` : empty('No dailies set up yet.');
+  const dailiesCard = card('dailies', 'Dailies', dailiesBody, { pill: dailies.length ? `${dailiesDone} of ${dailies.length}` : '' });
+
+  /* Today's rhythm (read only) */
+  const undone = [...habits.filter(h => !habitState[h.id]), ...dailies.filter(d => !dailyState[d.id])].map(x => x.label);
+  const rhythmCard = (habits.length || dailies.length) ? card('rhythm', 'Today’s rhythm', `
+    <div class="td-rings">
+      ${habits.length ? ring(habitsDone, habits.length, 'Non-negotiables', 'a') : ''}
+      ${dailies.length ? ring(dailiesDone, dailies.length, 'Dailies', 'b') : ''}
+    </div>
+    <p class="td-rhythm-text">${rhythmSentence(habitsDone + dailiesDone, habits.length + dailies.length, undone)}</p>`) : '';
+
+  /* People */
+  const peopleCard = card('people', 'People to reach out to',
+    peopleDue.length ? `<div class="td-list">${peopleDue.slice(0, 8).map(p => `
+      <div class="today-person-row td-row td-person">
+        <span class="td-avatar" aria-hidden="true">${esc((p.name || '?').trim().charAt(0).toUpperCase())}</span>
+        <div class="td-person-main">
+          <div class="td-person-name">${esc(p.name)}</div>
+          <div class="td-person-note">${p.notes ? esc(p.notes) : 'Time to check in'}<span class="person-since ${p.cls}"> · ${esc(p.label)}</span></div>
+        </div>
+        <button class="td-iconbtn" onclick="window.today.reachOut('${p.id}')" aria-label="I reached out to ${esc(p.name)}" title="I reached out">${IC.check}</button>
+      </div>`).join('')}</div>` : empty('Nobody is due. Nice.'),
+    { pill: peopleDue.length ? String(peopleDue.length) : '' });
+
+  /* Goal progress */
+  const goalsCard = card('goals', 'Goal progress',
+    goalRows.length ? `<div class="td-list">${goalRows.map(g => `
+      <div class="today-goal-row td-row td-goal">
+        <div class="td-goal-top">
+          <span class="td-scope">${g.scope}</span>
+          <span class="td-goal-text">${esc(g.text)}</span>
+          <button class="td-pctbtn" onclick="window.today.bumpGoal('${g.id}')" aria-label="${esc(g.text)}: ${g.pct} percent. Tap to add progress" title="Click to increment">${g.pct}%</button>
+        </div>
+        ${bar(g.pct)}
+      </div>`).join('')}</div>` : empty('No goals set yet.'));
+
   return `
-    <div class="today-section">
-      <div class="today-section-title">${title}${list.length ? ` · ${list.length}` : ''}</div>
-      ${list.length ? `<div class="today-tasks">${list.map(t => taskRow(t, isOverdue)).join('')}</div>` : `<div class="empty">${isOverdue ? 'Nothing overdue.' : 'Nothing due today.'}</div>`}
+    ${weekStrip(allTasks)}
+    <div class="td-grid">
+      <div class="td-col td-col-l">
+        <div class="td-o1">${focusCard}</div>
+        <div class="td-o2">${dueCard}</div>
+        <div class="td-o5">${dailiesCard}</div>
+        <div class="td-o8">${goalsCard}</div>
+      </div>
+      <div class="td-col td-col-r">
+        <div class="td-o3">${rhythmCard}</div>
+        <div class="td-o4">${habitsCard}</div>
+        <div class="td-o6">${eventsCard}</div>
+        <div class="td-o7">${peopleCard}</div>
+      </div>
     </div>`;
 }
 
 function taskRow(t, isOverdue) {
   const cls = classFor(t.classId);
+  const dot = cls ? `<i class="td-dot" style="background:${cls.color}"></i>${esc(cls.name)}` : '';
+  const when = isOverdue && t.dueDate ? `<span class="td-when">Due ${esc(shortDate(t.dueDate))}</span>` : '';
+  const sub = [dot ? `<span class="td-class">${dot}</span>` : '', when].filter(Boolean).join('');
+  const tags = [
+    (t.status === 'doing') ? '<span class="td-status">In progress</span>' : '',
+    t.type ? `<span class="td-type ${getCategory(t.type)}">${esc(t.type)}</span>` : '',
+  ].filter(Boolean).join('');
   return `
-    <div class="today-task-row">
-      <div class="tcheck" onclick="window.today.completeTask('${t.id}')" title="Complete"></div>
-      <span class="task-txt">${esc(t.text)}</span>
-      ${cls ? `<span class="class-badge" style="background:${cls.color}22;color:${cls.color};border:1px solid ${cls.color}44">${esc(cls.name.split(' ')[0])}</span>` : ''}
-      ${t.type ? `<span class="type-badge ${getCategory(t.type)}">${esc(t.type)}</span>` : ''}
-      ${isOverdue ? `<span class="days-pill past">${esc(t.dueDate)}</span>` : ''}
+    <div class="today-task-row td-row td-task${isOverdue ? ' overdue' : ''}">
+      <button class="td-check" onclick="window.today.completeTask('${t.id}')" aria-label="Complete: ${esc(t.text)}" title="Complete"><span class="td-box"></span></button>
+      <div class="td-task-main">
+        <div class="td-task-title task-txt">${esc(t.text)}</div>
+        ${sub ? `<div class="td-task-sub">${sub}</div>` : ''}
+      </div>
+      ${tags ? `<div class="td-task-tags">${tags}</div>` : ''}
     </div>`;
 }
 
@@ -219,55 +362,51 @@ function renderWeekView() {
   const moved = review.filter(r => r.moved), quiet = review.filter(r => !r.moved);
   const SC = { week: 'Wk', quarter: 'Qtr', year: 'Yr' };
   const reviewRow = (r) => `
-    <div class="today-review-row${r.stuck ? ' stuck' : ''}">
-      <span class="today-goal-scope">${SC[r.scope]}</span>
-      <div class="today-review-main">
-        <span class="today-goal-text">${esc(r.text)}</span>
-        <input class="t-input today-review-next" placeholder="What is the next step?" value="${esc(r.next)}" onchange="window.today.setGoalNext('${r.id}', this.value)"/>
+    <div class="today-review-row td-row td-review${r.stuck ? ' stuck' : ''}">
+      <div class="td-review-top">
+        <span class="td-scope">${SC[r.scope]}</span>
+        <span class="td-goal-text">${esc(r.text)}</span>
+        <span class="td-review-pct">${r.pct}%${r.stuck ? ` · stuck ${r.stuck}d` : ''}</span>
       </div>
-      <span class="today-review-pct">${r.pct}%${r.stuck ? ` \u00B7 stuck ${r.stuck}d` : ''}</span>
+      <input class="td-field today-review-next" aria-label="Next step for ${esc(r.text)}" placeholder="What is the next step?" value="${esc(r.next)}" onchange="window.today.setGoalNext('${r.id}', this.value)"/>
     </div>`;
-  const trendRows = (items, hist, streakFn) => items.map(h => {
+  const trendRows = (items, hist, streakFn, tone) => items.map(h => {
     const daysSoFar = weekDates.filter(d => d <= today).length;
     const doneCount = weekDates.filter(d => d <= today && hist[dateKey(d)] && hist[dateKey(d)][h.id]).length;
     const pct = daysSoFar ? Math.round(doneCount / daysSoFar * 100) : 0;
     const streak = streakFn ? streakFn(h.id) : 0;
     return `
-      <div class="today-trend-row">
-        <span class="today-trend-label">${esc(h.label)}</span>
-        <div class="today-trend-bar"><div class="today-trend-fill" style="width:${pct}%"></div></div>
-        <span class="today-trend-pct">${doneCount}/${daysSoFar}${streak >= 2 ? ` \u00B7 ${streak}d streak` : ''}</span>
+      <div class="td-trend-row">
+        <span class="td-trend-label">${esc(h.label)}</span>
+        ${bar(pct, 'trend ' + tone)}
+        <span class="td-trend-pct">${doneCount}/${daysSoFar}${streak >= 2 ? ` · ${streak}d streak` : ''}</span>
       </div>`;
   }).join('');
 
+  const reviewBody = review.length ? `
+        <p class="td-hint">Two minutes: look at what moved, then give every quiet goal a next step small enough to do this week.</p>
+        ${moved.length ? `<div class="td-sublabel">Moved this week</div><div class="td-list">${moved.map(reviewRow).join('')}</div>` : ''}
+        ${quiet.length ? `<div class="td-sublabel">Quiet</div><div class="td-list">${quiet.map(reviewRow).join('')}</div>` : ''}`
+    : empty('No goals to review yet.');
+
+  const doneBody = log.length ? `<div class="td-list">${log.slice(0, 40).map(e => `
+        <div class="today-task-row td-row td-task done-row">
+          <span class="td-donemark" aria-hidden="true">${IC.check}</span>
+          <div class="td-task-main"><div class="td-task-title task-txt">${esc(e.text)}</div></div>
+          ${e.type ? `<div class="td-task-tags"><span class="td-type ${getCategory(e.type)}">${esc(e.type)}</span></div>` : ''}
+        </div>`).join('')}</div>` : empty('Nothing logged as done yet this week.');
+
   return `
-    <div class="today-section">
-      <div class="today-section-title">Goal Review</div>
-      ${review.length ? `
-        <div class="today-review-hint">Two minutes: look at what moved, then give every quiet goal a next step small enough to do this week.</div>
-        ${moved.length ? `<div class="today-review-sub">Moved this week</div>${moved.map(reviewRow).join('')}` : ''}
-        ${quiet.length ? `<div class="today-review-sub">Quiet</div>${quiet.map(reviewRow).join('')}` : ''}`
-      : `<div class="empty">No goals to review yet.</div>`}
-    </div>
-    <div class="today-section">
-      <div class="today-section-title">Done This Week · ${log.length}</div>
-      ${log.length ? `<div class="today-tasks">${log.slice(0, 40).map(e => `
-        <div class="today-task-row done-row">
-          <span class="task-txt">${esc(e.text)}</span>
-          ${e.type ? `<span class="type-badge ${getCategory(e.type)}">${esc(e.type)}</span>` : ''}
-        </div>`).join('')}</div>` : `<div class="empty">Nothing logged as done yet this week.</div>`}
-    </div>
-    <div class="today-section">
-      <div class="today-section-title">Carrying Over · ${carrying.length}</div>
-      ${carrying.length ? `<div class="today-tasks">${carrying.map(t => taskRow(t, t.dueDate < todayStr())).join('')}</div>` : `<div class="empty">Nothing carrying over — clean slate.</div>`}
-    </div>
-    <div class="today-section">
-      <div class="today-section-title">Non-Negotiables Trend</div>
-      ${habits.length ? `<div class="today-habit-trend">${trendRows(habits, habitHistory, window.dash.habitStreak)}</div>` : `<div class="empty">No habits set up yet.</div>`}
-    </div>
-    <div class="today-section">
-      <div class="today-section-title">Dailies Trend</div>
-      ${dailies.length ? `<div class="today-habit-trend">${trendRows(dailies, dailyHistory, window.dash.dailyStreak)}</div>` : `<div class="empty">No dailies set up yet.</div>`}
+    <div class="td-grid">
+      <div class="td-col td-col-l">
+        <div class="td-o1">${card('review', 'Goal review', reviewBody)}</div>
+        <div class="td-o4">${card('trend-h', 'Non-negotiables trend', habits.length ? `<div class="td-list tight">${trendRows(habits, habitHistory, window.dash.habitStreak, 'a')}</div>` : empty('No habits set up yet.'))}</div>
+        <div class="td-o5">${card('trend-d', 'Dailies trend', dailies.length ? `<div class="td-list tight">${trendRows(dailies, dailyHistory, window.dash.dailyStreak, 'b')}</div>` : empty('No dailies set up yet.'))}</div>
+      </div>
+      <div class="td-col td-col-r">
+        <div class="td-o2">${card('done', 'Done this week', doneBody, { pill: log.length ? String(log.length) : '' })}</div>
+        <div class="td-o3">${card('carry', 'Carrying over', carrying.length ? `<div class="td-list">${carrying.map(t => taskRow(t, t.dueDate < todayStr())).join('')}</div>` : empty('Nothing carrying over. Clean slate.'), { pill: carrying.length ? String(carrying.length) : '' })}</div>
+      </div>
     </div>`;
 }
 
