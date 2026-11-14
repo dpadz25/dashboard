@@ -771,3 +771,7 @@ html:not([data-theme="sky"]):not([data-theme="forest"]) #sideRail:not(:hover):no
 /* The older "bare icons over a photo" rules hide Add link, Edit links and the brand until hover.
    Inside the cards every row is always visible. */
 #sideRail .rail-card :is(.rail-add, .rail-edit-toggle, .side-rail-brand, .rail-link) { opacity: 1 !important; pointer-events: auto !important; }
+
+/* Edit links mode: the edit and delete buttons take the right edge, so the shortcut badges step aside. */
+#sideRail.editing .rail-card .rail-kbd { display: none; }
+#sideRail.editing .rail-card .rail-link { padding-right: 8px; }
