@@ -955,20 +955,24 @@ function decorateRail() {
   if (!wrap || wrap.querySelector('.x-spaces')) return;
   const brand = wrap.querySelector('.side-rail-brand');
   const spaces = document.createElement('div');
-  spaces.className = 'x-spaces';
+  spaces.className = 'x-spaces rail-card';
+  spaces.setAttribute('role', 'group');
+  spaces.setAttribute('aria-label', 'Spaces');
   spaces.innerHTML = '<div class="x-glabel">Spaces</div>' + SPACES.map((s, i) =>
-    `<button type="button" class="x-space" data-i="${i}">${svgI(s.icon)}<span>${s.label}</span></button>`).join('') +
-    '<div class="x-glabel">Quick links</div>';
+    `<button type="button" class="x-space" data-i="${i}" title="${s.label}">${svgI(s.icon)}<span>${s.label}</span></button>`).join('');
   spaces.addEventListener('click', (e) => { const b = e.target.closest('.x-space'); if (b) SPACES[+b.dataset.i].act(); });
-  brand ? brand.after(spaces) : wrap.prepend(spaces);
+  if (brand) spaces.prepend(brand);
+  wrap.prepend(spaces);
 
   const foot = document.createElement('div');
-  foot.className = 'x-railfoot';
+  foot.className = 'x-railfoot rail-card';
+  foot.setAttribute('role', 'group');
+  foot.setAttribute('aria-label', 'Shortcuts');
   foot.innerHTML = [
     ['Quick capture', 'M12 5v14M5 12h14', openCapture],
     ['Add widget', 'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM16.5 13v7M13 16.5h7', openGallery],
     ['Customize', 'M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6', () => window.tweaks && window.tweaks.open()],
-  ].map((r, i) => `<button type="button" class="x-space dashed" data-f="${i}">${svgI(r[1])}<span>${r[0]}</span></button>`).join('');
+  ].map((r, i) => `<button type="button" class="x-space dashed" data-f="${i}" title="${r[0]}">${svgI(r[1])}<span>${r[0]}</span></button>`).join('');
   const acts = [openCapture, openGallery, () => window.tweaks && window.tweaks.open()];
   foot.addEventListener('click', (e) => { const b = e.target.closest('[data-f]'); if (b) acts[+b.dataset.f](); });
   const stamp = document.createElement('div'); stamp.className = 'x-stamp'; stamp.textContent = 'Redesign build 5';

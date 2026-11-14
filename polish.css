@@ -688,3 +688,86 @@ html.x-dark .td-dot { filter: brightness(1.35) saturate(.9); }
 
 /* The quick-add button floats above overlays; hide it while Today is open */
 body:has(#todayPage.open) .x-fab { display: none !important; }
+
+/* ═══ SIDE RAIL CONTRAST: frosted cards over the rail illustration ═══════
+   The rail is now a stack of cards (.rail-card): Spaces (with the brand), Quick
+   links, and the footer shortcuts. Text sits on near-opaque frosted panels so it
+   stays readable over any part of the illustration. Tokens are scoped to
+   .side-rail; forest swaps the accent family for greens. */
+.side-rail {
+  --rc-card: rgba(255,250,240,.96); --rc-border: rgba(80,60,40,.14); --rc-shadow: 0 12px 30px rgba(30,40,25,.18);
+  --rc-ink: #2b2118; --rc-muted: #5c4c3a; --rc-chip: #f1e8d7; --rc-chip-b: rgba(80,60,40,.18);
+  --rc-hover: rgba(80,60,40,.08); --rc-accent: #b8501e; --rc-accent-t: #a2441a; --rc-on: #fffaf0;
+}
+html.x-dark .side-rail {
+  --rc-card: rgba(34,28,26,.95); --rc-border: rgba(255,236,214,.14); --rc-shadow: 0 14px 34px rgba(0,0,0,.45);
+  --rc-ink: #f6ecde; --rc-muted: #cfc1ad; --rc-chip: rgba(255,255,255,.10); --rc-chip-b: rgba(255,236,214,.20);
+  --rc-hover: rgba(255,255,255,.08); --rc-accent: #e8884a; --rc-accent-t: #f4a36d; --rc-on: #1c1410;
+}
+html[data-theme="forest"] .side-rail { --rc-card: rgba(247,250,244,.96); --rc-ink: #15261b; --rc-muted: #4b5f51; --rc-chip: #e3eddf; --rc-accent: #2f6b45; --rc-accent-t: #245538; --rc-on: #f7faf4; }
+html.x-dark[data-theme="forest"] .side-rail { --rc-card: rgba(24,33,27,.95); --rc-ink: #e4ede3; --rc-muted: #b3c4b6; --rc-chip: rgba(255,255,255,.10); --rc-accent: #86c697; --rc-accent-t: #a6dab3; --rc-on: #0f1612; }
+
+.side-rail-inner { padding: calc(14px + env(safe-area-inset-top, 0px)) 14px calc(14px + env(safe-area-inset-bottom, 0px)) !important; gap: 12px !important; scroll-padding-top: 14px !important; }
+#sideRail .rail-card {
+  display: flex; flex-direction: column; gap: 4px; padding: 10px; border-radius: 24px; flex-shrink: 0;
+  background: var(--rc-card); border: 1px solid var(--rc-border); box-shadow: var(--rc-shadow);
+  -webkit-backdrop-filter: blur(22px); backdrop-filter: blur(22px);
+}
+#sideRail .x-railfoot { margin-top: auto; padding-top: 10px; }
+
+/* Headings */
+#sideRail .rail-card .x-glabel {
+  font: 700 12px var(--font-b) !important; letter-spacing: .18em !important; text-transform: uppercase;
+  padding: 6px 12px 8px !important; color: var(--rc-muted) !important; text-shadow: none !important; filter: none !important;
+}
+
+/* Rows */
+#sideRail .rail-card :is(.x-space, .rail-link, .rail-add, .rail-edit-toggle) {
+  position: relative; display: flex; align-items: center; gap: 14px; width: 100%; min-height: 48px; padding: 0 12px;
+  border: 0 !important; border-radius: 14px; background: transparent !important; box-shadow: none !important;
+  color: var(--rc-ink) !important; font: 600 16px var(--font-b); text-shadow: none !important; text-decoration: none; cursor: pointer; text-align: left;
+}
+#sideRail .rail-card :is(.x-space.dashed, .rail-add, .rail-edit-toggle) { border: 1px dashed var(--rc-chip-b) !important; color: var(--rc-muted) !important; }
+#sideRail .rail-card :is(.x-space, .rail-link, .rail-add, .rail-edit-toggle):hover { background: var(--rc-hover) !important; color: var(--rc-ink) !important; }
+#sideRail .rail-card :is(.x-space, .rail-link, .rail-add, .rail-edit-toggle):focus-visible { outline: 3px solid var(--rc-accent-t); outline-offset: 1px; }
+#sideRail .rail-card .x-space.on, #sideRail .rail-card .x-space.on:hover { background: var(--rc-accent) !important; color: var(--rc-on) !important; font-weight: 700; }
+#sideRail .rail-card .x-space.on *, #sideRail .rail-card .x-space.on svg { color: var(--rc-on) !important; text-shadow: none !important; filter: none !important; }
+#sideRail .rail-card .x-space span { color: inherit !important; text-shadow: none !important; }
+
+/* One aligned 22px icon column across both cards */
+#sideRail .rail-card .x-space svg { width: 22px; height: 22px; stroke-width: 2; flex-shrink: 0; filter: none !important; }
+#sideRail .rail-card .rail-link-icon:not(.has-custom) { width: 22px !important; height: 22px !important; flex-shrink: 0; }
+#sideRail .rail-card .rail-link-icon svg { width: 22px !important; height: 22px !important; stroke-width: 2; filter: none !important; }
+#sideRail .rail-card .rail-link-icon.has-custom { width: 22px; height: 22px; flex-shrink: 0; }
+#sideRail .rail-card :is(.rail-add-icon, .rail-edit-toggle-icon) { width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+#sideRail .rail-card :is(.rail-add-icon, .rail-edit-toggle-icon) svg { width: 20px; height: 20px; }
+#sideRail .rail-card .rail-link-text { opacity: 1; flex: 1; min-width: 0; font: 600 16px var(--font-b); color: inherit; }
+#sideRail .rail-card .rail-link-text > span:first-child { color: inherit !important; text-shadow: none !important; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Shortcut badges */
+#sideRail .rail-card .rail-kbd {
+  font: 700 12px var(--font-b); padding: 4px 8px; border-radius: 8px; letter-spacing: .02em; flex-shrink: 0;
+  background: var(--rc-chip) !important; border: 1px solid var(--rc-chip-b) !important; color: var(--rc-muted) !important; text-shadow: none !important;
+}
+
+/* Brand (inside the Spaces card) and footer stamp */
+#sideRail .rail-card .side-rail-brand { background: transparent !important; border: 0 !important; box-shadow: none !important; padding: 2px 4px 6px !important; margin: 0 !important; opacity: 1 !important; pointer-events: auto !important; }
+#sideRail .rail-card .side-rail-brand-text { color: var(--rc-ink) !important; opacity: 1; text-shadow: none !important; }
+#sideRail .rail-card .x-stamp { color: var(--rc-muted); opacity: 1; font-size: 12px; }
+
+/* Collapsed state (default themes only; sky and forest stay open on desktop):
+   one narrow column of 52px icon buttons, labels visually hidden but still read by screen readers. */
+html:not([data-theme="sky"]):not([data-theme="forest"]) .side-rail:not(:hover):not(:focus-within):not(.mobile-open) { width: 78px; }
+html:not([data-theme="sky"]):not([data-theme="forest"]) .side-rail:not(:hover):not(:focus-within):not(.mobile-open) .side-rail-inner { padding-left: 0 !important; padding-right: 0 !important; align-items: center; }
+html:not([data-theme="sky"]):not([data-theme="forest"]) .side-rail:hover { width: 236px; }
+html:not([data-theme="sky"]):not([data-theme="forest"]) #sideRail:not(:hover):not(:focus-within):not(.mobile-open) .rail-card { width: 66px; padding: 7px; border-radius: 22px; align-items: center; }
+html:not([data-theme="sky"]):not([data-theme="forest"]) #sideRail:not(:hover):not(:focus-within):not(.mobile-open) .rail-card :is(.x-space, .rail-link, .rail-add, .rail-edit-toggle) { width: 52px; min-height: 52px; padding: 0; justify-content: center; border-radius: 16px; }
+html:not([data-theme="sky"]):not([data-theme="forest"]) #sideRail:not(:hover):not(:focus-within):not(.mobile-open) .rail-card :is(.x-glabel, .x-space span, .rail-link-text, .rail-link-edit, .rail-link-del, .side-rail-brand-text, .x-stamp) {
+  position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; margin: -1px !important;
+  overflow: hidden !important; clip: rect(0 0 0 0) !important; white-space: nowrap !important; border: 0 !important;
+}
+html:not([data-theme="sky"]):not([data-theme="forest"]) #sideRail:not(:hover):not(:focus-within):not(.mobile-open) .rail-card .side-rail-brand { padding: 0 0 4px !important; }
+
+/* The older "bare icons over a photo" rules hide Add link, Edit links and the brand until hover.
+   Inside the cards every row is always visible. */
+#sideRail .rail-card :is(.rail-add, .rail-edit-toggle, .side-rail-brand, .rail-link) { opacity: 1 !important; pointer-events: auto !important; }

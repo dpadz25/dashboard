@@ -381,6 +381,13 @@ function renderQlinks() {
       <div class="side-rail-brand-text">Dashboard</div>
     </div>`;
 
+  // Quick links live in their own frosted card (see "SIDE RAIL CONTRAST" in polish.css).
+  const card = document.createElement('div');
+  card.className = 'rail-card rail-card-links';
+  card.setAttribute('role', 'group');
+  card.setAttribute('aria-label', 'Quick links');
+  card.innerHTML = '<div class="x-glabel">Quick links</div>';
+
   links.forEach(l => {
     const useCustom = l.customIcon && l.customIcon.startsWith('custom:');
     const iconHTML = useCustom
@@ -389,6 +396,7 @@ function renderQlinks() {
     const a = document.createElement('a');
     a.className = 'rail-link';
     a.href = l.url;
+    a.title = l.label || '';
     a.target = '_blank';
     a.rel = 'noopener noreferrer';
     a.onclick = e => {
@@ -407,20 +415,21 @@ function renderQlinks() {
       </span>
       <button class="rail-link-edit" onclick="event.preventDefault();event.stopPropagation();window.dash.editQlinkIcon('${l.id}')" title="Custom icon">${ICONS.image}</button>
       <button class="rail-link-del" onclick="event.preventDefault();event.stopPropagation();window.dash.deleteQlink('${l.id}')" title="Delete">×</button>`;
-    wrap.appendChild(a);
+    card.appendChild(a);
   });
 
   const addBtn = document.createElement('button');
   addBtn.className = 'rail-add';
   addBtn.innerHTML = `<span class="rail-add-icon">${ICONS.plus}</span><span class="rail-link-text">Add link</span>`;
   addBtn.onclick = openQlinkModal;
-  wrap.appendChild(addBtn);
+  card.appendChild(addBtn);
 
   const editToggle = document.createElement('button');
   editToggle.className = 'rail-edit-toggle';
   editToggle.innerHTML = `<span class="rail-edit-toggle-icon">${qlinkEditMode ? ICONS.check : ICONS.edit}</span><span class="rail-link-text">${qlinkEditMode ? 'Done' : 'Edit links'}</span>`;
   editToggle.onclick = () => { qlinkEditMode = !qlinkEditMode; renderQlinks(); };
-  wrap.appendChild(editToggle);
+  card.appendChild(editToggle);
+  wrap.appendChild(card);
 }
 
 function deleteQlink(id) {
