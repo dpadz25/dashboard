@@ -45,6 +45,13 @@ window.xToastUndo = toast;   // used by People check-in undo
 /* ── PREFS: tint, motion, hidden widgets ───────────────────── */
 function applyPrefs() {
   const p = getPrefs();
+  // One-time: Google Calendar (side rail link) replaces Important Dates, so hide
+  // that card once. Turning it back on in the gallery sticks, the flag keeps this from rerunning.
+  if (!p.datesRetired) {
+    p.datesRetired = true;
+    if (!p.hidden.includes('dates')) p.hidden.push('dates');
+    save(PREFS_KEY, p);
+  }
   document.body.classList.toggle('x-tint', !!p.tint);
   document.body.classList.toggle('x-motion', p.motion !== false);
   document.querySelectorAll('.block[data-card-id]').forEach((b) => {
