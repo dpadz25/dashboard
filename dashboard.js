@@ -675,7 +675,7 @@ function renderHabits() {
       <div class="hcheck"></div>
       <div class="habit-icon">${iconRender(h.icon)}</div>
       <div class="habit-label" onclick="window.dash.startTileRename('habit','${h.id}',event)" title="Click to rename">${esc(h.label)}</div>
-      ${streak >= 2 ? `<div class="habit-streak" title="${streak} days (one missed day is forgiven)">\uD83D\uDD25 ${streak}</div>` : ''}
+      ${streak >= 2 ? `<div class="habit-streak" title="${streak} days (one missed day is forgiven)">${streak}d</div>` : ''}
       ${weekDotsHtml(hist, h.id)}
       ${isMin ? `<span class="hmin-badge" title="Bare minimum counted">min</span>` : ''}
       ${h.min && !done ? `<button class="hmin" title="Bare minimum: ${esc(h.min)}" onclick="event.stopPropagation();window.dash.setHabitMin('${h.id}')">min</button>` : ''}`;
@@ -861,7 +861,7 @@ function renderDailies() {
         <span class="daily-meta">
           ${isMin ? `<span class="hmin-badge" title="Bare minimum counted">min</span>` : ''}
           ${it.min && !done ? `<button class="hmin" title="Bare minimum: ${esc(it.min)}" onclick="event.stopPropagation();window.dash.setDailyMin('${it.id}')">min</button>` : ''}
-          ${streak >= 2 ? `<span class="dm-streak" title="${streak} days (one missed day is forgiven)">\uD83D\uDD25 ${streak}</span>` : ''}
+          ${streak >= 2 ? `<span class="dm-streak" title="${streak} days (one missed day is forgiven)">${streak}d</span>` : ''}
           ${weekDotsHtml(hist, it.id)}
         </span>`;
       el.onclick = () => { setDailyToday(it.id, !state[it.id]); renderDailies(); };

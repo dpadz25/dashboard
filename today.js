@@ -236,7 +236,7 @@ function renderWeekView() {
       <div class="today-trend-row">
         <span class="today-trend-label">${esc(h.label)}</span>
         <div class="today-trend-bar"><div class="today-trend-fill" style="width:${pct}%"></div></div>
-        <span class="today-trend-pct">${doneCount}/${daysSoFar}${streak >= 2 ? ` \u00B7 \uD83D\uDD25${streak}` : ''}</span>
+        <span class="today-trend-pct">${doneCount}/${daysSoFar}${streak >= 2 ? ` \u00B7 ${streak}d streak` : ''}</span>
       </div>`;
   }).join('');
 
