@@ -959,6 +959,10 @@ function applyRailState() {
     b.title = collapsed ? 'Expand side rail' : 'Collapse side rail';
   }
 }
+(function () {
+  const rail = document.getElementById('sideRail');
+  if (rail) rail.addEventListener('mouseleave', () => rail.classList.remove('rail-held'));
+})();
 function toggleRail() {
   const collapsed = document.body.classList.contains('rail-is-collapsed');
   try { localStorage.setItem('railState', collapsed ? 'open' : 'collapsed'); } catch (_) {}
@@ -989,7 +993,14 @@ function decorateRail() {
   const tog = document.createElement('button');
   tog.type = 'button'; tog.className = 'rail-toggle'; tog.innerHTML = RAIL_CHEVRON;
   // A mouse click releases focus so :focus-within does not hold the rail open; keyboard users keep focus.
-  tog.addEventListener('click', (e) => { toggleRail(); if (e.detail > 0) tog.blur(); });
+  tog.addEventListener('click', (e) => {
+    toggleRail();
+    const rail = document.getElementById('sideRail');
+    // After collapsing with the cursor still on the rail, hold it narrow until the cursor leaves once,
+    // otherwise the hover peek keeps it open and it looks like nothing happened.
+    if (rail) rail.classList.toggle('rail-held', document.body.classList.contains('rail-is-collapsed') && e.detail > 0);
+    if (e.detail > 0) tog.blur();
+  });
   spaces.querySelector('.rail-head').appendChild(tog);
   wrap.prepend(spaces);
   applyRailState();
