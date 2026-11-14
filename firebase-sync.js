@@ -37,7 +37,7 @@
     'dashboard.blocks.layout.v4', 'dashboard.blocks.layout.v3', 'dashboard.blocks.notes.v1',
     'dashboard.blocks.mheights.v1', 'dashboard.blocks.tabheights.v1',
     'healthCollapsed', 'taskCompletionLog',
-    'extrasPrefs', 'photoWidgets', 'hoursConfig'
+    'extrasPrefs', 'photoWidgets', 'hoursConfig', 'todayLayout'
   ]);
 
   // Keys that contain embedded images (data URLs) which need to be

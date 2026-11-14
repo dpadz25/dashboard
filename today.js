@@ -19,9 +19,22 @@
 const { $, esc, load, todayStr } = window.dashUtil;
 
 let activeView = 'today';
-// Customize sheet state lives only in memory for now (nothing is stored).
+// Customize layout is stored in `todayLayout`: { order: [sectionId], hidden: [sectionId], density: 'cozy'|'compact' }.
+// Section ids are the .td-o* keys below; order is the phone order and the order inside each desktop column.
+const DEFAULT_ORDER = ['focus', 'due', 'rhythm', 'habits', 'dailies', 'events', 'people', 'goals'];
+const ALL_IDS = ['strip'].concat(DEFAULT_ORDER);
 let sheetOpen = false, compact = false;
-const hidden = new Set();
+let hidden = new Set(), order = DEFAULT_ORDER.slice();
+function loadLayout() {
+  const L = load('todayLayout', null) || {};
+  const o = (Array.isArray(L.order) ? L.order : []).filter((id, i, a) => DEFAULT_ORDER.includes(id) && a.indexOf(id) === i);
+  order = o.concat(DEFAULT_ORDER.filter(id => !o.includes(id)));
+  hidden = new Set((Array.isArray(L.hidden) ? L.hidden : []).filter(id => ALL_IDS.includes(id)));
+  compact = L.density === 'compact';
+}
+function persistLayout() {
+  window.dashUtil.save('todayLayout', { order: order.slice(), hidden: Array.from(hidden), density: compact ? 'compact' : 'cozy' });
+}
 
 function getWeekDates() {
   const today = new Date(); today.setHours(0,0,0,0);
@@ -107,6 +120,7 @@ function empty(text) { return `<div class="td-empty">${text}</div>`; }
 function render() {
   const page = $('todayPage');
   if (!page) return;
+  loadLayout();
   const now = new Date();
   const sub = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) + ' · Week ' + isoWeek(now);
   page.innerHTML = `
@@ -292,20 +306,21 @@ function renderTodayView() {
       </div>`).join('')}</div>` : empty('No goals set yet.')) + `<button class="td-dashed" onclick="window.today.jumpTo('goals','goalInput')">${IC.plus}<span>Add a goal</span></button>`);
 
   const sh = (id, html) => hidden.has(id) ? '' : html;
+  const o = id => order.indexOf(id) + 1;
   return `
     ${sh('strip', weekStrip(allTasks))}
     <div class="td-grid">
       <div class="td-col td-col-l">
-        <div class="td-o1">${sh('focus', focusCard)}</div>
-        <div class="td-o2">${sh('due', dueCard)}</div>
-        <div class="td-o5">${sh('dailies', dailiesCard)}</div>
-        <div class="td-o8">${sh('goals', goalsCard)}</div>
+        <div style="order:${o('focus')}">${sh('focus', focusCard)}</div>
+        <div style="order:${o('due')}">${sh('due', dueCard)}</div>
+        <div style="order:${o('dailies')}">${sh('dailies', dailiesCard)}</div>
+        <div style="order:${o('goals')}">${sh('goals', goalsCard)}</div>
       </div>
       <div class="td-col td-col-r">
-        <div class="td-o3">${sh('rhythm', rhythmCard)}</div>
-        <div class="td-o4">${sh('habits', habitsCard)}</div>
-        <div class="td-o6">${sh('events', eventsCard)}</div>
-        <div class="td-o7">${sh('people', peopleCard)}</div>
+        <div style="order:${o('rhythm')}">${sh('rhythm', rhythmCard)}</div>
+        <div style="order:${o('habits')}">${sh('habits', habitsCard)}</div>
+        <div style="order:${o('events')}">${sh('events', eventsCard)}</div>
+        <div style="order:${o('people')}">${sh('people', peopleCard)}</div>
       </div>
     </div>`;
 }
@@ -330,7 +345,7 @@ function taskRow(t, isOverdue) {
     </div>`;
 }
 
-const SECTIONS = [['strip', 'Week strip'], ['focus', 'Focus goal'], ['due', 'Due today'], ['rhythm', 'Today\u2019s rhythm'], ['habits', 'Non-negotiables'], ['dailies', 'Dailies'], ['events', 'Today\u2019s events'], ['people', 'People to reach out to'], ['goals', 'Goal progress']];
+const SECTION_NAMES = { strip: 'Week strip', focus: 'Focus goal', due: 'Due today', rhythm: 'Today\u2019s rhythm', habits: 'Non-negotiables', dailies: 'Dailies', events: 'Today\u2019s events', people: 'People to reach out to', goals: 'Goal progress' };
 function sheetHtml() {
   return `
     <div class="td-sheet-wrap" onclick="if(event.target===this)window.today.closeSheet()">
@@ -340,13 +355,16 @@ function sheetHtml() {
           <h2 id="tdSheetTitle" class="td-card-title">Customize Today</h2>
           <button class="td-sheet-done" onclick="window.today.closeSheet()">Done</button>
         </div>
-        <p class="td-hint">Show or hide sections. This resets when you reload the page.</p>
-        <div class="td-sheet-rows">${SECTIONS.map(([id, name]) => `
-          <div class="td-sheet-row">
-            <span class="td-grip">${IC.grip}</span>
+        <p class="td-hint">Show or hide sections, and drag the handle to reorder. Saved and synced across your devices.</p>
+        <div class="td-sheet-rows">${['strip'].concat(order).map(id => {
+          const name = SECTION_NAMES[id];
+          return `
+          <div class="td-sheet-row" ${id === 'strip' ? '' : `data-id="${id}"`}>
+            ${id === 'strip' ? `<span class="td-grip td-grip-fixed">${IC.grip}</span>` : `<button class="td-handle" data-id="${id}" aria-label="Reorder ${name}. Use the up and down arrow keys." onpointerdown="window.today.dragStart(event,'${id}')" onkeydown="window.today.handleKey(event,'${id}')">${IC.grip}</button>`}
             <span class="td-sheet-name">${name}</span>
             <button class="td-switch${hidden.has(id) ? '' : ' on'}" role="switch" aria-checked="${!hidden.has(id)}" aria-label="Show ${name}" onclick="window.today.toggleSection('${id}')"><i></i></button>
-          </div>`).join('')}</div>
+          </div>`;
+        }).join('')}</div>
         <div class="td-seg td-density" role="group" aria-label="Spacing">
           <button class="td-seg-btn${compact ? '' : ' on'}" aria-pressed="${!compact}" onclick="window.today.setCompact(false)">Cozy</button>
           <button class="td-seg-btn${compact ? ' on' : ''}" aria-pressed="${compact}" onclick="window.today.setCompact(true)">Compact</button>
@@ -357,9 +375,49 @@ function sheetHtml() {
 }
 function openSheet() { sheetOpen = true; render(); }
 function closeSheet() { sheetOpen = false; render(); const b = document.querySelector('#todayPage .td-custom'); if (b) b.focus(); }
-function toggleSection(id) { hidden.has(id) ? hidden.delete(id) : hidden.add(id); render(); }
-function setCompact(v) { compact = !!v; render(); }
-function resetSheet() { hidden.clear(); compact = false; render(); }
+function toggleSection(id) { hidden.has(id) ? hidden.delete(id) : hidden.add(id); persistLayout(); render(); }
+function setCompact(v) { compact = !!v; persistLayout(); render(); }
+function resetSheet() { hidden = new Set(); order = DEFAULT_ORDER.slice(); compact = false; persistLayout(); render(); }
+function moveSection(id, dir) {
+  const i = order.indexOf(id), j = i + dir;
+  if (i < 0 || j < 0 || j >= order.length) return;
+  [order[i], order[j]] = [order[j], order[i]];
+  persistLayout(); render();
+  const h = document.querySelector('#todayPage .td-handle[data-id="' + id + '"]');
+  if (h) h.focus();
+}
+function handleKey(e, id) {
+  if (e.key === 'ArrowUp') { e.preventDefault(); moveSection(id, -1); }
+  else if (e.key === 'ArrowDown') { e.preventDefault(); moveSection(id, 1); }
+}
+// Pointer drag: rows swap live in the DOM while dragging, order is saved on release.
+function dragStart(e, id) {
+  e.preventDefault();
+  const row = e.currentTarget.closest('.td-sheet-row'), wrap = row.parentNode;
+  row.classList.add('dragging');
+  const move = ev => {
+    for (const r of wrap.querySelectorAll('.td-sheet-row[data-id]')) {
+      if (r === row) continue;
+      const b = r.getBoundingClientRect(), mid = b.top + b.height / 2;
+      const before = row.compareDocumentPosition(r) & Node.DOCUMENT_POSITION_PRECEDING;
+      if (ev.clientY > b.top && ev.clientY < b.bottom) {
+        if (before && ev.clientY < mid) wrap.insertBefore(row, r);
+        else if (!before && ev.clientY > mid) wrap.insertBefore(row, r.nextSibling);
+      }
+    }
+  };
+  const up = () => {
+    document.removeEventListener('pointermove', move);
+    document.removeEventListener('pointerup', up);
+    document.removeEventListener('pointercancel', up);
+    row.classList.remove('dragging');
+    order = Array.from(wrap.querySelectorAll('.td-sheet-row[data-id]')).map(r => r.dataset.id);
+    persistLayout(); render();
+  };
+  document.addEventListener('pointermove', move);
+  document.addEventListener('pointerup', up);
+  document.addEventListener('pointercancel', up);
+}
 // "Add" buttons reuse the cards already on the dashboard: close the overlay,
 // scroll to the card, and focus its input when it has one.
 function jumpTo(cardId, inputId) {
@@ -464,5 +522,5 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && document.getElementById('todayPage') && document.getElementById('todayPage').classList.contains('open')) { if (sheetOpen) closeSheet(); else close(); }
 });
 
-window.today = { open, close, switchView, openSheet, closeSheet, toggleSection, setCompact, resetSheet, jumpTo, completeTask, toggleHabit, toggleDaily, reachOut, bumpGoal, setGoalNext };
+window.today = { open, close, switchView, dragStart, handleKey, openSheet, closeSheet, toggleSection, setCompact, resetSheet, jumpTo, completeTask, toggleHabit, toggleDaily, reachOut, bumpGoal, setGoalNext };
 })();

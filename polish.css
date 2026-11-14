@@ -637,6 +637,10 @@ html.x-dark .td-dot { filter: brightness(1.35) saturate(.9); }
 .td-sheet-done { min-height: 44px; padding: 0 22px; border-radius: 999px; border: 0; background: var(--td-accent); color: var(--td-on); font-size: 15px; font-weight: 700; cursor: pointer; }
 .td-sheet-rows { display: flex; flex-direction: column; gap: 8px; }
 .td-sheet-row { display: flex; align-items: center; gap: 12px; background: var(--td-row); border: 1px solid var(--td-border); border-radius: 16px; padding: 6px 14px; min-height: 56px; }
+.td-handle { width: 44px; height: 44px; margin-left: -10px; border: 0; background: transparent; color: var(--td-muted); padding: 10px; cursor: grab; touch-action: none; border-radius: 12px; flex-shrink: 0; }
+.td-handle svg { width: 100%; height: 100%; }
+.td-grip-fixed { margin: 0 5px; opacity: .35; }
+.td-sheet-row.dragging { box-shadow: 0 8px 20px rgba(0,0,0,.25); background: var(--td-card); }
 .td-sheet-name { flex: 1; font-size: 17px; font-weight: 600; }
 .td-switch { width: 56px; height: 34px; border-radius: 999px; border: 0; background: var(--td-track); position: relative; cursor: pointer; flex-shrink: 0; padding: 0; transition: background .15s; }
 .td-switch i { position: absolute; top: 4px; left: 4px; width: 26px; height: 26px; border-radius: 50%; background: var(--td-card); box-shadow: 0 1px 3px rgba(0,0,0,.3); transition: transform .15s; }
