@@ -62,9 +62,18 @@ Plain HTML/CSS/JS, no build step.
 - `schoolClasses` — [{id, name, color, slots:[{day, start, end, room}]}]
 - `agendaEvents` / `importantDates` — [{id, label, date, start?, end?}]
   (no `start` = all-day; times are 'HH:MM' 24h)
-- `habitsConfig` — [{id, label, icon}]; `habitHistory` — {date: {habitId: bool}}
-- `goals` — {year: [], quarter: [], week: []}; `lifeItems`, `shoppingItems`,
-  `people` — simple arrays
+- `habitsConfig` — [{id, label, icon, color?, min?}]; `habitHistory` — {date: {habitId: true|'min'}}.
+  `min` is an optional "bare minimum" version; completing it stores `'min'` (still counts as done).
+  Streaks use "never miss twice" (`streakFrom` in dashboard.js): one missed day is forgiven.
+- `dailiesConfig` — [{id, label, icon, group, min?}]; `dailiesHistory` shares habitHistory's shape
+- `goals` — {year: [], quarter: [], week: []}, goal = {id, text, pct, next?, focus?, parentId?, upd}.
+  `next` is the next step, `focus` marks the single Today focus goal, `parentId` links a week goal to a
+  quarter goal (or quarter to year), `upd` is the last-moved time used for "stuck". Progress is derived:
+  tasks with `goalId` (also copied onto `taskCompletionLog` entries), else sub-goal average, else `pct`.
+- `people` — [{id, name, lastCheckin, cadence?, bday? ('MM-DD'), notes?, hist?}], cadence in days
+  (default 30). Due logic lives in `personStatus` (dashboard.js) and is mirrored in
+  `scripts/send-notifications.mjs`, keep the two in step.
+- `lifeItems`, `shoppingItems` — simple arrays
 - `currently` — {reading: [], watching: [], playing: []}, entries
   {id, title, sub, img, progress, status?} where status 'queued' hides an
   entry from the widget carousel; `currentlyArchive` — finished entries
@@ -74,7 +83,7 @@ Plain HTML/CSS/JS, no build step.
   `.tabheights.v1` — grid layout, notes {id, title, content}, phone
   heights, per-tab agenda heights
 - Device-local (NOT in SYNCED_KEYS, on purpose): `stickers`,
-  `notifyDeviceId`, `weatherCache`, `cardBg::*` metadata, `customIcons`
+  `notifyDeviceId`, `weatherCache`, `cardBg::*` metadata, `customIcons`, `peopleView` (due-only filter)
 
 ## Push notifications (PWA web push)
 - Client: `notify.js` (Tweaks → Task Notifications) registers `sw.js`,
@@ -82,7 +91,8 @@ Plain HTML/CSS/JS, no build step.
   `users/<uid>/dashboard/pushSubs` as `{deviceId: {sub, ua, t}}`.
 - Sender: `.github/workflows/notify.yml` runs every 20 min →
   `scripts/send-notifications.mjs` reads `notifySettings`, `plannerTasks`,
-  and `pushSubs`, sends a due-today summary at the two configured times,
+  and `pushSubs`, sends a summary at the two configured times (morning: tasks due, people due, focus goal;
+  evening: tasks plus unchecked non-negotiables and dailies),
   and records sends in `users/<uid>/dashboard/notifyLog`.
 - Repo Actions secrets: `VAPID_PRIVATE_KEY` (set), `FIREBASE_SERVICE_ACCOUNT`
   (service-account JSON from Firebase console). The VAPID public key is

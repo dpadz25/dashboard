@@ -96,6 +96,24 @@ async function sendToSubs(userId, dash, payload) {
   return ok;
 }
 
+// A person is due when their own cadence (default 30 days) has run out, they
+// were never contacted, or their birthday is within a week. Mirrors
+// personStatus() in dashboard.js.
+function personDue(p, date, todayMs) {
+  const cadence = +p.cadence || 30;
+  if (!p.lastCheckin) return true;
+  const days = Math.floor((Date.now() - p.lastCheckin) / 86400000);
+  if (days >= cadence) return true;
+  if (p.bday && /^\d\d-\d\d$/.test(p.bday)) {
+    const [m, d] = p.bday.split('-').map(Number);
+    const y = +date.slice(0, 4);
+    let next = Date.UTC(y, m - 1, d);
+    if (next < todayMs) next = Date.UTC(y + 1, m - 1, d);
+    if (Math.round((next - todayMs) / 86400000) <= 7) return true;
+  }
+  return false;
+}
+
 const users = await db.collection('users').listDocuments();
 let sent = 0;
 
@@ -138,14 +156,43 @@ for (const userRef of users) {
 
   const tasks = parseDoc(await dash.doc('plannerTasks').get()) || [];
   const due = tasks.filter(t => t && !t.done && t.status !== 'done' && t.dueDate === date);
-  if (!due.length) {
-    await logRef.set({ [slot]: date }, { merge: true }); // checked; nothing due
+
+  // Extra lines beyond tasks. Morning looks forward (people, focus goal);
+  // evening looks back (what is still unchecked today).
+  const extras = [];
+  if (slot === 'time1') {
+    const people = parseDoc(await dash.doc('people').get()) || [];
+    const dueMs = new Date(`${date}T00:00:00Z`).getTime();
+    const duePeople = people.filter(p => p && p.name && personDue(p, date, dueMs));
+    if (duePeople.length) {
+      const names = duePeople.slice(0, 3).map(p => p.name);
+      extras.push(`Reach out: ${names.join(', ')}${duePeople.length > 3 ? ` +${duePeople.length - 3}` : ''}`);
+    }
+    const goals = parseDoc(await dash.doc('goals').get()) || {};
+    const focus = ['week', 'quarter', 'year'].flatMap(k => goals[k] || []).find(g => g && g.focus);
+    if (focus) extras.push(`Focus: ${focus.text}${focus.next ? ` (next: ${focus.next})` : ''}`);
+  } else {
+    const left = async (cfgKey, histKey) => {
+      const cfg = parseDoc(await dash.doc(cfgKey).get()) || [];
+      const hist = (parseDoc(await dash.doc(histKey).get()) || {})[date] || {};
+      return cfg.filter(i => i && i.id && !hist[i.id]).length;
+    };
+    const habitsLeft = await left('habitsConfig', 'habitHistory');
+    const dailiesLeft = await left('dailiesConfig', 'dailiesHistory');
+    if (habitsLeft) extras.push(`${habitsLeft} non-negotiable${habitsLeft > 1 ? 's' : ''} left`);
+    if (dailiesLeft) extras.push(`${dailiesLeft} daily${dailiesLeft > 1 ? ' items' : ''} left`);
+  }
+
+  if (!due.length && !extras.length) {
+    await logRef.set({ [slot]: date }, { merge: true }); // checked; nothing to say
     continue;
   }
 
   const names = due.map(t => t.text).filter(Boolean);
-  const title = due.length === 1 ? '1 task due today' : `${due.length} tasks due today`;
-  const body = names.slice(0, 4).join(' · ') + (names.length > 4 ? ` +${names.length - 4} more` : '');
+  const taskLine = names.slice(0, 4).join(' \u00B7 ') + (names.length > 4 ? ` +${names.length - 4} more` : '');
+  const title = due.length ? (due.length === 1 ? '1 task due today' : `${due.length} tasks due today`)
+                           : (slot === 'time1' ? 'Good morning' : 'Before you wind down');
+  const body = [taskLine, ...extras].filter(Boolean).join('\n');
   const payload = JSON.stringify({ title, body, url: 'https://dpadz25.github.io/dashboard/' });
 
   sent += await sendToSubs(userRef.id, dash, payload);

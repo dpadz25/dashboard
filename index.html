@@ -20,7 +20,7 @@
   <link rel="stylesheet" href="redesign.css?v=4">
   <link rel="stylesheet" href="paper.css?v=23">
   <link rel="stylesheet" href="extras.css?v=13">
-  <link rel="stylesheet" href="polish.css?v=8">
+  <link rel="stylesheet" href="polish.css?v=9">
   <script>/* dark mode before first paint (see polish.js) */try{var m=localStorage.getItem('polishMode');if(m==='dark'||(m==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.classList.add('x-dark')}catch(e){}</script>
 
   <!-- Firebase SDK (cloud sync) -->
@@ -234,6 +234,7 @@
           <input class="t-input" id="goalInput" placeholder="A goal" style="flex:1" onkeydown="if(event.key==='Enter')dash.addGoal()"/>
           <button class="btn-add" onclick="dash.addGoal()">Add</button>
         </div>
+        <select class="t-input goal-parent-select" id="goalParent" style="display:none" aria-label="Link to a bigger goal"></select>
         <div class="goals-list" id="goalsList"></div>
       </div>
 
@@ -485,7 +486,7 @@
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
         People
       </div>
-      <span style="font-size:0.65rem;color:var(--muted2);letter-spacing:0.05em">tap ✓ when you've seen them</span>
+      <span class="people-filter" id="peopleFilter"></span>
     </div>
     <div style="display:flex;gap:0.375rem;margin-bottom:0.75rem">
       <input class="t-input" id="personName" placeholder="add someone" style="flex:1" onkeydown="if(event.key==='Enter')dash.addPerson()"/>
@@ -710,8 +711,8 @@
 
 <script src="firebase-sync.js?v=10"></script>
 <script src="icons.js?v=2"></script>
-<script src="dashboard.js?v=48"></script>
-<script src="extras.js?v=26"></script>
+<script src="dashboard.js?v=49"></script>
+<script src="extras.js?v=27"></script>
 <script src="tweaks.js?v=16"></script>
 <script src="blocks.js?v=15"></script>
 <script src="widgets.js?v=3"></script>
@@ -719,7 +720,7 @@
 <script src="dragscroll.js?v=5"></script>
 <script src="stickers.js?v=2"></script>
 <script src="library.js?v=1"></script>
-<script src="today.js?v=2"></script>
+<script src="today.js?v=3"></script>
 <script src="search.js?v=1"></script>
 <script src="daystrip.js?v=3"></script>
 <script src="notify.js?v=2"></script>

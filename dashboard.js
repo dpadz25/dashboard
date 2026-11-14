@@ -619,22 +619,34 @@ function setHabitToday(id, done) {
   saveHabitHistory(hist);
 }
 
-// streak = consecutive completed days, counting back from today (or yesterday
-// if today isn't done yet — so an unchecked morning doesn't kill yesterday's run).
-function habitStreak(habitId) {
-  const hist = getHabitHistory();
-  let streak = 0;
+// "Never miss twice": a single missed day is forgiven, two in a row end the
+// run. Today not being done yet is not a miss, so an unchecked morning never
+// kills the streak. Only days actually done are counted.
+function streakFrom(hist, id) {
   const d = new Date(); d.setHours(0,0,0,0);
-  const todayKey = dateKey(d);
-  if (!(hist[todayKey] && hist[todayKey][habitId])) {
+  const doneOn = k => !!(hist[k] && hist[k][id]);
+  if (!doneOn(dateKey(d))) d.setDate(d.getDate() - 1);
+  let streak = 0, misses = 0;
+  for (let i = 0; i < 365; i++) {
+    if (doneOn(dateKey(d))) { streak++; misses = 0; }
+    else if (++misses >= 2) break;
     d.setDate(d.getDate() - 1);
   }
-  for (let i = 0; i < 365; i++) {
-    const k = dateKey(d);
-    if (hist[k] && hist[k][habitId]) { streak++; d.setDate(d.getDate() - 1); }
-    else break;
-  }
   return streak;
+}
+function habitStreak(habitId) { return streakFrom(getHabitHistory(), habitId); }
+function dailyStreak(id)      { return streakFrom(getDailyHistory(), id); }
+
+// Last 7 days as small dots: full, bare-minimum (hollow-ish) or empty.
+function weekDotsHtml(hist, id) {
+  const d = new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate() - 6);
+  let out = '';
+  for (let i = 0; i < 7; i++) {
+    const v = hist[dateKey(d)] && hist[dateKey(d)][id];
+    out += `<i class="${v === 'min' ? 'min' : v ? 'on' : ''}"></i>`;
+    d.setDate(d.getDate() + 1);
+  }
+  return `<span class="hdots" aria-hidden="true">${out}</span>`;
 }
 
 // Paper palette for habits that have no color of their own (display only, never saved).
@@ -648,20 +660,25 @@ function habitColorFor(h) {
 function renderHabits() {
   if (editingTileKind === 'habit') return;  // inline rename open, see inlineRename()
   const habits = getHabits();
-  const state  = getTodayHabitState();
+  const hist   = getHabitHistory();
+  const state  = hist[todayStr()] || {};
   const grid   = $('habitsGrid');
   grid.innerHTML = '';
   habits.forEach(h => {
+    const isMin = state[h.id] === 'min';
     const done = !!state[h.id];
-    const streak = habitStreak(h.id);
+    const streak = streakFrom(hist, h.id);
     const el   = document.createElement('div');
-    el.className = `habit-item${done ? ' done' : ''} has-color`;
+    el.className = `habit-item${done ? ' done' : ''}${isMin ? ' minimal' : ''} has-color`;
     el.style.setProperty('--hc', habitColorFor(h));
     el.innerHTML = `
       <div class="hcheck"></div>
       <div class="habit-icon">${iconRender(h.icon)}</div>
       <div class="habit-label" onclick="window.dash.startTileRename('habit','${h.id}',event)" title="Click to rename">${esc(h.label)}</div>
-      ${streak >= 2 ? `<div class="habit-streak" title="${streak}-day streak">\uD83D\uDD25 ${streak}</div>` : ''}`;
+      ${streak >= 2 ? `<div class="habit-streak" title="${streak} days (one missed day is forgiven)">\uD83D\uDD25 ${streak}</div>` : ''}
+      ${weekDotsHtml(hist, h.id)}
+      ${isMin ? `<span class="hmin-badge" title="Bare minimum counted">min</span>` : ''}
+      ${h.min && !done ? `<button class="hmin" title="Bare minimum: ${esc(h.min)}" onclick="event.stopPropagation();window.dash.setHabitMin('${h.id}')">min</button>` : ''}`;
     el.onclick = () => { setHabitToday(h.id, !state[h.id]); renderHabits(); renderHabitHeat(); };
     grid.appendChild(el);
   });
@@ -698,7 +715,8 @@ function renderHabitEditRows() {
       </div>
       <input class="t-input" style="flex:1" value="${esc(h.label)}" onchange="window.dash.updateHabitLabel('${h.id}',this.value)"/>
       <input class="habit-color-input" type="color" value="${h.color || '#7caa6a'}" title="Habit color" onchange="window.dash.setHabitColor('${h.id}',this.value)"/>
-      <button class="del-btn" style="opacity:1;padding:4px 8px" onclick="window.dash.deleteHabit('${h.id}')">${ICONS.trash}</button>`;
+      <button class="del-btn" style="opacity:1;padding:4px 8px" onclick="window.dash.deleteHabit('${h.id}')">${ICONS.trash}</button>
+      <input class="t-input habit-min-input" placeholder="Bare minimum version (optional), e.g. 1 minute" value="${esc(h.min || '')}" onchange="window.dash.setHabitMinText('${h.id}',this.value)"/>`;
     rows.appendChild(row);
   });
 }
@@ -742,6 +760,15 @@ function updateHabitLabel(id, label) {
 function deleteHabit(id) {
   saveHabitsConfig(getHabits().filter(h => h.id !== id));
   renderHabits(); renderHabitEditRows(); renderHabitHeat();
+}
+function setHabitMin(id) { setHabitToday(id, 'min'); renderHabits(); renderHabitHeat(); }
+function setHabitMinText(id, text) {
+  const habits = getHabits();
+  const h = habits.find(x => x.id === id);
+  if (!h) return;
+  h.min = text.trim();
+  saveHabitsConfig(habits);
+  renderHabits();
 }
 function setHabitColor(id, color) {
   const habits = getHabits();
@@ -792,11 +819,30 @@ function setDailyToday(id, done) {
   saveDailyHistory(hist);
 }
 
+// Which routine block the clock is in right now (before noon / before 5pm / later).
+function dailyBlockNow() {
+  const h = new Date().getHours();
+  return h < 12 ? 'morning' : h < 17 ? 'afternoon' : 'evening';
+}
+function setDailyMin(id) { setDailyToday(id, 'min'); renderDailies(); }
+function setDailyMinText(id, text) {
+  const items = getDailies();
+  const it = items.find(i => i.id === id);
+  if (!it) return;
+  it.min = text.trim();
+  saveDailiesConfig(items);
+  renderDailies();
+}
+
 function renderDailies() {
   if (editingTileKind === 'daily') return;  // inline rename open, see inlineRename()
   const items = getDailies();
-  const state = getTodayDailyState();
+  const hist  = getDailyHistory();
+  const state = hist[todayStr()] || {};
+  const nowKey = dailyBlockNow();
   DAILY_GROUPS.forEach(g => {
+    const wrap = document.querySelector(`.daily-group[data-group="${g.key}"]`);
+    if (wrap) wrap.classList.toggle('now', g.key === nowKey);
     const list = $(`daily-${g.key}-list`);
     if (!list) return;
     const groupItems = items.filter(i => i.group === g.key);
@@ -805,10 +851,19 @@ function renderDailies() {
       const done = !!state[it.id];
       const el = document.createElement('div');
       el.className = `habit-item${done ? ' done' : ''}`;
+      const isMin = state[it.id] === 'min';
+      const streak = streakFrom(hist, it.id);
+      if (isMin) el.classList.add('minimal');
       el.innerHTML = `
         <div class="hcheck"></div>
         <div class="habit-icon">${iconRender(it.icon)}</div>
-        <div class="habit-label" onclick="window.dash.startTileRename('daily','${it.id}',event)" title="Click to rename">${esc(it.label)}</div>`;
+        <div class="habit-label" onclick="window.dash.startTileRename('daily','${it.id}',event)" title="Click to rename">${esc(it.label)}</div>
+        <span class="daily-meta">
+          ${isMin ? `<span class="hmin-badge" title="Bare minimum counted">min</span>` : ''}
+          ${it.min && !done ? `<button class="hmin" title="Bare minimum: ${esc(it.min)}" onclick="event.stopPropagation();window.dash.setDailyMin('${it.id}')">min</button>` : ''}
+          ${streak >= 2 ? `<span class="dm-streak" title="${streak} days (one missed day is forgiven)">\uD83D\uDD25 ${streak}</span>` : ''}
+          ${weekDotsHtml(hist, it.id)}
+        </span>`;
       el.onclick = () => { setDailyToday(it.id, !state[it.id]); renderDailies(); };
       list.appendChild(el);
     });
@@ -820,7 +875,10 @@ function renderDailies() {
   const doneTotal = items.filter(i => !!state[i.id]).length;
   if ($('dailyRing')) $('dailyRing').style.strokeDashoffset = total ? CIRCUM - (doneTotal / total) * CIRCUM : CIRCUM;
   if ($('dailyPct')) $('dailyPct').textContent = (total ? Math.round(doneTotal / total * 100) : 0) + '%';
-  if ($('dailySummary')) $('dailySummary').textContent = `${doneTotal} of ${total} done`;
+  if ($('dailySummary')) {
+    const nowLabel = (DAILY_GROUPS.find(g => g.key === nowKey) || {}).label || '';
+    $('dailySummary').textContent = `${doneTotal} of ${total} done` + (doneTotal < total && nowLabel ? ` \u00B7 ${nowLabel.toLowerCase()} now` : '');
+  }
 }
 
 let dailyEditOpen = false;
@@ -848,7 +906,8 @@ function renderDailyEditRows() {
           </div>
         </div>
         <input class="t-input" style="flex:1" value="${esc(it.label)}" onchange="window.dash.updateDailyLabel('${it.id}',this.value)"/>
-        <button class="del-btn" style="opacity:1;padding:4px 8px" onclick="window.dash.deleteDailyItem('${it.id}')">${ICONS.trash}</button>`;
+        <button class="del-btn" style="opacity:1;padding:4px 8px" onclick="window.dash.deleteDailyItem('${it.id}')">${ICONS.trash}</button>
+        <input class="t-input habit-min-input" placeholder="Bare minimum version (optional)" value="${esc(it.min || '')}" onchange="window.dash.setDailyMinText('${it.id}',this.value)"/>`;
       rows.appendChild(row);
     });
   });
@@ -1094,6 +1153,8 @@ function saveTasks(t) { save('plannerTasks', t); }
 // ── Completion history (for the weekly review view) ──────────────
 // toggleTask() logs one entry here every time a task is completed,
 // since completed one-off tasks are otherwise deleted outright.
+// Defined further down with the goals; hoisted function declarations make this safe.
+function touchGoalSoon(id) { touchGoal(id); setTimeout(() => { if (window.dash) renderGoals(); }, 700); }
 function getTaskLog() { return load('taskCompletionLog', []); }
 function logTaskCompletion(t) {
   // Age-pruned, not count-capped: a count cap would make old-but-still-
@@ -1102,7 +1163,8 @@ function logTaskCompletion(t) {
   // on every device instead, so nothing gets falsely tombstoned.
   const cutoff = Date.now() - 90 * 24 * 60 * 60 * 1000;
   const log = getTaskLog().filter(e => e.completedAt > cutoff);
-  log.unshift({ id: uid(), taskId: t.id, text: t.text, classId: t.classId || null, type: t.type || '', completedAt: Date.now() });
+  log.unshift({ id: uid(), taskId: t.id, text: t.text, classId: t.classId || null, type: t.type || '', goalId: t.goalId || null, completedAt: Date.now() });
+  if (t.goalId) touchGoalSoon(t.goalId);
   save('taskCompletionLog', log);
 }
 
@@ -2774,9 +2836,65 @@ function delDate(id) {
 }
 
 // ─── GOALS ────────────────────────────────────────────────────
+// A goal: {id, text, pct, next?, focus?, parentId?, upd}
+//  - next      the very next physical step (shown under the goal)
+//  - focus     the one goal that also leads the Today view
+//  - parentId  a goal one scope up (week -> quarter -> year) this slice feeds
+//  - upd       last time anything moved, used to flag stuck goals
+// Progress is derived when it can be: from tasks tagged with goalId, else
+// from the average of child goals, else the manual percent.
 let goalScope = 'year';
+const GOAL_SCOPES = ['year', 'quarter', 'week'];
+const GOAL_PARENT_SCOPE = { quarter: 'year', week: 'quarter' };
 function getGoals() { return load('goals', { year: [], quarter: [], week: [] }); }
 function saveGoals(g) { save('goals', g); }
+
+function goalsFlat(all) {
+  return GOAL_SCOPES.flatMap(sc => (all[sc] || []).map(g => ({ g, scope: sc })));
+}
+function findGoal(all, id) {
+  for (const sc of GOAL_SCOPES) {
+    const g = (all[sc] || []).find(x => x.id === id);
+    if (g) return { g, scope: sc };
+  }
+  return null;
+}
+function goalTaskStats(id) {
+  const open = load('plannerTasks', []).filter(t => t.goalId === id).length;
+  const done = getTaskLog().filter(e => e.goalId === id).length;
+  return { open, done, total: open + done };
+}
+function goalEff(g, all, depth) {
+  const st = goalTaskStats(g.id);
+  if (st.total) return { pct: Math.round(st.done / st.total * 100), auto: `${st.done}/${st.total} tasks` };
+  if ((depth || 0) < 3) {
+    const kids = goalsFlat(all).filter(x => x.g.parentId === g.id);
+    if (kids.length) {
+      const sum = kids.reduce((n, k) => n + goalEff(k.g, all, (depth || 0) + 1).pct, 0);
+      return { pct: Math.round(sum / kids.length), auto: `${kids.length} sub-goal${kids.length > 1 ? 's' : ''}` };
+    }
+  }
+  return { pct: Math.min(100, +g.pct || 0), auto: '' };
+}
+const GOAL_STUCK_DAYS = { week: 5, quarter: 14, year: 30 };
+function goalStuckDays(g, scope) {
+  if (!g.upd || (+g.pct || 0) >= 100) return 0;
+  const days = Math.floor((Date.now() - g.upd) / 86400000);
+  return days >= GOAL_STUCK_DAYS[scope] ? days : 0;
+}
+function touchGoal(id) {
+  const all = getGoals(), hit = findGoal(all, id);
+  if (!hit) return;
+  hit.g.upd = Date.now();
+  saveGoals(all);
+}
+// Goals made before this existed get a starting stamp so "stuck" counts from now.
+function normalizeGoals() {
+  const all = getGoals();
+  let changed = false;
+  goalsFlat(all).forEach(({ g }) => { if (!g.upd) { g.upd = Date.now(); changed = true; } });
+  if (changed) saveGoals(all);
+}
 
 function switchGoalScope(scope, el) {
   goalScope = scope;
@@ -2786,47 +2904,150 @@ function switchGoalScope(scope, el) {
   refreshTabbedBg('goals');
 }
 
+// Which row has an inline editor open: {id, mode:'next'|'task'}
+let goalEdit = null;
+
+function renderGoalParentSelect(all) {
+  const sel = $('goalParent');
+  if (!sel) return;
+  const ps = GOAL_PARENT_SCOPE[goalScope];
+  if (!ps) { sel.style.display = 'none'; sel.innerHTML = ''; return; }
+  const taken = new Set((all[goalScope] || []).map(g => g.parentId).filter(Boolean));
+  const opts = (all[ps] || []).filter(g => !taken.has(g.id));
+  sel.style.display = '';
+  const cur = sel.value;
+  sel.innerHTML = `<option value="">${ps === 'year' ? 'Link to a year goal' : 'Link to a quarter goal'}</option>` +
+    opts.map(g => `<option value="${g.id}">${esc(g.text.length > 38 ? g.text.slice(0, 36) + '…' : g.text)}</option>`).join('');
+  if (opts.some(g => g.id === cur)) sel.value = cur;
+}
+
 function renderGoals() {
-  const goals = getGoals()[goalScope] || [];
+  normalizeGoals();
+  const all = getGoals();
+  renderGoalParentSelect(all);
+  const goals = all[goalScope] || [];
   const el = $('goalsList');
-  if (!goals.length) { el.innerHTML = `<div class="empty">No goals for this stretch yet.</div>`; return; }
+  if (!goals.length) { el.innerHTML = `<div class="empty">No goals for this stretch yet. Add one, then give it a next step.</div>`; return; }
   el.innerHTML = goals.map(g => {
-    const pct = +(g.pct || 0);
+    const eff = goalEff(g, all);
+    const pct = eff.pct;
     const full = pct >= 100;
-    return `<div class="goal-item">
-      <div class="goal-pct${full?' full':''}" onclick="window.dash.cycleGoal('${g.id}')" title="Click to increment">${pct}%</div>
+    const parent = g.parentId ? (findGoal(all, g.parentId) || {}).g : null;
+    const stuck = goalStuckDays(g, goalScope);
+    const st = goalTaskStats(g.id);
+    const editing = goalEdit && goalEdit.id === g.id ? goalEdit.mode : null;
+    const nextLine = editing === 'next'
+      ? `<input class="t-input goal-inline" id="goalInline" placeholder="The very next step" value="${esc(g.next || '')}" onkeydown="window.dash.goalInlineKey(event)" onblur="window.dash.saveGoalInline('${g.id}',this)"/>`
+      : `<div class="goal-next${g.next ? '' : ' empty-next'}" onclick="window.dash.editGoal('${g.id}','next')" title="Edit next step">${g.next ? `<b>Next</b> ${esc(g.next)}` : '+ add a next step'}</div>`;
+    const taskLine = editing === 'task'
+      ? `<input class="t-input goal-inline" id="goalInline" placeholder="Task for this goal" onkeydown="window.dash.goalInlineKey(event)" onblur="window.dash.saveGoalInline('${g.id}',this)"/>`
+      : '';
+    return `<div class="goal-item${g.focus ? ' focus' : ''}${stuck ? ' stuck' : ''}">
+      <div class="goal-pct${full?' full':''}" onclick="window.dash.cycleGoal('${g.id}')" title="${eff.auto ? 'Calculated from ' + eff.auto : 'Click to increment'}">${pct}%</div>
       <div class="goal-body">
         <div class="goal-txt">${esc(g.text)}</div>
+        ${parent ? `<div class="goal-parent">↑ ${esc(parent.text)}</div>` : ''}
+        ${nextLine}
+        ${taskLine}
         <div class="goal-bar"><div class="goal-bar-fill${full?' full':''}" style="width:${Math.min(100,pct)}%"></div></div>
+        <div class="goal-meta">
+          ${eff.auto ? `<span class="goal-chip">${esc(eff.auto)}</span>` : ''}
+          ${stuck ? `<span class="goal-chip warn" title="No movement for ${stuck} days">stuck ${stuck}d</span>` : ''}
+          <button class="goal-mini" onclick="window.dash.editGoal('${g.id}','task')" title="Add a task that counts toward this goal">+ task</button>
+          <button class="goal-mini${g.focus ? ' on' : ''}" onclick="window.dash.toggleGoalFocus('${g.id}')" title="Focus goal, shown first in Today">${g.focus ? '★ focus' : '☆ focus'}</button>
+        </div>
       </div>
       <button class="del-btn" onclick="window.dash.delGoal('${g.id}')">×</button>
     </div>`;
   }).join('');
+  if (goalEdit) { const i = $('goalInline'); if (i && document.activeElement !== i) i.focus(); }
 }
 
 function cycleGoal(id) {
   const all = getGoals();
-  const g = all[goalScope].find(x => x.id === id);
-  if (!g) return;
-  g.pct = ((+g.pct || 0) + 25) % 125;
+  const hit = findGoal(all, id);
+  if (!hit) return;
+  if (goalEff(hit.g, all).auto) return;       // derived from tasks / sub-goals
+  hit.g.pct = ((+hit.g.pct || 0) + 25) % 125;
+  hit.g.upd = Date.now();
   saveGoals(all);
   renderGoals();
 }
 function addGoal() {
-  const text = $('goalInput').value.trim();
-  if (!text) return;
+  const parentId = ($('goalParent') && $('goalParent').value) || '';
+  let text = $('goalInput').value.trim();
   const all = getGoals();
+  if (!text && parentId) { const par = findGoal(all, parentId); if (par) text = par.g.text; }
+  if (!text) return;
   if (!all[goalScope]) all[goalScope] = [];
-  all[goalScope].push({ id: uid(), text, pct: 0 });
+  const g = { id: uid(), text, pct: 0, upd: Date.now() };
+  if (parentId) g.parentId = parentId;
+  all[goalScope].push(g);
   saveGoals(all);
   $('goalInput').value = '';
+  if ($('goalParent')) $('goalParent').value = '';
   renderGoals();
 }
 function delGoal(id) {
   const all = getGoals();
-  all[goalScope] = all[goalScope].filter(x => x.id !== id);
+  GOAL_SCOPES.forEach(sc => { all[sc] = (all[sc] || []).filter(x => x.id !== id); });
+  // children and tasks keep working, they just lose their parent
+  goalsFlat(all).forEach(({ g }) => { if (g.parentId === id) delete g.parentId; });
+  saveGoals(all);
+  const ts = load('plannerTasks', []);
+  if (ts.some(t => t.goalId === id)) { ts.forEach(t => { if (t.goalId === id) delete t.goalId; }); saveTasks(ts); renderPlanner(); }
+  renderGoals();
+}
+function setGoalNext(id, text) {
+  const all = getGoals(), hit = findGoal(all, id);
+  if (!hit) return;
+  hit.g.next = text.trim();
+  hit.g.upd = Date.now();
+  saveGoals(all);
+}
+function toggleGoalFocus(id) {
+  const all = getGoals();
+  const hit = findGoal(all, id);
+  if (!hit) return;
+  const on = !hit.g.focus;
+  goalsFlat(all).forEach(({ g }) => { if (g.focus) delete g.focus; });   // only one focus goal
+  if (on) hit.g.focus = true;
   saveGoals(all);
   renderGoals();
+}
+function getFocusGoal() {
+  const hit = goalsFlat(getGoals()).find(x => x.g.focus);
+  return hit ? { ...hit.g, scope: hit.scope, pct: goalEff(hit.g, getGoals()).pct } : null;
+}
+function editGoal(id, mode) { goalEdit = { id, mode }; renderGoals(); }
+function goalInlineKey(e) {
+  if (e.key === 'Enter') e.target.blur();
+  else if (e.key === 'Escape') { e.target.dataset.cancel = '1'; e.target.blur(); }
+}
+function saveGoalInline(id, input) {
+  const mode = goalEdit && goalEdit.mode;
+  const val = input.value.trim();
+  const cancelled = input.dataset.cancel === '1';
+  goalEdit = null;
+  if (!cancelled && mode === 'next') setGoalNext(id, val);
+  if (!cancelled && mode === 'task' && val) {
+    const all = getGoals(), hit = findGoal(all, id);
+    const tasks = getTasks();
+    tasks.unshift({ id: uid(), text: val, dueDate: null, dueTime: null, type: '', classId: null, done: false, status: 'todo', repeat: '', goalId: id, createdAt: Date.now() });
+    saveTasks(tasks);
+    if (hit) { hit.g.upd = Date.now(); saveGoals(all); }
+    renderPlanner(); renderAgenda();
+  }
+  renderGoals();
+}
+// Used by the Today weekly review: goals that moved this week vs. ones gone quiet.
+function getGoalReview() {
+  const all = getGoals();
+  const weekAgo = Date.now() - 7 * 86400000;
+  return goalsFlat(all).filter(x => (+x.g.pct || 0) < 100 || x.g.upd > weekAgo).map(({ g, scope }) => ({
+    id: g.id, text: g.text, scope, next: g.next || '', focus: !!g.focus,
+    pct: goalEff(g, all).pct, moved: !!g.upd && g.upd > weekAgo, stuck: goalStuckDays(g, scope),
+  }));
 }
 
 // ─── CURRENTLY CAROUSEL ───────────────────────────────────────
@@ -3801,43 +4022,123 @@ function saveManualHealth() {
 }
 
 // ─── PEOPLE CHECK-INS ─────────────────────────────────────────
+// A person: {id, name, lastCheckin, cadence?, bday?, notes?, hist?}
+//  - cadence  how often (days) you want to be in touch, default 30
+//  - bday     'MM-DD', counts as due for the week around it
+//  - notes    what to ask or bring up next time
+//  - hist     recent reach-out timestamps (last 20), for the monthly count
 function getPeople() { return load('people', []); }
 function savePeople(p) { save('people', p); }
+
+const CADENCES = [[7, 'Weekly'], [14, 'Every 2 weeks'], [30, 'Monthly'], [60, 'Every 2 months'], [90, 'Quarterly']];
+let peopleView = 'all';            // 'all' | 'due', remembered per device
+try { peopleView = localStorage.getItem('peopleView') === 'due' ? 'due' : 'all'; } catch (_) {}
+let personEditId = null;
+
+function bdayInDays(p) {
+  if (!p.bday) return null;
+  const [m, d] = p.bday.split('-').map(Number);
+  if (!m || !d) return null;
+  const t = new Date(); t.setHours(0,0,0,0);
+  let next = new Date(t.getFullYear(), m - 1, d);
+  if (next < t) next = new Date(t.getFullYear() + 1, m - 1, d);
+  return Math.round((next - t) / 86400000);
+}
+function personStatus(p) {
+  const cadence = +p.cadence || 30;
+  const days = p.lastCheckin ? Math.floor((Date.now() - p.lastCheckin) / 86400000) : null;
+  const bd = bdayInDays(p);
+  const bdaySoon = bd != null && bd <= 7;
+  const overdue = days == null ? Infinity : days - cadence;     // >= 0 means due
+  const due = overdue >= 0 || bdaySoon;
+  let cls, label;
+  if (days == null)        { cls = 'never'; label = 'Check in!'; }
+  else if (overdue >= 0)   { cls = 'cold';  label = overdue === 0 ? 'due today' : `${overdue}d overdue`; }
+  else if (days / cadence > 0.6) { cls = 'stale'; label = days === 0 ? 'Today' : `${days}d ago`; }
+  else                     { cls = 'fresh'; label = days === 0 ? 'Today' : `${days}d ago`; }
+  return { cadence, days, bd, bdaySoon, overdue, due, cls, label };
+}
+// Most overdue first (never-contacted on top, birthdays this week next).
+function personRank(p, st) {
+  if (st.bdaySoon && st.overdue < 0) return 1e6 - st.bd;
+  return st.overdue === Infinity ? 1e9 : st.overdue;
+}
+function getPeopleDue() {
+  return getPeople().map(p => ({ p, st: personStatus(p) })).filter(x => x.st.due)
+    .sort((a, b) => personRank(b.p, b.st) - personRank(a.p, a.st))
+    .map(({ p, st }) => ({ id: p.id, name: p.name, notes: p.notes || '', label: st.bdaySoon && st.overdue < 0 ? (st.bd === 0 ? 'birthday today' : `birthday in ${st.bd}d`) : st.label, cls: st.cls }));
+}
+function reachedThisMonth(people) {
+  const cut = Date.now() - 30 * 86400000;
+  return people.reduce((n, p) => n + (p.hist || []).filter(t => t > cut).length, 0);
+}
+
+function setPeopleView(v) {
+  peopleView = v;
+  try { localStorage.setItem('peopleView', v); } catch (_) {}
+  renderPeople();
+}
 
 function renderPeople() {
   const list = $('peopleList');
   const people = getPeople();
-  if (!people.length) { list.innerHTML = `<div class="empty">Add people you want to keep up with.</div>`; return; }
+  const filterBtn = $('peopleFilter');
+  if (!people.length) {
+    list.innerHTML = `<div class="empty">Add the few people you really want to stay close to, then set how often.</div>`;
+    if (filterBtn) filterBtn.innerHTML = '';
+    return;
+  }
+  const rows = people.map(p => ({ p, st: personStatus(p) }));
+  const dueN = rows.filter(r => r.st.due).length;
+  const month = reachedThisMonth(people);
+  if (filterBtn) {
+    filterBtn.innerHTML = `<span class="pf-count">${dueN ? `${dueN} due` : 'all caught up'}${month ? ` · ${month} this month` : ''}</span>
+      <button class="pf-toggle" onclick="window.dash.setPeopleView('${peopleView === 'due' ? 'all' : 'due'}')">${peopleView === 'due' ? 'show all' : 'due only'}</button>`;
+  }
+  const shown = (peopleView === 'due' ? rows.filter(r => r.st.due) : rows)
+    .sort((a, b) => personRank(b.p, b.st) - personRank(a.p, a.st));
   list.innerHTML = '';
-  [...people]
-    .sort((a,b) => (a.lastCheckin || 0) - (b.lastCheckin || 0))
-    .forEach(p => {
-      const days = p.lastCheckin ? Math.floor((Date.now() - p.lastCheckin) / 86400000) : null;
-      let cls = 'fresh', label;
-      if (days == null)     { cls='never'; label='Check in!'; }
-      else if (days === 0)  { cls='fresh'; label='Today'; }
-      else if (days <= 7)   { cls='fresh'; label=`${days}d ago`; }
-      else if (days <= 30)  { cls='stale'; label=`${days}d ago`; }
-      else                  { cls='cold';  label=`${Math.round(days/30)}mo ago`; }
+  if (!shown.length) { list.innerHTML = `<div class="empty">Nobody is due. Nice.</div>`; return; }
+  shown.forEach(({ p, st }) => {
+    const initial = (p.name || '?').trim().split(/\s+/).map(s=>s[0]).join('').slice(0,2).toUpperCase();
+    const bdayTag = st.bdaySoon ? `<span class="person-bday" title="Birthday">🎂 ${st.bd === 0 ? 'today' : st.bd + 'd'}</span>` : '';
+    const div = document.createElement('div');
+    div.className = 'person-item' + (st.due ? ' is-due' : '') + (personEditId === p.id ? ' editing' : '');
+    div.innerHTML = `
+      <div class="person-avatar">${initial}</div>
+      <div class="person-main" onclick="window.dash.editPerson('${p.id}')" title="Cadence, birthday and notes">
+        <span class="person-name">${esc(p.name)} ${bdayTag}</span>
+        ${p.notes ? `<span class="person-notes">${esc(p.notes)}</span>` : ''}
+      </div>
+      <span class="person-since ${st.cls}">${st.label}</span>
+      <button class="checkin-btn" onclick="window.dash.checkin('${p.id}')" title="I reached out">${ICONS.check}</button>
+      <button class="del-btn" onclick="window.dash.delPerson('${p.id}')">×</button>
+      ${personEditId === p.id ? `<div class="person-edit" onclick="event.stopPropagation()">
+        <label>Stay in touch<select class="t-input" onchange="window.dash.setPersonField('${p.id}','cadence',+this.value)">
+          ${CADENCES.map(([d, l]) => `<option value="${d}"${st.cadence === d ? ' selected' : ''}>${l}</option>`).join('')}
+        </select></label>
+        <label>Birthday<input class="t-input" type="date" value="${p.bday ? '2000-' + p.bday : ''}" onchange="window.dash.setPersonField('${p.id}','bday',this.value ? this.value.slice(5) : '')"/></label>
+        <label class="pe-wide">Next time, ask or bring up<input class="t-input" value="${esc(p.notes || '')}" placeholder="e.g. ask how the interview went" onchange="window.dash.setPersonField('${p.id}','notes',this.value.trim())"/></label>
+      </div>` : ''}`;
+    list.appendChild(div);
+  });
+}
 
-      const initial = (p.name || '?').trim().split(/\s+/).map(s=>s[0]).join('').slice(0,2).toUpperCase();
-      const div = document.createElement('div');
-      div.className = 'person-item';
-      div.innerHTML = `
-        <div class="person-avatar">${initial}</div>
-        <span class="person-name">${esc(p.name)}</span>
-        <span class="person-since ${cls}">${label}</span>
-        <button class="checkin-btn" onclick="window.dash.checkin('${p.id}')" title="Mark as seen">${ICONS.check}</button>
-        <button class="del-btn" onclick="window.dash.delPerson('${p.id}')">×</button>`;
-      list.appendChild(div);
-    });
+function editPerson(id) { personEditId = personEditId === id ? null : id; renderPeople(); }
+function setPersonField(id, field, value) {
+  const people = getPeople();
+  const p = people.find(x => x.id === id);
+  if (!p) return;
+  p[field] = value;
+  savePeople(people);
+  renderPeople();
 }
 
 function addPerson() {
   const name = $('personName').value.trim();
   if (!name) return;
   const people = getPeople();
-  people.push({ id: uid(), name, lastCheckin: null });
+  people.push({ id: uid(), name, lastCheckin: null, cadence: 30 });
   savePeople(people);
   $('personName').value = '';
   renderPeople();
@@ -3846,9 +4147,17 @@ function addPerson() {
 function checkin(id) {
   const people = getPeople();
   const p = people.find(x => x.id === id);
-  if (p) p.lastCheckin = Date.now();
+  if (!p) return;
+  const prev = { lastCheckin: p.lastCheckin, hist: (p.hist || []).slice() };
+  p.lastCheckin = Date.now();
+  p.hist = (p.hist || []).concat(p.lastCheckin).slice(-20);
   savePeople(people);
   renderPeople();
+  const t = window.xToastUndo;
+  if (t) t(`Reached out to ${p.name}`, () => {
+    const ps = getPeople(), q = ps.find(x => x.id === id);
+    if (q) { q.lastCheckin = prev.lastCheckin; q.hist = prev.hist; savePeople(ps); renderPeople(); }
+  });
 }
 
 function delPerson(id) {
@@ -3863,7 +4172,7 @@ window.dash = {
   openIconPicker, closeIconPicker, pickLinkIcon, uploadLinkIcon,
   pickSideRailBg, clearSideRailBg, applySideRailBg, openLink,
   renderHabits, setHabitColor, toggleHabitEdit, addHabit, deleteHabit, toggleIconPicker, selectIcon, updateHabitLabel, uploadHabitIcon,
-  renderDailies, toggleDailyEdit, addDailyItem, deleteDailyItem, updateDailyLabel, selectDailyIcon, setDailyToday, getDailies,
+  renderDailies, setDailyMin, setDailyMinText, dailyStreak, getDailyHistory, setHabitMin, setHabitMinText, toggleDailyEdit, addDailyItem, deleteDailyItem, updateDailyLabel, selectDailyIcon, setDailyToday, getDailies,
   renderPlanner, renderPlannerTabs, renderTaskClassSelect, setPlannerGroup, addTask, toggleTask, delTask, switchTab,
   startTaskRename, renameTask, startTileRename, toggleTaskDetails,
   openStatusMenu, closeStatusMenu, setTaskStatus,
@@ -3877,11 +4186,11 @@ window.dash = {
   renderLife, addLife, toggleLife, updateLife, delLife, clearDoneLife,
   setLifeTab, toggleLifeStar, addLifePage, renameLifePage, delLifePage, setLifeList, resetLife, addLifeList, renameLifeList, delLifeList,
   renderShopping, addShopping, toggleShopping, updateShopping, delShopping, clearDoneShopping, toggleShopCategoryGroup,
-  renderGoals, switchGoalScope, addGoal, delGoal, cycleGoal,
+  renderGoals, switchGoalScope, addGoal, delGoal, cycleGoal, editGoal, goalInlineKey, saveGoalInline, setGoalNext, toggleGoalFocus, getFocusGoal, getGoalReview,
   renderCurrently, renderCurrentlyTabs, switchCurKind, curPrev, curNext, curGoTo, curAdd, updateCur, cycleCurProgress, finishCur, pickCurImage,
   curSetPanel, curAddSubmit, curSetProgress, curStep, curResetProgress, curCompleteProgress,
   renderHealth, openHealthModal, closeHealthModal, syncHealth, openManualHealth, closeManualHealth, saveManualHealth, toggleHealth,
-  renderPeople, addPerson, checkin, delPerson,
+  renderPeople, addPerson, checkin, delPerson, editPerson, setPersonField, setPeopleView, getPeopleDue, getPeople,
   currentTabFor,
   pickCardImage, setCardLook, setCardPhotoOn, setCardBgProp, clearCardBg, toggleCardBgPopover, toggleRepositionMode, resetCardBgPosition, applyAllCardBgs, applyCardBg, injectCardBgButtons,
   // streaks / schedule / tomorrow
@@ -3941,6 +4250,7 @@ window.dash.boot = function () {
   applyAllCardBgs();
   initTabCarousel();
 
+  setInterval(() => { if (!document.hidden) renderDailies(); }, 10 * 60 * 1000);
   const msToMidnight = (() => { const n=new Date(), m=new Date(n); m.setHours(24,0,0,0); return m-n; })();
   setTimeout(() => { pruneOverdue(); initHeader(); renderHabits(); renderDailies(); renderAgenda(); renderDates(); renderHealth(); }, msToMidnight + 1000);
 };

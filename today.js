@@ -95,13 +95,25 @@ function renderTodayView() {
   const habitState = (load('habitHistory', {})[key]) || {};
 
   const goals = load('goals', { year: [], quarter: [], week: [] });
-  const goalRows = [
-    ...(goals.week || []).map(g => ({ ...g, scope: 'Wk' })),
-    ...(goals.quarter || []).map(g => ({ ...g, scope: 'Qtr' })),
-    ...(goals.year || []).map(g => ({ ...g, scope: 'Yr' })),
-  ];
+  const SC = { week: 'Wk', quarter: 'Qtr', year: 'Yr' };
+  const review = window.dash.getGoalReview ? window.dash.getGoalReview() : [];
+  const pctOf = {}; review.forEach(r => { pctOf[r.id] = r.pct; });
+  const goalRows = ['week', 'quarter', 'year'].flatMap(sc => (goals[sc] || []).map(g => ({ ...g, scope: SC[sc], pct: pctOf[g.id] != null ? pctOf[g.id] : (+g.pct || 0) })));
+  const focus = window.dash.getFocusGoal ? window.dash.getFocusGoal() : null;
+
+  const dailies = window.dash.getDailies ? window.dash.getDailies() : [];
+  const dailyState = (load('dailiesHistory', {})[key]) || {};
+  const groups = [['morning', 'Morning'], ['afternoon', 'Afternoon'], ['evening', 'Evening']];
+
+  const peopleDue = window.dash.getPeopleDue ? window.dash.getPeopleDue() : [];
 
   return `
+    ${focus ? `<div class="today-focus">
+      <div class="today-focus-label">Focus goal \u00B7 ${esc(SC[focus.scope] || '')}</div>
+      <div class="today-focus-text">${esc(focus.text)}</div>
+      ${focus.next ? `<div class="today-focus-next"><b>Next</b> ${esc(focus.next)}</div>` : `<div class="today-focus-next muted">No next step yet. Add one in the Goals card.</div>`}
+      <div class="today-focus-pct">${focus.pct}%</div>
+    </div>` : ''}
     ${taskSection('Overdue', overdue, true)}
     ${taskSection('Due Today', dueToday, false)}
     <div class="today-section">
@@ -111,10 +123,28 @@ function renderTodayView() {
       `).join('')}</div>` : `<div class="empty">Nothing on the calendar today.</div>`}
     </div>
     <div class="today-section">
-      <div class="today-section-title">Habits</div>
+      <div class="today-section-title">Non-Negotiables${habits.length ? ` \u00B7 ${habits.filter(h => habitState[h.id]).length}/${habits.length}` : ''}</div>
       ${habits.length ? `<div class="today-habits">${habits.map(h => `
-        <button class="today-habit-chip${habitState[h.id] ? ' done' : ''}" onclick="window.today.toggleHabit('${h.id}')">${esc(h.label)}</button>
+        <button class="today-habit-chip${habitState[h.id] ? ' done' : ''}" onclick="window.today.toggleHabit('${h.id}')">${esc(h.label)}${habitState[h.id] === 'min' ? ' (min)' : ''}</button>
       `).join('')}</div>` : `<div class="empty">No habits set up yet.</div>`}
+    </div>
+    <div class="today-section">
+      <div class="today-section-title">Dailies${dailies.length ? ` \u00B7 ${dailies.filter(d => dailyState[d.id]).length}/${dailies.length}` : ''}</div>
+      ${dailies.length ? groups.map(([gk, gl]) => {
+        const items = dailies.filter(d => d.group === gk);
+        return items.length ? `<div class="today-daily-group"><span class="today-daily-label">${gl}</span><div class="today-habits">${items.map(d => `
+          <button class="today-habit-chip${dailyState[d.id] ? ' done' : ''}" onclick="window.today.toggleDaily('${d.id}')">${esc(d.label)}${dailyState[d.id] === 'min' ? ' (min)' : ''}</button>`).join('')}</div></div>` : '';
+      }).join('') : `<div class="empty">No dailies set up yet.</div>`}
+    </div>
+    <div class="today-section">
+      <div class="today-section-title">People to reach out to${peopleDue.length ? ` \u00B7 ${peopleDue.length}` : ''}</div>
+      ${peopleDue.length ? `<div class="today-people">${peopleDue.slice(0, 8).map(p => `
+        <div class="today-person-row">
+          <span class="today-person-name">${esc(p.name)}</span>
+          <span class="today-person-note">${p.notes ? esc(p.notes) : ''}</span>
+          <span class="person-since ${p.cls}">${esc(p.label)}</span>
+          <button class="checkin-btn" onclick="window.today.reachOut('${p.id}')" title="I reached out">\u2713</button>
+        </div>`).join('')}</div>` : `<div class="empty">Nobody is due. Nice.</div>`}
     </div>
     <div class="today-section">
       <div class="today-section-title">Goal Progress</div>
@@ -156,7 +186,15 @@ function toggleHabit(id) {
   if (window.dash.renderHabits) window.dash.renderHabits();
   render();
 }
-function bumpGoal(id) { window.dash.cycleGoal(id); render(); }
+function toggleDaily(id) {
+  const cur = (load('dailiesHistory', {})[todayStr()] || {})[id];
+  window.dash.setDailyToday(id, !cur);
+  if (window.dash.renderDailies) window.dash.renderDailies();
+  render();
+}
+function reachOut(id) { window.dash.checkin(id); render(); }
+function bumpGoal(id) { window.dash.cycleGoal(id); if (window.dash.renderGoals) window.dash.renderGoals(); render(); }
+function setGoalNext(id, val) { window.dash.setGoalNext(id, val); if (window.dash.renderGoals) window.dash.renderGoals(); render(); }
 
 /* ── THIS WEEK TAB ───────────────────────────────────────────── */
 function renderWeekView() {
@@ -174,9 +212,43 @@ function renderWeekView() {
 
   const habits = window.dash.getHabits ? window.dash.getHabits() : load('habitsConfig', []);
   const habitHistory = load('habitHistory', {});
+  const dailies = window.dash.getDailies ? window.dash.getDailies() : [];
+  const dailyHistory = load('dailiesHistory', {});
   const today = new Date(); today.setHours(0,0,0,0);
+  const review = window.dash.getGoalReview ? window.dash.getGoalReview() : [];
+  const moved = review.filter(r => r.moved), quiet = review.filter(r => !r.moved);
+  const SC = { week: 'Wk', quarter: 'Qtr', year: 'Yr' };
+  const reviewRow = (r) => `
+    <div class="today-review-row${r.stuck ? ' stuck' : ''}">
+      <span class="today-goal-scope">${SC[r.scope]}</span>
+      <div class="today-review-main">
+        <span class="today-goal-text">${esc(r.text)}</span>
+        <input class="t-input today-review-next" placeholder="What is the next step?" value="${esc(r.next)}" onchange="window.today.setGoalNext('${r.id}', this.value)"/>
+      </div>
+      <span class="today-review-pct">${r.pct}%${r.stuck ? ` \u00B7 stuck ${r.stuck}d` : ''}</span>
+    </div>`;
+  const trendRows = (items, hist, streakFn) => items.map(h => {
+    const daysSoFar = weekDates.filter(d => d <= today).length;
+    const doneCount = weekDates.filter(d => d <= today && hist[dateKey(d)] && hist[dateKey(d)][h.id]).length;
+    const pct = daysSoFar ? Math.round(doneCount / daysSoFar * 100) : 0;
+    const streak = streakFn ? streakFn(h.id) : 0;
+    return `
+      <div class="today-trend-row">
+        <span class="today-trend-label">${esc(h.label)}</span>
+        <div class="today-trend-bar"><div class="today-trend-fill" style="width:${pct}%"></div></div>
+        <span class="today-trend-pct">${doneCount}/${daysSoFar}${streak >= 2 ? ` \u00B7 \uD83D\uDD25${streak}` : ''}</span>
+      </div>`;
+  }).join('');
 
   return `
+    <div class="today-section">
+      <div class="today-section-title">Goal Review</div>
+      ${review.length ? `
+        <div class="today-review-hint">Two minutes: look at what moved, then give every quiet goal a next step small enough to do this week.</div>
+        ${moved.length ? `<div class="today-review-sub">Moved this week</div>${moved.map(reviewRow).join('')}` : ''}
+        ${quiet.length ? `<div class="today-review-sub">Quiet</div>${quiet.map(reviewRow).join('')}` : ''}`
+      : `<div class="empty">No goals to review yet.</div>`}
+    </div>
     <div class="today-section">
       <div class="today-section-title">Done This Week · ${log.length}</div>
       ${log.length ? `<div class="today-tasks">${log.slice(0, 40).map(e => `
@@ -190,19 +262,12 @@ function renderWeekView() {
       ${carrying.length ? `<div class="today-tasks">${carrying.map(t => taskRow(t, t.dueDate < todayStr())).join('')}</div>` : `<div class="empty">Nothing carrying over — clean slate.</div>`}
     </div>
     <div class="today-section">
-      <div class="today-section-title">Habit Trend</div>
-      ${habits.length ? `<div class="today-habit-trend">${habits.map(h => {
-        const daysSoFar = weekDates.filter(d => d <= today).length;
-        const doneCount = weekDates.filter(d => d <= today && habitHistory[dateKey(d)] && habitHistory[dateKey(d)][h.id]).length;
-        const pct = daysSoFar ? Math.round(doneCount / daysSoFar * 100) : 0;
-        const streak = window.dash.habitStreak ? window.dash.habitStreak(h.id) : 0;
-        return `
-          <div class="today-trend-row">
-            <span class="today-trend-label">${esc(h.label)}</span>
-            <div class="today-trend-bar"><div class="today-trend-fill" style="width:${pct}%"></div></div>
-            <span class="today-trend-pct">${doneCount}/${daysSoFar}${streak >= 2 ? ` · 🔥${streak}` : ''}</span>
-          </div>`;
-      }).join('')}</div>` : `<div class="empty">No habits set up yet.</div>`}
+      <div class="today-section-title">Non-Negotiables Trend</div>
+      ${habits.length ? `<div class="today-habit-trend">${trendRows(habits, habitHistory, window.dash.habitStreak)}</div>` : `<div class="empty">No habits set up yet.</div>`}
+    </div>
+    <div class="today-section">
+      <div class="today-section-title">Dailies Trend</div>
+      ${dailies.length ? `<div class="today-habit-trend">${trendRows(dailies, dailyHistory, window.dash.dailyStreak)}</div>` : `<div class="empty">No dailies set up yet.</div>`}
     </div>`;
 }
 
@@ -210,5 +275,5 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && document.getElementById('todayPage') && document.getElementById('todayPage').classList.contains('open')) close();
 });
 
-window.today = { open, close, switchView, completeTask, toggleHabit, bumpGoal };
+window.today = { open, close, switchView, completeTask, toggleHabit, toggleDaily, reachOut, bumpGoal, setGoalNext };
 })();

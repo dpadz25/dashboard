@@ -40,6 +40,8 @@ function toast(msg, undo) {
   toastTimer = setTimeout(() => t.classList.remove('show'), 5000);
 }
 
+window.xToastUndo = toast;   // used by People check-in undo
+
 /* ── PREFS: tint, motion, hidden widgets ───────────────────── */
 function applyPrefs() {
   const p = getPrefs();
