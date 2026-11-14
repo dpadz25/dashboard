@@ -798,3 +798,8 @@ body.rail-is-collapsed #sideRail:is(:not(:hover):not(:focus-within), .rail-held)
 /* Edit links mode: the edit and delete buttons take the right edge, so the shortcut badges step aside. */
 #sideRail.editing .rail-card .rail-kbd { display: none; }
 #sideRail.editing .rail-card .rail-link { padding-right: 8px; }
+
+/* Quick link drag: no native link drag ghost, lifted row while dragging */
+#sideRail .rail-link { -webkit-user-drag: none; user-select: none; }
+#sideRail .rail-card .rail-link.qdragging { background: var(--rc-card) !important; box-shadow: 0 8px 22px rgba(0,0,0,.3) !important; z-index: 3; cursor: grabbing; }
+body.qdrag-active, body.qdrag-active * { cursor: grabbing !important; user-select: none; }
