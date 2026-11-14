@@ -366,6 +366,65 @@ function openLink(url) {
   try { window.location.href = url; } catch (_) {}
 }
 
+/* ── Quick link reorder: drag a link (mouse or pen) or press Alt+Up / Alt+Down on a focused link.
+   Rows hop to the slot under the pointer while dragging; the order is saved on release. A short move
+   below the threshold stays a normal click, and the click that ends a drag is swallowed. ── */
+let qlinkJustDragged = false;
+function reorderQlinks(ids) {
+  const cur = getQlinks(), byId = new Map(cur.map(l => [l.id, l]));
+  const next = ids.map(id => byId.get(id)).filter(Boolean);
+  cur.forEach(l => { if (!ids.includes(l.id)) next.push(l); });
+  saveQlinks(next);
+  renderQlinks();
+}
+function qlinkPointerDown(e, a) {
+  if (e.button !== 0 || e.pointerType === 'touch') return;
+  if (e.target.closest('.rail-link-edit, .rail-link-del')) return;
+  const card = a.parentNode, sy = e.clientY;
+  let dragging = false;
+  const move = ev => {
+    if (!dragging) {
+      if (Math.abs(ev.clientY - sy) < 6) return;
+      dragging = true;
+      a.classList.add('qdragging');
+      document.body.classList.add('qdrag-active');
+    }
+    for (const r of card.querySelectorAll('a.rail-link')) {
+      if (r === a) continue;
+      const b = r.getBoundingClientRect(), mid = b.top + b.height / 2;
+      const before = a.compareDocumentPosition(r) & Node.DOCUMENT_POSITION_PRECEDING;
+      if (ev.clientY > b.top && ev.clientY < b.bottom) {
+        if (before && ev.clientY < mid) card.insertBefore(a, r);
+        else if (!before && ev.clientY > mid) card.insertBefore(a, r.nextSibling);
+      }
+    }
+  };
+  const up = () => {
+    document.removeEventListener('pointermove', move);
+    document.removeEventListener('pointerup', up);
+    document.removeEventListener('pointercancel', up);
+    document.body.classList.remove('qdrag-active');
+    a.classList.remove('qdragging');
+    if (!dragging) return;
+    qlinkJustDragged = true;
+    setTimeout(() => { qlinkJustDragged = false; }, 0);
+    reorderQlinks(Array.from(card.querySelectorAll('a.rail-link')).map(r => r.dataset.id));
+  };
+  document.addEventListener('pointermove', move);
+  document.addEventListener('pointerup', up);
+  document.addEventListener('pointercancel', up);
+}
+function qlinkKey(e, id) {
+  if (!e.altKey || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return;
+  e.preventDefault();
+  const ids = getQlinks().map(l => l.id), i = ids.indexOf(id), j = i + (e.key === 'ArrowUp' ? -1 : 1);
+  if (i < 0 || j < 0 || j >= ids.length) return;
+  [ids[i], ids[j]] = [ids[j], ids[i]];
+  reorderQlinks(ids);
+  const moved = document.querySelector('#sideRail a.rail-link[data-id="' + id + '"]');
+  if (moved) moved.focus();
+}
+
 function renderQlinks() {
   const wrap = $('sideRailInner');
   if (!wrap) return;
@@ -397,9 +456,14 @@ function renderQlinks() {
     a.className = 'rail-link';
     a.href = l.url;
     a.title = l.label || '';
+    a.dataset.id = l.id;
+    a.draggable = false;
+    a.addEventListener('pointerdown', ev => qlinkPointerDown(ev, a));
+    a.addEventListener('keydown', ev => qlinkKey(ev, l.id));
     a.target = '_blank';
     a.rel = 'noopener noreferrer';
     a.onclick = e => {
+      if (qlinkJustDragged) { e.preventDefault(); return; }
       const url = l.url || '';
       // http(s): let the native target="_blank" open a new tab and keep the
       // dashboard here. Only custom schemes (obsidian://, …) need JS.
