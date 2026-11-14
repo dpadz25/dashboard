@@ -942,6 +942,30 @@ const SPACES = [
 ];
 const svgI = (d) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><path d="${d}"/></svg>`;
 try { localStorage.removeItem('xRailMini'); document.body.classList.remove('rail-mini'); } catch (_) {}
+/* Rail collapse: 'open' pins the rail open, 'collapsed' shows the narrow icon column that peeks open on hover.
+   Stored per device in `railState` (not synced on purpose). Unset means the theme default: Sky and Forest
+   open, the others collapsed. */
+const RAIL_CHEVRON = '<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>';
+function applyRailState() {
+  let pref = null; try { pref = localStorage.getItem('railState'); } catch (_) {}
+  const th = document.documentElement.getAttribute('data-theme');
+  const st = pref || ((th === 'sky' || th === 'forest') ? 'open' : 'collapsed');
+  const collapsed = st === 'collapsed';
+  document.body.classList.toggle('rail-is-collapsed', collapsed);
+  const b = document.querySelector('#sideRail .rail-toggle');
+  if (b) {
+    b.setAttribute('aria-expanded', String(!collapsed));
+    b.setAttribute('aria-label', collapsed ? 'Expand side rail' : 'Collapse side rail');
+    b.title = collapsed ? 'Expand side rail' : 'Collapse side rail';
+  }
+}
+function toggleRail() {
+  const collapsed = document.body.classList.contains('rail-is-collapsed');
+  try { localStorage.setItem('railState', collapsed ? 'open' : 'collapsed'); } catch (_) {}
+  applyRailState();
+}
+new MutationObserver(applyRailState).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+applyRailState();
 function markSpace() {
   const btns = document.querySelectorAll('.x-space[data-i]'); if (!btns.length) return;
   const mid = window.scrollY + window.innerHeight * 0.35;
@@ -958,11 +982,17 @@ function decorateRail() {
   spaces.className = 'x-spaces rail-card';
   spaces.setAttribute('role', 'group');
   spaces.setAttribute('aria-label', 'Spaces');
-  spaces.innerHTML = '<div class="x-glabel">Spaces</div>' + SPACES.map((s, i) =>
+  spaces.innerHTML = '<div class="rail-head"><div class="x-glabel">Spaces</div></div>' + SPACES.map((s, i) =>
     `<button type="button" class="x-space" data-i="${i}" title="${s.label}">${svgI(s.icon)}<span>${s.label}</span></button>`).join('');
   spaces.addEventListener('click', (e) => { const b = e.target.closest('.x-space'); if (b) SPACES[+b.dataset.i].act(); });
   if (brand) spaces.prepend(brand);
+  const tog = document.createElement('button');
+  tog.type = 'button'; tog.className = 'rail-toggle'; tog.innerHTML = RAIL_CHEVRON;
+  // A mouse click releases focus so :focus-within does not hold the rail open; keyboard users keep focus.
+  tog.addEventListener('click', (e) => { toggleRail(); if (e.detail > 0) tog.blur(); });
+  spaces.querySelector('.rail-head').appendChild(tog);
   wrap.prepend(spaces);
+  applyRailState();
 
   const foot = document.createElement('div');
   foot.className = 'x-railfoot rail-card';
