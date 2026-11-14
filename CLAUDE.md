@@ -86,7 +86,8 @@ Plain HTML/CSS/JS, no build step.
   `.tabheights.v1` — grid layout, notes {id, title, content}, phone
   heights, per-tab agenda heights
 - Device-local (NOT in SYNCED_KEYS, on purpose): `stickers`,
-  `notifyDeviceId`, `weatherCache`, `cardBg::*` metadata, `customIcons`, `peopleView` (due-only filter)
+  `notifyDeviceId`, `railState` ('open'|'collapsed', side rail pin/collapse, set by the toggle in
+  extras.js; unset follows the theme default), `weatherCache`, `cardBg::*` metadata, `customIcons`, `peopleView` (due-only filter)
 
 ## Push notifications (PWA web push)
 - Client: `notify.js` (Tweaks → Task Notifications) registers `sw.js`,

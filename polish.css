@@ -755,22 +755,45 @@ html.x-dark[data-theme="forest"] .side-rail { --rc-card: rgba(24,33,27,.95); --r
 #sideRail .rail-card .side-rail-brand-text { color: var(--rc-ink) !important; opacity: 1; text-shadow: none !important; }
 #sideRail .rail-card .x-stamp { color: var(--rc-muted); opacity: 1; font-size: 12px; }
 
-/* Collapsed state (default themes only; sky and forest stay open on desktop):
+/* Collapsed state (every theme, set by the toggle or the theme default; hover peeks it open):
    one narrow column of 52px icon buttons, labels visually hidden but still read by screen readers. */
-html:not([data-theme="sky"]):not([data-theme="forest"]) .side-rail:not(:hover):not(:focus-within):not(.mobile-open) { width: 78px; }
-html:not([data-theme="sky"]):not([data-theme="forest"]) .side-rail:not(:hover):not(:focus-within):not(.mobile-open) .side-rail-inner { padding-left: 0 !important; padding-right: 0 !important; align-items: center; }
-html:not([data-theme="sky"]):not([data-theme="forest"]) .side-rail:hover { width: 236px; }
-html:not([data-theme="sky"]):not([data-theme="forest"]) #sideRail:not(:hover):not(:focus-within):not(.mobile-open) .rail-card { width: 66px; padding: 7px; border-radius: 22px; align-items: center; }
-html:not([data-theme="sky"]):not([data-theme="forest"]) #sideRail:not(:hover):not(:focus-within):not(.mobile-open) .rail-card :is(.x-space, .rail-link, .rail-add, .rail-edit-toggle) { width: 52px; min-height: 52px; padding: 0; justify-content: center; border-radius: 16px; }
-html:not([data-theme="sky"]):not([data-theme="forest"]) #sideRail:not(:hover):not(:focus-within):not(.mobile-open) .rail-card :is(.x-glabel, .x-space span, .rail-link-text, .rail-link-edit, .rail-link-del, .side-rail-brand-text, .x-stamp) {
+body.rail-is-collapsed #sideRail:not(:hover):not(:focus-within):not(.mobile-open) { width: 78px; }
+body.rail-is-collapsed #sideRail:not(:hover):not(:focus-within):not(.mobile-open) .side-rail-inner { padding-left: 0 !important; padding-right: 0 !important; align-items: center; }
+body.rail-is-collapsed #sideRail:is(:hover, :focus-within) { width: 236px; z-index: 450; }
+body.rail-is-collapsed #sideRail:not(:hover):not(:focus-within):not(.mobile-open) .rail-card { width: 66px; padding: 7px; border-radius: 22px; align-items: center; }
+body.rail-is-collapsed #sideRail:not(:hover):not(:focus-within):not(.mobile-open) .rail-card :is(.x-space, .rail-link, .rail-add, .rail-edit-toggle) { width: 52px; min-height: 52px; padding: 0; justify-content: center; border-radius: 16px; }
+body.rail-is-collapsed #sideRail:not(:hover):not(:focus-within):not(.mobile-open) .rail-card :is(.x-glabel, .x-space span, .rail-link-text, .rail-link-edit, .rail-link-del, .side-rail-brand-text, .x-stamp) {
   position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; margin: -1px !important;
   overflow: hidden !important; clip: rect(0 0 0 0) !important; white-space: nowrap !important; border: 0 !important;
 }
-html:not([data-theme="sky"]):not([data-theme="forest"]) #sideRail:not(:hover):not(:focus-within):not(.mobile-open) .rail-card .side-rail-brand { padding: 0 0 4px !important; }
+body.rail-is-collapsed #sideRail:not(:hover):not(:focus-within):not(.mobile-open) .rail-card .side-rail-brand { padding: 0 0 4px !important; }
+
+/* Collapse toggle: a 44px chevron on the Spaces heading row (top of the column when collapsed) */
+#sideRail .rail-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+#sideRail .rail-toggle {
+  width: 44px; height: 44px; padding: 10px; border-radius: 14px; cursor: pointer; flex-shrink: 0;
+  border: 1px solid var(--rc-chip-b); background: var(--rc-chip); color: var(--rc-ink); display: inline-flex; align-items: center; justify-content: center;
+}
+#sideRail .rail-toggle svg { width: 100%; height: 100%; transition: transform .2s; }
+#sideRail .rail-toggle:hover { background: var(--rc-hover); }
+#sideRail .rail-toggle:focus-visible { outline: 3px solid var(--rc-accent-t); outline-offset: 1px; }
+body.rail-is-collapsed #sideRail .rail-toggle svg { transform: rotate(180deg); }
+body.rail-is-collapsed #sideRail:not(:hover):not(:focus-within):not(.mobile-open) .rail-head { justify-content: center; }
+body.rail-is-collapsed #sideRail:not(:hover):not(:focus-within):not(.mobile-open) .rail-toggle { width: 52px; height: 52px; border-radius: 16px; padding: 12px; margin-bottom: 4px; }
+body.rail-is-collapsed #sideRail:not(:hover):not(:focus-within):not(.mobile-open) .x-spaces .side-rail-brand { display: none !important; }
+
+/* Page offset follows the rail: narrow when collapsed, full when pinned open.
+   Sky and forest were pinned open, default themes were hover-only, so those are the theme defaults in extras.js. */
+@media (min-width: 861px) {
+  html[data-theme="sky"] body.rail-is-collapsed, html[data-theme="forest"] body.rail-is-collapsed { padding-left: 6rem; }
+  html:not([data-theme="sky"]):not([data-theme="forest"]) body:not(.rail-is-collapsed) { padding-left: calc(236px + 1.75rem); }
+  body:not(.rail-is-collapsed) #sideRail { width: 236px; }
+}
 
 /* The older "bare icons over a photo" rules hide Add link, Edit links and the brand until hover.
    Inside the cards every row is always visible. */
-#sideRail .rail-card :is(.rail-add, .rail-edit-toggle, .side-rail-brand, .rail-link) { opacity: 1 !important; pointer-events: auto !important; }
+#sideRail .rail-card :is(.rail-add, .rail-edit-toggle, .rail-link) { opacity: 1 !important; pointer-events: auto !important; }
+#sideRail .rail-card .side-rail-brand { opacity: 1 !important; pointer-events: none !important; }
 
 /* Edit links mode: the edit and delete buttons take the right edge, so the shortcut badges step aside. */
 #sideRail.editing .rail-card .rail-kbd { display: none; }
