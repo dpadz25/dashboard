@@ -78,6 +78,9 @@ Plain HTML/CSS/JS, no build step.
   {id, title, sub, img, progress, status?} where status 'queued' hides an
   entry from the widget carousel; `currentlyArchive` — finished entries
   (cover `img` is stripped before upload, stays device-local)
+- `todayLayout` — {order: [sectionId], hidden: [sectionId], density: 'cozy'|'compact'}, set from the
+  Customize sheet in today.js. Section ids: strip, focus, due, rhythm, habits, dailies, events, people,
+  goals. Plain object, last-write-wins (not in ID_ARRAY_KEYS/BUCKET_KEYS on purpose).
 - `notifySettings` — {enabled, time1, time2, tz} (times 'HH:MM', tz IANA)
 - `dashboard.blocks.layout.v3` / `.notes.v1` / `.mheights.v1` /
   `.tabheights.v1` — grid layout, notes {id, title, content}, phone

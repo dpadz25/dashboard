@@ -5753,66 +5753,8 @@ body.library-open { overflow: hidden; }
   .library-grid { grid-template-columns: 1fr; }
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   TODAY / WEEKLY REVIEW — full-page overlay, see today.js
-   Reuses .library-page for the overlay chrome (fixed, fades in/out).
-   ═══════════════════════════════════════════════════════════════ */
-.today-inner {
-  max-width: 720px;
-  margin: 0 auto;
-  padding: calc(1.5rem + env(safe-area-inset-top, 0px)) 1.25rem 4rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
-}
-.today-section-title {
-  font-family: var(--font-d);
-  font-weight: 700;
-  font-size: 0.7rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--muted);
-  margin-bottom: 0.6rem;
-}
-.today-tasks, .today-events { display: flex; flex-direction: column; gap: 0.4rem; }
-.today-task-row, .today-event-row {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  padding: 0.55rem 0.7rem;
-  border-radius: var(--r-sm);
-  background: var(--surface2);
-  border: 1px solid transparent;
-  font-size: 0.85rem;
-}
-.today-task-row:hover { background: var(--surface3); border-color: var(--border); }
-.today-task-row .task-txt { flex: 1; }
-.today-task-row.done-row { opacity: 0.7; }
-.today-event-time { color: var(--accent); font-weight: 700; font-size: 0.75rem; }
-.today-habits { display: flex; flex-wrap: wrap; gap: 0.5rem; }
-.today-habit-chip {
-  padding: 0.45rem 0.85rem;
-  border-radius: 999px;
-  border: 1px solid var(--border2);
-  background: var(--surface2);
-  color: var(--text-s);
-  font-size: 0.8rem;
-  cursor: pointer;
-  transition: all var(--t-fast);
-}
-.today-habit-chip.done { background: var(--green-dim); color: var(--green); border-color: var(--green); }
-.today-goals { display: flex; flex-direction: column; gap: 0.45rem; }
-.today-goal-row { display: flex; align-items: center; gap: 0.6rem; font-size: 0.85rem; }
-.today-goal-scope {
-  font-size: 0.6rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;
-  color: var(--muted); background: var(--surface2); border-radius: 5px; padding: 0.15rem 0.4rem; flex-shrink: 0;
-}
-.today-goal-text { flex: 1; }
-.today-trend-row { display: flex; align-items: center; gap: 0.7rem; margin-bottom: 0.55rem; font-size: 0.8rem; }
-.today-trend-label { width: 110px; flex-shrink: 0; color: var(--text-s); }
-.today-trend-bar { flex: 1; height: 6px; border-radius: 999px; background: var(--surface2); overflow: hidden; }
-.today-trend-fill { height: 100%; background: var(--accent); border-radius: 999px; }
-.today-trend-pct { flex-shrink: 0; color: var(--muted); font-size: 0.72rem; white-space: nowrap; }
+/* TODAY / WEEKLY REVIEW styles live in polish.css ("TODAY REDESIGN"). It reuses
+   .library-page above for the overlay chrome. */
 
 /* ═══════════════════════════════════════════════════════════════
    GLOBAL SEARCH — see search.js
