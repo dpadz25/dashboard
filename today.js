@@ -19,6 +19,9 @@
 const { $, esc, load, todayStr } = window.dashUtil;
 
 let activeView = 'today';
+// Customize sheet state lives only in memory for now (nothing is stored).
+let sheetOpen = false, compact = false;
+const hidden = new Set();
 
 function getWeekDates() {
   const today = new Date(); today.setHours(0,0,0,0);
@@ -64,6 +67,8 @@ const IC = {
   star: '<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="m12 2.5 2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3 6.1 20.6l1.3-6.6L2.5 9.4l6.6-.8z"/></svg>',
   cal: '<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="3"/><path d="M3 10h18M8 2.5v4M16 2.5v4"/></svg>',
   grip: '<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></svg>',
+  sliders: '<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg>',
+  plus: '<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
   dots: '<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>',
 };
 
@@ -112,13 +117,16 @@ function render() {
           <h1 class="td-h1">${activeView === 'today' ? 'Today' : 'This Week'}</h1>
           <div class="td-sub">${esc(sub)}</div>
         </div>
+        <button class="td-custom" onclick="window.today.openSheet()" aria-label="Customize Today">${IC.sliders}<span>Customize</span></button>
         <div class="td-seg" role="group" aria-label="View">
           <button class="td-seg-btn${activeView === 'today' ? ' on' : ''}" aria-pressed="${activeView === 'today'}" onclick="window.today.switchView('today')">Today</button>
           <button class="td-seg-btn${activeView === 'week' ? ' on' : ''}" aria-pressed="${activeView === 'week'}" onclick="window.today.switchView('week')">This Week</button>
         </div>
       </header>
       <div id="todayBody">${activeView === 'today' ? renderTodayView() : renderWeekView()}</div>
-    </div>`;
+    </div>${sheetOpen ? sheetHtml() : ''}`;
+  page.classList.toggle('compact', compact);
+  if (sheetOpen) { const d = page.querySelector('.td-sheet-done'); if (d) d.focus(); }
 }
 
 /* ── TODAY TAB ───────────────────────────────────────────────── */
@@ -158,10 +166,10 @@ function rhythmSentence(done, total, undone) {
   if (!total) return '';
   const h = new Date().getHours();
   const close = h >= 17 ? 'Take it easy tonight.' : h >= 12 ? 'Keep it gentle this afternoon.' : 'A calm start is plenty.';
-  if (!undone.length) return `${done} of ${total} done. Everything is checked off. Enjoy the rest of your day.`;
+  if (!undone.length) return `<b>${done} of ${total} done.</b> Everything is checked off. Enjoy the rest of your day.`;
   const names = undone.slice(0, 2).map((l, i) => esc(i ? l.charAt(0).toLowerCase() + l.slice(1) : l));
   const list = names.length === 2 ? names[0] + ' and ' + names[1] : names[0];
-  return `${done} of ${total} done. ${list} ${names.length === 2 ? 'are' : 'is'} next. ${close}`;
+  return `<b>${done} of ${total} done.</b> ${list} ${names.length === 2 ? 'are' : 'is'} next. ${close}`;
 }
 
 function chip(label, on, minor, handler) {
@@ -220,7 +228,7 @@ function renderTodayView() {
   const openCount = overdue.length + dueToday.length;
   const dueBody = `
     ${overdue.length ? `<div class="td-sublabel rose">Overdue</div><div class="td-list">${overdue.map(t => taskRow(t, true)).join('')}</div>`
-      : `<div class="td-banner">Nothing overdue. Nicely done.</div>`}
+      : `<div class="td-banner">${IC.check}<span>Nothing overdue. Nicely done.</span></div>`}
     ${overdue.length ? `<div class="td-sublabel">Due today</div>` : ''}
     ${dueToday.length ? `<div class="td-list">${dueToday.map(t => taskRow(t, false)).join('')}</div>`
       : empty('Nothing due today.')}`;
@@ -232,7 +240,7 @@ function renderTodayView() {
         <span class="td-event-time">${e.start ? window.dashUtil.fmtTime(e.start) + (e.end ? `<small>${window.dashUtil.fmtTime(e.end)}</small>` : '') : 'All day'}</span>
         <span class="td-event-title">${e._star ? `<span class="td-event-star" title="Important date">${IC.star}</span>` : ''}${esc(e.label)}</span>
       </div>`).join('')}</div>`
-    : `<div class="td-empty-state"><span class="td-empty-ic">${IC.cal}</span>${empty('Nothing on the calendar today.')}</div>`;
+    : `<div class="td-empty-state"><span class="td-empty-ic">${IC.cal}</span>${empty('Nothing on the calendar today.')}<button class="td-outbtn" onclick="window.today.jumpTo('agenda')">${IC.plus}<span>Add an event</span></button></div>`;
   const eventsCard = card('events', 'Today’s events', eventsBody, { pill: events.length ? String(events.length) : '' });
 
   /* Non-negotiables and dailies */
@@ -265,7 +273,7 @@ function renderTodayView() {
         <span class="td-avatar" aria-hidden="true">${esc((p.name || '?').trim().charAt(0).toUpperCase())}</span>
         <div class="td-person-main">
           <div class="td-person-name">${esc(p.name)}</div>
-          <div class="td-person-note">${p.notes ? esc(p.notes) : 'Time to check in'}<span class="person-since ${p.cls}"> · ${esc(p.label)}</span></div>
+          <div class="td-person-note">${p.notes ? esc(p.notes) : 'Time to check in'}</div>
         </div>
         <button class="td-iconbtn" onclick="window.today.reachOut('${p.id}')" aria-label="I reached out to ${esc(p.name)}" title="I reached out">${IC.check}</button>
       </div>`).join('')}</div>` : empty('Nobody is due. Nice.'),
@@ -273,7 +281,7 @@ function renderTodayView() {
 
   /* Goal progress */
   const goalsCard = card('goals', 'Goal progress',
-    goalRows.length ? `<div class="td-list">${goalRows.map(g => `
+    (goalRows.length ? `<div class="td-list">${goalRows.map(g => `
       <div class="today-goal-row td-row td-goal">
         <div class="td-goal-top">
           <span class="td-scope">${g.scope}</span>
@@ -281,22 +289,23 @@ function renderTodayView() {
           <button class="td-pctbtn" onclick="window.today.bumpGoal('${g.id}')" aria-label="${esc(g.text)}: ${g.pct} percent. Tap to add progress" title="Click to increment">${g.pct}%</button>
         </div>
         ${bar(g.pct)}
-      </div>`).join('')}</div>` : empty('No goals set yet.'));
+      </div>`).join('')}</div>` : empty('No goals set yet.')) + `<button class="td-dashed" onclick="window.today.jumpTo('goals','goalInput')">${IC.plus}<span>Add a goal</span></button>`);
 
+  const sh = (id, html) => hidden.has(id) ? '' : html;
   return `
-    ${weekStrip(allTasks)}
+    ${sh('strip', weekStrip(allTasks))}
     <div class="td-grid">
       <div class="td-col td-col-l">
-        <div class="td-o1">${focusCard}</div>
-        <div class="td-o2">${dueCard}</div>
-        <div class="td-o5">${dailiesCard}</div>
-        <div class="td-o8">${goalsCard}</div>
+        <div class="td-o1">${sh('focus', focusCard)}</div>
+        <div class="td-o2">${sh('due', dueCard)}</div>
+        <div class="td-o5">${sh('dailies', dailiesCard)}</div>
+        <div class="td-o8">${sh('goals', goalsCard)}</div>
       </div>
       <div class="td-col td-col-r">
-        <div class="td-o3">${rhythmCard}</div>
-        <div class="td-o4">${habitsCard}</div>
-        <div class="td-o6">${eventsCard}</div>
-        <div class="td-o7">${peopleCard}</div>
+        <div class="td-o3">${sh('rhythm', rhythmCard)}</div>
+        <div class="td-o4">${sh('habits', habitsCard)}</div>
+        <div class="td-o6">${sh('events', eventsCard)}</div>
+        <div class="td-o7">${sh('people', peopleCard)}</div>
       </div>
     </div>`;
 }
@@ -319,6 +328,47 @@ function taskRow(t, isOverdue) {
       </div>
       ${tags ? `<div class="td-task-tags">${tags}</div>` : ''}
     </div>`;
+}
+
+const SECTIONS = [['strip', 'Week strip'], ['focus', 'Focus goal'], ['due', 'Due today'], ['rhythm', 'Today\u2019s rhythm'], ['habits', 'Non-negotiables'], ['dailies', 'Dailies'], ['events', 'Today\u2019s events'], ['people', 'People to reach out to'], ['goals', 'Goal progress']];
+function sheetHtml() {
+  return `
+    <div class="td-sheet-wrap" onclick="if(event.target===this)window.today.closeSheet()">
+      <div class="td-sheet" role="dialog" aria-modal="true" aria-labelledby="tdSheetTitle">
+        <div class="td-grabber" aria-hidden="true"></div>
+        <div class="td-sheet-head">
+          <h2 id="tdSheetTitle" class="td-card-title">Customize Today</h2>
+          <button class="td-sheet-done" onclick="window.today.closeSheet()">Done</button>
+        </div>
+        <p class="td-hint">Show or hide sections. This resets when you reload the page.</p>
+        <div class="td-sheet-rows">${SECTIONS.map(([id, name]) => `
+          <div class="td-sheet-row">
+            <span class="td-grip">${IC.grip}</span>
+            <span class="td-sheet-name">${name}</span>
+            <button class="td-switch${hidden.has(id) ? '' : ' on'}" role="switch" aria-checked="${!hidden.has(id)}" aria-label="Show ${name}" onclick="window.today.toggleSection('${id}')"><i></i></button>
+          </div>`).join('')}</div>
+        <div class="td-seg td-density" role="group" aria-label="Spacing">
+          <button class="td-seg-btn${compact ? '' : ' on'}" aria-pressed="${!compact}" onclick="window.today.setCompact(false)">Cozy</button>
+          <button class="td-seg-btn${compact ? ' on' : ''}" aria-pressed="${compact}" onclick="window.today.setCompact(true)">Compact</button>
+        </div>
+        <button class="td-reset" onclick="window.today.resetSheet()">Reset to default order</button>
+      </div>
+    </div>`;
+}
+function openSheet() { sheetOpen = true; render(); }
+function closeSheet() { sheetOpen = false; render(); const b = document.querySelector('#todayPage .td-custom'); if (b) b.focus(); }
+function toggleSection(id) { hidden.has(id) ? hidden.delete(id) : hidden.add(id); render(); }
+function setCompact(v) { compact = !!v; render(); }
+function resetSheet() { hidden.clear(); compact = false; render(); }
+// "Add" buttons reuse the cards already on the dashboard: close the overlay,
+// scroll to the card, and focus its input when it has one.
+function jumpTo(cardId, inputId) {
+  close();
+  setTimeout(() => {
+    window.dashUtil.scrollToCard(cardId);
+    const i = inputId && document.getElementById(inputId);
+    if (i) setTimeout(() => i.focus({ preventScroll: true }), 450);
+  }, 280);
 }
 
 function completeTask(id) { window.dash.toggleTask(id); render(); }
@@ -411,8 +461,8 @@ function renderWeekView() {
 }
 
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape' && document.getElementById('todayPage') && document.getElementById('todayPage').classList.contains('open')) close();
+  if (e.key === 'Escape' && document.getElementById('todayPage') && document.getElementById('todayPage').classList.contains('open')) { if (sheetOpen) closeSheet(); else close(); }
 });
 
-window.today = { open, close, switchView, completeTask, toggleHabit, toggleDaily, reachOut, bumpGoal, setGoalNext };
+window.today = { open, close, switchView, openSheet, closeSheet, toggleSection, setCompact, resetSheet, jumpTo, completeTask, toggleHabit, toggleDaily, reachOut, bumpGoal, setGoalNext };
 })();
