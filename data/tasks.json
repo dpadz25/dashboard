@@ -1,8 +1,8 @@
 [
   {
-    "id": "rc4cv8t5",
-    "title": "check on dashboard and movewell limits claude",
-    "dueDate": "2026-11-10",
+    "id": "vfhdl5ry",
+    "title": "Dream reading!",
+    "dueDate": "2026-11-15",
     "category": "General",
     "type": "assignment",
     "priority": false,
@@ -10,9 +10,9 @@
     "repeat": ""
   },
   {
-    "id": "mwgcry95",
-    "title": "laundry",
-    "dueDate": "2026-11-10",
+    "id": "okmhklta",
+    "title": "Psychodynamic reading or gift of therapy",
+    "dueDate": "2026-11-15",
     "category": "General",
     "type": "assignment",
     "priority": false,
@@ -20,121 +20,41 @@
     "repeat": ""
   },
   {
-    "id": "r9vksa64",
-    "title": "respond to idarmy",
-    "dueDate": "2026-11-10",
-    "category": "Practicum",
+    "id": "760h7t3p",
+    "title": "Vacuum and clean house!",
+    "dueDate": "2026-11-15",
+    "category": "General",
     "type": "assignment",
     "priority": false,
     "completed": false,
     "repeat": ""
   },
   {
-    "id": "z720s2hp",
-    "title": "Session with J 4:30 email him",
-    "dueDate": "2026-11-10",
-    "category": "Practicum",
-    "type": "discussion",
-    "priority": false,
-    "completed": false,
-    "repeat": "weekly"
-  },
-  {
-    "id": "5x6s2sib",
-    "title": "Module 11 quiz (CBT deep dive C / common factors) quiz and discussion",
-    "dueDate": "2026-11-10",
-    "category": "clinical practicum 1",
-    "type": "quiz",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "cf6zvljv",
-    "title": "Journal Entry, Week 11",
-    "dueDate": "2026-11-11",
-    "category": "Dev. Psych",
+    "id": "in7rj9ic",
+    "title": "Pokemon",
+    "dueDate": "2026-11-15",
+    "category": "General",
     "type": "assignment",
     "priority": false,
     "completed": false,
     "repeat": ""
   },
   {
-    "id": "hsp77xfh",
-    "title": "Week 11, DSM-5-TR Eating Disorders and Personality Disorders criteria",
-    "dueDate": "2026-11-11",
-    "category": "Dev. Psych",
-    "type": "reading",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "0j6wn4ga",
-    "title": "Week 11, Frieiro et al. (2022), self-esteem and socialisation in social networks and adolescent eating disorders",
-    "dueDate": "2026-11-11",
-    "category": "Dev. Psych",
-    "type": "reading",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "ysyzxqnm",
-    "title": "Week 11, Bo & Lind (2023), personality disorder and adolescents",
-    "dueDate": "2026-11-11",
-    "category": "Dev. Psych",
-    "type": "reading",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "f32x0q89",
-    "title": "Quiz 3 (Ch 7-9)",
-    "dueDate": "2026-11-12",
-    "category": "Assessment 1",
-    "type": "quiz",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "fs1r26di",
-    "title": "Read Ch. 19 & 24",
-    "dueDate": "2026-11-12",
-    "category": "Dev. Psych",
-    "type": "reading",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "cp6qvdsx",
-    "title": "Personal & Social Identity Paper (10-12 pages, APA, 75 pts)",
+    "id": "cmj0l8px",
+    "title": "Gym",
     "dueDate": "2026-11-15",
-    "category": "cultural issues",
-    "type": "essay",
+    "category": "General",
+    "type": "assignment",
     "priority": false,
     "completed": false,
     "repeat": ""
   },
   {
-    "id": "zn5w9qx3",
-    "title": "Week 11-Personal and Social Identity paper",
+    "id": "bk36pdly",
+    "title": "Buy film",
     "dueDate": "2026-11-15",
-    "category": "cultural issues",
-    "type": "essay",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "6qqxvgzm",
-    "title": "Read Ch. 10",
-    "dueDate": "2026-11-16",
-    "category": "Assessment 1",
-    "type": "reading",
+    "category": "General",
+    "type": "assignment",
     "priority": false,
     "completed": false,
     "repeat": ""
@@ -165,6 +85,26 @@
     "dueDate": "2026-11-16",
     "category": "Practicum",
     "type": "assignment",
+    "priority": false,
+    "completed": false,
+    "repeat": "weekly"
+  },
+  {
+    "id": "dt1wlrn0",
+    "title": "set up draft 3",
+    "dueDate": "2026-11-16",
+    "category": "Assessment 1",
+    "type": "assignment",
+    "priority": false,
+    "completed": false,
+    "repeat": ""
+  },
+  {
+    "id": "z720s2hp",
+    "title": "Session with J 4:30 email him",
+    "dueDate": "2026-11-17",
+    "category": "Practicum",
+    "type": "discussion",
     "priority": false,
     "completed": false,
     "repeat": "weekly"
