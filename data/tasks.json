@@ -348,15 +348,5 @@
     "priority": false,
     "completed": false,
     "repeat": ""
-  },
-  {
-    "id": "zd9lv82c",
-    "title": "laundry",
-    "dueDate": null,
-    "category": "Practicum",
-    "type": "assignment",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
   }
 ]
