@@ -2,7 +2,7 @@
   {
     "id": "vfhdl5ry",
     "title": "Dream reading!",
-    "dueDate": "2026-11-15",
+    "dueDate": "2026-11-16",
     "category": "General",
     "type": "assignment",
     "priority": false,
@@ -12,7 +12,7 @@
   {
     "id": "okmhklta",
     "title": "Psychodynamic reading or gift of therapy",
-    "dueDate": "2026-11-15",
+    "dueDate": "2026-11-16",
     "category": "General",
     "type": "assignment",
     "priority": false,
@@ -22,27 +22,7 @@
   {
     "id": "760h7t3p",
     "title": "Vacuum and clean house!",
-    "dueDate": "2026-11-15",
-    "category": "General",
-    "type": "assignment",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "in7rj9ic",
-    "title": "Pokemon",
-    "dueDate": "2026-11-15",
-    "category": "General",
-    "type": "assignment",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "cmj0l8px",
-    "title": "Gym",
-    "dueDate": "2026-11-15",
+    "dueDate": "2026-11-16",
     "category": "General",
     "type": "assignment",
     "priority": false,
@@ -52,7 +32,7 @@
   {
     "id": "bk36pdly",
     "title": "Buy film",
-    "dueDate": "2026-11-15",
+    "dueDate": "2026-11-16",
     "category": "General",
     "type": "assignment",
     "priority": false,
@@ -95,6 +75,16 @@
     "dueDate": "2026-11-16",
     "category": "Assessment 1",
     "type": "assignment",
+    "priority": false,
+    "completed": false,
+    "repeat": ""
+  },
+  {
+    "id": "6qqxvgzm",
+    "title": "Read Ch. 10",
+    "dueDate": "2026-11-16",
+    "category": "Assessment 1",
+    "type": "reading",
     "priority": false,
     "completed": false,
     "repeat": ""
@@ -345,6 +335,16 @@
     "dueDate": "2026-12-15",
     "category": "cultural issues",
     "type": "discussion",
+    "priority": false,
+    "completed": false,
+    "repeat": ""
+  },
+  {
+    "id": "zd9lv82c",
+    "title": "laundry",
+    "dueDate": null,
+    "category": "Practicum",
+    "type": "assignment",
     "priority": false,
     "completed": false,
     "repeat": ""
