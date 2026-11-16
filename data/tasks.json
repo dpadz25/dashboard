@@ -2,7 +2,7 @@
   {
     "id": "vfhdl5ry",
     "title": "Dream reading!",
-    "dueDate": "2026-11-16",
+    "dueDate": "2026-11-15",
     "category": "General",
     "type": "assignment",
     "priority": false,
@@ -12,7 +12,7 @@
   {
     "id": "okmhklta",
     "title": "Psychodynamic reading or gift of therapy",
-    "dueDate": "2026-11-16",
+    "dueDate": "2026-11-15",
     "category": "General",
     "type": "assignment",
     "priority": false,
@@ -22,7 +22,27 @@
   {
     "id": "760h7t3p",
     "title": "Vacuum and clean house!",
-    "dueDate": "2026-11-16",
+    "dueDate": "2026-11-15",
+    "category": "General",
+    "type": "assignment",
+    "priority": false,
+    "completed": false,
+    "repeat": ""
+  },
+  {
+    "id": "in7rj9ic",
+    "title": "Pokemon",
+    "dueDate": "2026-11-15",
+    "category": "General",
+    "type": "assignment",
+    "priority": false,
+    "completed": false,
+    "repeat": ""
+  },
+  {
+    "id": "cmj0l8px",
+    "title": "Gym",
+    "dueDate": "2026-11-15",
     "category": "General",
     "type": "assignment",
     "priority": false,
@@ -32,9 +52,29 @@
   {
     "id": "bk36pdly",
     "title": "Buy film",
-    "dueDate": "2026-11-16",
+    "dueDate": "2026-11-15",
     "category": "General",
     "type": "assignment",
+    "priority": false,
+    "completed": false,
+    "repeat": ""
+  },
+  {
+    "id": "dt1wlrn0",
+    "title": "set up draft 3",
+    "dueDate": "2026-11-16",
+    "category": "Assessment 1",
+    "type": "assignment",
+    "priority": false,
+    "completed": false,
+    "repeat": ""
+  },
+  {
+    "id": "6qqxvgzm",
+    "title": "Read Ch. 10",
+    "dueDate": "2026-11-16",
+    "category": "Assessment 1",
+    "type": "reading",
     "priority": false,
     "completed": false,
     "repeat": ""
@@ -68,26 +108,6 @@
     "priority": false,
     "completed": false,
     "repeat": "weekly"
-  },
-  {
-    "id": "dt1wlrn0",
-    "title": "set up draft 3",
-    "dueDate": "2026-11-16",
-    "category": "Assessment 1",
-    "type": "assignment",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "6qqxvgzm",
-    "title": "Read Ch. 10",
-    "dueDate": "2026-11-16",
-    "category": "Assessment 1",
-    "type": "reading",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
   },
   {
     "id": "z720s2hp",
