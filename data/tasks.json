@@ -1,113 +1,13 @@
 [
   {
-    "id": "vfhdl5ry",
-    "title": "Dream reading!",
-    "dueDate": "2026-11-15",
-    "category": "General",
-    "type": "assignment",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "okmhklta",
-    "title": "Psychodynamic reading or gift of therapy",
-    "dueDate": "2026-11-15",
-    "category": "General",
-    "type": "assignment",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "760h7t3p",
-    "title": "Vacuum and clean house!",
-    "dueDate": "2026-11-15",
-    "category": "General",
-    "type": "assignment",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "in7rj9ic",
-    "title": "Pokemon",
-    "dueDate": "2026-11-15",
-    "category": "General",
-    "type": "assignment",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "cmj0l8px",
-    "title": "Gym",
-    "dueDate": "2026-11-15",
-    "category": "General",
-    "type": "assignment",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "bk36pdly",
-    "title": "Buy film",
-    "dueDate": "2026-11-15",
-    "category": "General",
-    "type": "assignment",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
     "id": "dt1wlrn0",
     "title": "set up draft 3",
-    "dueDate": "2026-11-16",
+    "dueDate": "2026-11-17",
     "category": "Assessment 1",
     "type": "assignment",
     "priority": false,
     "completed": false,
     "repeat": ""
-  },
-  {
-    "id": "6qqxvgzm",
-    "title": "Read Ch. 10",
-    "dueDate": "2026-11-16",
-    "category": "Assessment 1",
-    "type": "reading",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "qofw8nxj",
-    "title": "EV Project, Part III Draft",
-    "dueDate": "2026-11-16",
-    "category": "Assessment 1",
-    "type": "project",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "eqgc7txy",
-    "title": "Pre-class Survey 10: Advocacy & Activism",
-    "dueDate": "2026-11-16",
-    "category": "cultural issues",
-    "type": "discussion",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "5g5a55va",
-    "title": "Student and staff meeting",
-    "dueDate": "2026-11-16",
-    "category": "Practicum",
-    "type": "assignment",
-    "priority": false,
-    "completed": false,
-    "repeat": "weekly"
   },
   {
     "id": "z720s2hp",
@@ -120,6 +20,16 @@
     "repeat": "weekly"
   },
   {
+    "id": "qofw8nxj",
+    "title": "EV Project, Part III Draft",
+    "dueDate": "2026-11-17",
+    "category": "Assessment 1",
+    "type": "project",
+    "priority": false,
+    "completed": false,
+    "repeat": ""
+  },
+  {
     "id": "zyqooa38",
     "title": "Case Presentation (30 pts) - slot assigned by Datchi, Weeks 5-12",
     "dueDate": "2026-11-17",
@@ -130,10 +40,40 @@
     "repeat": ""
   },
   {
-    "id": "0d6lmih7",
-    "title": "Journal Entry, Week 12",
-    "dueDate": "2026-11-18",
-    "category": "Dev. Psych",
+    "id": "eqgc7txy",
+    "title": "Pre-class Survey 10: Advocacy & Activism",
+    "dueDate": "2026-11-17",
+    "category": "cultural issues",
+    "type": "discussion",
+    "priority": false,
+    "completed": false,
+    "repeat": ""
+  },
+  {
+    "id": "okmhklta",
+    "title": "Psychodynamic reading or gift of therapy",
+    "dueDate": "2026-11-17",
+    "category": "General",
+    "type": "assignment",
+    "priority": false,
+    "completed": false,
+    "repeat": ""
+  },
+  {
+    "id": "760h7t3p",
+    "title": "Vacuum and clean house!",
+    "dueDate": "2026-11-17",
+    "category": "General",
+    "type": "assignment",
+    "priority": false,
+    "completed": false,
+    "repeat": ""
+  },
+  {
+    "id": "bk36pdly",
+    "title": "Buy film",
+    "dueDate": "2026-11-17",
+    "category": "General",
     "type": "assignment",
     "priority": false,
     "completed": false,
@@ -170,6 +110,26 @@
     "repeat": ""
   },
   {
+    "id": "5g5a55va",
+    "title": "Student and staff meeting",
+    "dueDate": "2026-11-23",
+    "category": "Practicum",
+    "type": "assignment",
+    "priority": false,
+    "completed": false,
+    "repeat": "weekly"
+  },
+  {
+    "id": "vfhdl5ry",
+    "title": "Dream reading!",
+    "dueDate": "2026-11-23",
+    "category": "General",
+    "type": "assignment",
+    "priority": false,
+    "completed": false,
+    "repeat": ""
+  },
+  {
     "id": "08qkqaax",
     "title": "Module 12 quiz (Treatment planning)",
     "dueDate": "2026-11-24",
@@ -190,31 +150,11 @@
     "repeat": ""
   },
   {
-    "id": "vabu7py9",
-    "title": "Written Case Report (40 pts) - due 1 week after presentation feedback",
-    "dueDate": "2026-11-24",
-    "category": "clinical practicum 1",
-    "type": "essay",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
     "id": "0l9ma7zu",
     "title": "Quiz 4 (Ch 10, 12)",
     "dueDate": "2026-11-25",
     "category": "Assessment 1",
     "type": "quiz",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "nsj2zcvv",
-    "title": "Journal Entry, Week 13",
-    "dueDate": "2026-11-25",
-    "category": "Dev. Psych",
-    "type": "assignment",
     "priority": false,
     "completed": false,
     "repeat": ""
@@ -254,16 +194,6 @@
     "title": "Practicum hours documentation, supervisor-signed (-15 pts if late)",
     "dueDate": "2026-12-01",
     "category": "clinical practicum 1",
-    "type": "assignment",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "tuxevefq",
-    "title": "Journal Entry, Week 14",
-    "dueDate": "2026-12-02",
-    "category": "Dev. Psych",
     "type": "assignment",
     "priority": false,
     "completed": false,
@@ -320,16 +250,6 @@
     "repeat": ""
   },
   {
-    "id": "2iv238u2",
-    "title": "Journal Entry, Week 15",
-    "dueDate": "2026-12-09",
-    "category": "Dev. Psych",
-    "type": "assignment",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
     "id": "ohbxi4ds",
     "title": "Quiz 5 (Ch 13-15)",
     "dueDate": "2026-12-10",
@@ -355,16 +275,6 @@
     "dueDate": "2026-12-15",
     "category": "cultural issues",
     "type": "discussion",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "zd9lv82c",
-    "title": "laundry",
-    "dueDate": null,
-    "category": "Practicum",
-    "type": "assignment",
     "priority": false,
     "completed": false,
     "repeat": ""
