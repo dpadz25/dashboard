@@ -1,9 +1,9 @@
 [
   {
-    "id": "dt1wlrn0",
-    "title": "set up draft 3",
+    "id": "he52mptm",
+    "title": "cancel with idarmy and reschedule",
     "dueDate": "2026-11-17",
-    "category": "Assessment 1",
+    "category": "General",
     "type": "assignment",
     "priority": false,
     "completed": false,
@@ -20,36 +20,6 @@
     "repeat": "weekly"
   },
   {
-    "id": "qofw8nxj",
-    "title": "EV Project, Part III Draft",
-    "dueDate": "2026-11-17",
-    "category": "Assessment 1",
-    "type": "project",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "zyqooa38",
-    "title": "Case Presentation (30 pts) - slot assigned by Datchi, Weeks 5-12",
-    "dueDate": "2026-11-17",
-    "category": "clinical practicum 1",
-    "type": "project",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "eqgc7txy",
-    "title": "Pre-class Survey 10: Advocacy & Activism",
-    "dueDate": "2026-11-17",
-    "category": "cultural issues",
-    "type": "discussion",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
     "id": "okmhklta",
     "title": "Psychodynamic reading or gift of therapy",
     "dueDate": "2026-11-17",
@@ -60,21 +30,11 @@
     "repeat": ""
   },
   {
-    "id": "760h7t3p",
-    "title": "Vacuum and clean house!",
-    "dueDate": "2026-11-17",
-    "category": "General",
-    "type": "assignment",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "bk36pdly",
-    "title": "Buy film",
-    "dueDate": "2026-11-17",
-    "category": "General",
-    "type": "assignment",
+    "id": "qofw8nxj",
+    "title": "EV Project, Part III Draft",
+    "dueDate": "2026-11-18",
+    "category": "Assessment 1",
+    "type": "project",
     "priority": false,
     "completed": false,
     "repeat": ""
