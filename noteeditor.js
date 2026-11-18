@@ -191,5 +191,9 @@ function attach(el) {
   return el;
 }
 
-window.noteEditor = { attach, getText, setText };
+// Caret helpers so a remote update can replace the text without the cursor jumping.
+function getCaret(el) { return caretOffset(el); }
+function setCaret(el, n) { setRange(el, n, n); }
+
+window.noteEditor = { attach, getText, setText, getCaret, setCaret };
 })();

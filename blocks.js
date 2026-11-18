@@ -1118,10 +1118,19 @@
       const node = container.querySelector('.block-note[data-card-id="' + n.id + '"]');
       if (!node) { addBlock(buildNote(n.id, n.content || '', n.title || ''), { w: 4, noScroll: true }); return; }
       const body = node.querySelector('.note-body'), t = node.querySelector('.note-title');
-      // never overwrite a field the user is typing in
-      if (document.activeElement !== body && noteText(body) !== (n.content || '')) body.textContent = n.content || '';
-      if (document.activeElement !== t && (t.innerText || '').trim() !== (n.title || '')) t.textContent = n.title || '';
+      setNoteField(body, n.content || '', noteText(body));
+      setNoteField(t, n.title || '', (t.innerText || '').trim());
     });
+  }
+  // Card edits save to storage on every keystroke, so a card's text always equals what is stored
+  // locally and it is safe to replace it with the synced version. Keep the cursor where it was.
+  function setNoteField(el, val, cur) {
+    if (cur === val) return;
+    const focused = document.activeElement === el;
+    const ne = window.noteEditor;
+    const caret = focused && ne ? ne.getCaret(el) : null;
+    el.textContent = val;
+    if (focused && caret !== null) ne.setCaret(el, Math.min(caret, val.length));
   }
   function noteText(bodyEl) {
     if (!bodyEl) return '';

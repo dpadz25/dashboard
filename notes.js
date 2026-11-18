@@ -244,7 +244,7 @@ function remove() {
   const n = current();
   if (!n) return;
   if (!confirm('Delete "' + (n.title || 'this note') + '"?')) return;
-  clearTimeout(saveTimer); saveTimer = null;
+  clearTimeout(saveTimer); saveTimer = null; dirty = false;
   api().remove(n.id);
   const rest = all();
   activeId = (rest[0] && rest[0].id) || null;
@@ -254,12 +254,17 @@ function remove() {
 }
 
 /* ── AUTOSAVE ────────────────────────────────────────────────── */
+let dirty = false;   // true only while this page has typing that is not saved yet
 function queueSave() {
+  dirty = true;
   clearTimeout(saveTimer);
   saveTimer = setTimeout(flush, 250);
 }
 function flush() {
   if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
+  // Nothing typed here since the last save: do not write, or old text on screen could overwrite a synced edit.
+  if (!dirty) return;
+  dirty = false;
   const ed = $('notesEditor'), ti = $('notesTitle');
   if (!ed || !ti || !activeId || !api()) return;
   api().update(activeId, { title: ti.value.trim(), content: window.noteEditor.getText(ed) });
@@ -275,11 +280,22 @@ window.addEventListener('pagehide', flush);
 function refresh() {
   if (!document.body.classList.contains('notes-open') || !api()) return;
   const notes = all();
-  if (!notes.some((n) => n.id === activeId)) activeId = (notes[0] && notes[0].id) || null;
+  if (!notes.some((n) => n.id === activeId)) { activeId = (notes[0] && notes[0].id) || null; renderList(); loadEditor(); return; }
   renderList();
-  const ed = $('notesEditor'), ti = $('notesTitle');
-  const typing = document.activeElement === ed || document.activeElement === ti;
-  if (!typing) loadEditor();
+  // Unsaved typing on this page wins until it is saved; otherwise show the synced text, keeping the cursor.
+  if (saveTimer) return;
+  const n = current(), ed = $('notesEditor'), ti = $('notesTitle');
+  if (!n || !ed || !ti) return;
+  if (window.noteEditor.getText(ed) !== n.content) {
+    const caret = document.activeElement === ed ? window.noteEditor.getCaret(ed) : null;
+    window.noteEditor.setText(ed, n.content);
+    if (caret !== null) window.noteEditor.setCaret(ed, Math.min(caret, n.content.length));
+  }
+  if (ti.value !== n.title) {
+    const pos = ti.selectionStart;
+    ti.value = n.title;
+    if (document.activeElement === ti) ti.setSelectionRange(Math.min(pos, n.title.length), Math.min(pos, n.title.length));
+  }
 }
 
 window.notes = { open, close, refresh };
