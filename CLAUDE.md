@@ -47,6 +47,10 @@ Plain HTML/CSS/JS, no build step.
 - `search.js` — global search modal (header icon or `/`), searches across
   tasks/events/dates/goals/lists/people/currently/notes and jumps to the
   card that holds a result via `window.dashUtil.scrollToCard`.
+- `noteeditor.js` - shared smart-list editor for notes (`- ` bullet, `[] ` checkbox, `1. ` numbering,
+  Enter continues, Tab indents). Content stays plain text, so storage/search/sync are unchanged.
+- `notes.js` - full-page Notes view (list + editor) opened from the side rail "Notes" space. Reads and
+  writes through `window.blocks.notes`, so it shares the exact notes the grid cards use.
 - `notify.js` + `sw.js` — PWA push notifications (see below).
 - `firebase-sync.js` — cloud sync. Never overwrite.
 

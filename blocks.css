@@ -499,6 +499,8 @@ body.blocks-resizing-corner * { cursor: nwse-resize !important; }
   outline: none;
   min-height: 1.5em;
   padding: 0.25rem 0;
+  white-space: pre-wrap;
+  tab-size: 2;
 }
 .block-note .note-body:empty::before {
   content: attr(data-placeholder);

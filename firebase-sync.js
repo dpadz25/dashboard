@@ -60,7 +60,7 @@
   const ID_ARRAY_KEYS = new Set([
     'plannerTasks', 'schoolClasses', 'importantDates', 'agendaEvents',
     'habitsConfig', 'dailiesConfig', 'currentlyArchive', 'lifeItems', 'lifeLists', 'lifePages', 'shoppingItems', 'people',
-    'taskCompletionLog', 'photoWidgets'
+    'taskCompletionLog', 'photoWidgets', 'dashboard.blocks.notes.v1'
   ]);
   const BUCKET_KEYS = { goals: ['year','quarter','week'], currently: ['reading','watching','playing'] };
   const TOMB_PREFIX  = '__syncTombs::';

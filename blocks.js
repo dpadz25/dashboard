@@ -925,10 +925,11 @@
         <button class="note-del" type="button" title="Delete note">${CLOSE_SVG}</button>
       </div>
       <div class="note-body" contenteditable="true" data-placeholder="Type something\u2026"></div>`;
-    if (content) div.querySelector('.note-body').textContent = content;
+    const body = div.querySelector('.note-body');
+    if (window.noteEditor) window.noteEditor.attach(body);   // smart bullets / checkboxes
+    if (content) body.textContent = content;
     if (title)   div.querySelector('.note-title').textContent = title;
 
-    const body = div.querySelector('.note-body');
     body.addEventListener('input', saveNotes);
     body.addEventListener('blur',  saveNotes);
 
@@ -969,7 +970,7 @@
     if (window.dash && window.dash.injectCardBgButtons) { window.dash.injectCardBgButtons(); window.dash.applyAllCardBgs(); }
     relayout({ animate: false });
     saveLayout();
-    node.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (!opts.noScroll) node.scrollIntoView({ behavior: 'smooth', block: 'center' });
     return true;
   }
   // Replace the whole arrangement: list is [{ id, x, y, w, h? }]. Used by "Arrange cards neatly".
@@ -1099,9 +1100,13 @@
     const notes = [...container.querySelectorAll('.block-note')].map((n) => ({
       id: n.dataset.cardId,
       title: n.querySelector('.note-title')?.innerText.trim() || '',
-      content: n.querySelector('.note-body')?.innerText || '',
+      content: noteText(n.querySelector('.note-body')),
     }));
     try { localStorage.setItem(STORAGE_NOTES, JSON.stringify(notes)); } catch (_) {}
+  }
+  function noteText(bodyEl) {
+    if (!bodyEl) return '';
+    return window.noteEditor ? window.noteEditor.getText(bodyEl) : bodyEl.innerText;
   }
   function restoreNotes() {
     let notes = null;
@@ -1124,8 +1129,42 @@
     return e;
   }
 
+  /* ── NOTES API (used by the full-page Notes view in notes.js) ──
+     The grid cards stay the single source of truth, so the page and
+     the cards can never disagree. */
+  const notesApi = {
+    list() {
+      return [...container.querySelectorAll('.block-note')].map((n) => ({
+        id: n.dataset.cardId,
+        title: n.querySelector('.note-title')?.innerText.trim() || '',
+        content: noteText(n.querySelector('.note-body')),
+      }));
+    },
+    create() {
+      const id = 'note-' + Date.now().toString(36) + '-' + (noteSeq++).toString(36);
+      addBlock(buildNote(id, ''), { w: 4, noScroll: true });
+      saveNotes();
+      return id;
+    },
+    update(id, patch) {
+      const n = container.querySelector('.block-note[data-card-id="' + id + '"]');
+      if (!n) return false;
+      if (patch.title !== undefined) n.querySelector('.note-title').textContent = patch.title;
+      if (patch.content !== undefined) n.querySelector('.note-body').textContent = patch.content;
+      saveNotes();
+      return true;
+    },
+    remove(id) {
+      const n = container.querySelector('.block-note[data-card-id="' + id + '"]');
+      if (!n) return false;
+      removeBlock(n); saveNotes();
+      return true;
+    },
+  };
+
   /* ── EXPORT ─────────────────────────────────────────────── */
   window.blocks = {
+    notes: notesApi,
     boot,
     save: saveLayout,
     addBlock, addShortest: addBlock, applyGrid, removeBlock,

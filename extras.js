@@ -938,6 +938,7 @@ const SPACES = [
   { label: 'Planner',  icon: 'M9 6h11M9 12h11M9 18h11M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2', act: () => window.dashUtil.scrollToCard('planner') },
   { label: 'Calendar', icon: 'M3 5h18v16H3zM3 10h18M8 3v4M16 3v4', act: () => window.dashUtil.scrollToCard('agenda') },
   { label: 'Life',     icon: 'M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10zM2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12', act: () => window.dashUtil.scrollToCard('life') },
+  { label: 'Notes',    icon: 'M6 3h9l4 4v14H6zM14 3v5h5M9 13h7M9 17h7', act: () => window.notes && window.notes.open() },
   { label: 'Practicum', icon: 'M9 4h6l1 2h3v15H5V6h3zM9 14l2 2 4-4', act: () => { const h = document.querySelector('.block-x-hours'); h ? window.dashUtil.scrollToCard(h.dataset.cardId) : addWidget('hours'); } },
 ];
 const svgI = (d) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><path d="${d}"/></svg>`;
