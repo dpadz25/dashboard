@@ -6252,3 +6252,6 @@ body.notes-open .tweak-fab { z-index: 801; }
   .library-page.show-editor .notes-pane { display: flex; }
   .notes-pane-back { display: inline-flex; }
 }
+
+/* the floating quick-add "+" would sit on top of the editor, so hide it while Notes is open */
+body.notes-open .x-fab { display: none !important; }
