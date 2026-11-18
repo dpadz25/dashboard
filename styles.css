@@ -6094,8 +6094,34 @@ body.library-open { overflow: hidden; }
 /* ═══════════════════════════════════════════════════════════════
    NOTES — full-page Apple Notes style view (notes.js)
    Uses .library-page / .library-inner / .library-head for the chrome.
+   The backdrop follows Customize: notes.js copies the body's theme
+   background, and the photo layer reuses the --user-bg / --bg-* vars
+   tweaks.js sets on <body>. Every piece of text sits on a theme card
+   (not on the backdrop), so it stays readable on any photo or theme.
    ═══════════════════════════════════════════════════════════════ */
-.notes-inner { height: 100%; max-width: 1180px; padding-bottom: 1.25rem; }
+#notesPage { background-color: var(--bg); background-repeat: no-repeat; background-size: cover; color: var(--text); }
+#notesPage.has-bg::before {
+  content: ''; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background: var(--user-bg, none) var(--bg-pos-x, 50%) var(--bg-pos-y, 50%) / cover no-repeat;
+  transform: scale(var(--bg-zoom, 1)); transform-origin: var(--bg-pos-x, 50%) var(--bg-pos-y, 50%);
+}
+#notesPage.has-bg::after {
+  content: ''; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background: rgba(var(--bg-rgb, 13,11,9), var(--bg-overlay, 0.55));
+}
+body.notes-open .tweaks-panel { z-index: 800; }
+body.notes-open .tweak-fab { z-index: 801; }
+
+.notes-inner { position: relative; z-index: 1; height: 100%; max-width: 1180px; padding-bottom: 1.25rem; }
+/* header sits on a themed card so the title and search are readable on any backdrop */
+.notes-inner .library-head {
+  padding: 0.6rem 0.75rem;
+  background: color-mix(in srgb, var(--card) var(--panel-opacity, 86%), transparent);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+}
+.notes-inner .library-title { color: var(--text); }
 .notes-layout {
   flex: 1;
   min-height: 0;
@@ -6107,8 +6133,8 @@ body.library-open { overflow: hidden; }
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
-  padding-right: 0.25rem;
+  gap: 0.35rem;
+  padding: 0.1rem 0.25rem 0.1rem 0;
 }
 .notes-row {
   display: flex;
@@ -6116,29 +6142,34 @@ body.library-open { overflow: hidden; }
   gap: 0.15rem;
   text-align: left;
   padding: 0.65rem 0.8rem;
-  background: var(--card);
+  background: color-mix(in srgb, var(--card) var(--panel-opacity, 86%), transparent);
   border: 1px solid var(--border);
   border-radius: var(--r-sm, 8px);
   cursor: pointer;
   color: var(--text);
   font: inherit;
-  transition: border-color var(--t-fast, 0.15s), background var(--t-fast, 0.15s);
+  transition: border-color var(--t-fast, 0.15s);
 }
 .notes-row:hover { border-color: var(--border2); }
-.notes-row.active { background: var(--card); border-color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); }
-.notes-row-title { font-weight: 700; font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.notes-row.active { border-color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); }
+.notes-row-title { font-weight: 700; font-size: 0.85rem; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .notes-row-prev { font-size: 0.72rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.notes-list-empty { color: var(--muted2); font-size: 0.8rem; padding: 1rem 0.4rem; }
+.notes-list-empty {
+  color: var(--muted); font-size: 0.8rem; padding: 0.8rem;
+  background: color-mix(in srgb, var(--card) var(--panel-opacity, 86%), transparent);
+  border: 1px solid var(--border); border-radius: var(--r-sm, 8px);
+}
 
 .notes-pane {
   position: relative;
   min-height: 0;
   display: flex;
   flex-direction: column;
-  background: var(--card);
+  background: color-mix(in srgb, var(--card) max(var(--panel-opacity, 86%), 80%), transparent);
   border: 1px solid var(--border);
   border-radius: var(--r, 12px);
   overflow: hidden;
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
 }
 .notes-pane-top { display: flex; align-items: center; gap: 0.5rem; padding: 0.7rem 0.9rem 0.2rem; }
 .notes-pane-back { display: none; }
@@ -6165,11 +6196,12 @@ body.library-open { overflow: hidden; }
   font-size: 1.02rem;
   line-height: 1.6;
   color: var(--text);
+  caret-color: var(--accent);
   white-space: pre-wrap;
   tab-size: 2;
 }
 .notes-editor:empty::before { content: attr(data-placeholder); color: var(--muted2); font-style: italic; }
-.notes-empty { display: none; padding: 2rem 1rem; color: var(--muted2); text-align: center; }
+.notes-empty { display: none; padding: 2rem 1rem; color: var(--muted); text-align: center; }
 .notes-pane.is-empty .notes-pane-top,
 .notes-pane.is-empty .notes-editor { display: none; }
 .notes-pane.is-empty .notes-empty { display: block; }

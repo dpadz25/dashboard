@@ -29,6 +29,27 @@ function preview(n) {
   return line || 'No additional text';
 }
 
+/* ── BACKDROP ────────────────────────────────────────────────────
+   The overlay copies whatever the dashboard itself is painting, so
+   Customize (theme, light/dark, background photo) applies here too.
+   The photo layer and its overlay/zoom/position come from CSS vars that
+   tweaks.js already sets on <body>; see styles.css (#notesPage). */
+function syncBackdrop() {
+  const page = $('notesPage');
+  if (!page) return;
+  const solid = (c) => c && c !== 'transparent' && !/rgba\(\s*0,\s*0,\s*0,\s*0\s*\)/.test(c);
+  const b = getComputedStyle(document.body), h = getComputedStyle(document.documentElement);
+  page.style.backgroundImage = b.backgroundImage !== 'none' ? b.backgroundImage : 'none';
+  page.style.backgroundColor = solid(b.backgroundColor) ? b.backgroundColor : (solid(h.backgroundColor) ? h.backgroundColor : '');
+  page.classList.toggle('has-bg', document.body.getAttribute('data-has-bg') === '1');
+}
+function watchBackdrop() {
+  const run = () => { if (document.body.classList.contains('notes-open')) { syncBackdrop(); setTimeout(syncBackdrop, 350); } };
+  const mo = new MutationObserver(run);
+  mo.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'data-theme', 'style'] });
+  mo.observe(document.body, { attributes: true, attributeFilter: ['data-has-bg', 'style'] });
+}
+
 /* ── OPEN / CLOSE ────────────────────────────────────────────── */
 function open(id) {
   const page = $('notesPage');
@@ -38,6 +59,7 @@ function open(id) {
   activeId = (id && notes.some((n) => n.id === id)) ? id : (notes[0] && notes[0].id) || null;
   renderList();
   loadEditor();
+  syncBackdrop();
   page.classList.add('open');
   document.body.classList.add('library-open', 'notes-open');
   page.classList.toggle('show-editor', !!id);
@@ -59,6 +81,9 @@ function buildShell(page) {
         </button>
         <div class="library-title">Notes</div>
         <input class="t-input library-search" id="notesSearch" type="search" placeholder="Search notes" autocomplete="off"/>
+        <button class="icon-btn notes-custom" type="button" data-act="custom" title="Customize (themes, fonts, background)" aria-label="Customize">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg>
+        </button>
         <button class="btn-add notes-new" type="button" data-act="new">+ New note</button>
       </div>
       <div class="notes-layout">
@@ -95,6 +120,7 @@ function buildShell(page) {
     else if (act === 'new') create();
     else if (act === 'del') remove();
     else if (act === 'list') page.classList.remove('show-editor');
+    else if (act === 'custom' && window.tweaks) window.tweaks.open();
   };
   query = '';
 }
@@ -169,5 +195,6 @@ document.addEventListener('keydown', (e) => {
 });
 window.addEventListener('pagehide', flush);
 
+watchBackdrop();
 window.notes = { open, close };
 })();
