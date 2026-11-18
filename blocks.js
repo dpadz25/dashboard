@@ -1104,6 +1104,25 @@
     }));
     try { localStorage.setItem(STORAGE_NOTES, JSON.stringify(notes)); } catch (_) {}
   }
+  // Bring the note cards in line with storage after a cloud sync changed it (a note added, edited
+  // or deleted on another device). Without this the cards go stale, and the next local save would
+  // rebuild storage from the stale cards and tombstone the other device's notes.
+  function refreshNotes() {
+    if (!container) return;
+    let notes = null;
+    try { notes = JSON.parse(localStorage.getItem(STORAGE_NOTES) || 'null'); } catch (_) {}
+    if (!Array.isArray(notes)) return;
+    const ids = new Set(notes.map((n) => n.id));
+    container.querySelectorAll('.block-note').forEach((n) => { if (!ids.has(n.dataset.cardId)) removeBlock(n); });
+    notes.forEach((n) => {
+      const node = container.querySelector('.block-note[data-card-id="' + n.id + '"]');
+      if (!node) { addBlock(buildNote(n.id, n.content || '', n.title || ''), { w: 4, noScroll: true }); return; }
+      const body = node.querySelector('.note-body'), t = node.querySelector('.note-title');
+      // never overwrite a field the user is typing in
+      if (document.activeElement !== body && noteText(body) !== (n.content || '')) body.textContent = n.content || '';
+      if (document.activeElement !== t && (t.innerText || '').trim() !== (n.title || '')) t.textContent = n.title || '';
+    });
+  }
   function noteText(bodyEl) {
     if (!bodyEl) return '';
     return window.noteEditor ? window.noteEditor.getText(bodyEl) : bodyEl.innerText;
@@ -1133,6 +1152,7 @@
      The grid cards stay the single source of truth, so the page and
      the cards can never disagree. */
   const notesApi = {
+    refresh() { refreshNotes(); },
     list() {
       return [...container.querySelectorAll('.block-note')].map((n) => ({
         id: n.dataset.cardId,

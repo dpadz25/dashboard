@@ -582,6 +582,9 @@
   // Re-render every section of the dashboard after receiving
   // new data from the cloud.
   function rerender() {
+    // Notes cards are built by blocks.js, not window.dash, so refresh them (and the full Notes page) too.
+    try { if (window.blocks && window.blocks.notes) window.blocks.notes.refresh(); } catch (e) { console.warn('[sync] notes refresh', e); }
+    try { if (window.notes && window.notes.refresh) window.notes.refresh(); } catch (e) { console.warn('[sync] notes page refresh', e); }
     var d = window.dash;
     if (!d) return;
     // Each section re-renders independently so one hiccup can't stop the rest.

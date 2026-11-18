@@ -271,5 +271,16 @@ document.addEventListener('keydown', (e) => {
 });
 window.addEventListener('pagehide', flush);
 
-window.notes = { open, close };
+// Called after a cloud sync (firebase-sync rerender): re-read the notes and redraw if the page is open.
+function refresh() {
+  if (!document.body.classList.contains('notes-open') || !api()) return;
+  const notes = all();
+  if (!notes.some((n) => n.id === activeId)) activeId = (notes[0] && notes[0].id) || null;
+  renderList();
+  const ed = $('notesEditor'), ti = $('notesTitle');
+  const typing = document.activeElement === ed || document.activeElement === ti;
+  if (!typing) loadEditor();
+}
+
+window.notes = { open, close, refresh };
 })();
