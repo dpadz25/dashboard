@@ -30,17 +30,14 @@ function preview(n) {
 }
 
 /* ── BACKDROP ────────────────────────────────────────────────────
-   The overlay copies whatever the dashboard itself is painting, so
-   Customize (theme, light/dark, background photo) applies here too.
-   The photo layer and its overlay/zoom/position come from CSS vars that
-   tweaks.js already sets on <body>; see styles.css (#notesPage). */
+   Notes defaults to plain white (light mode) or black (dark mode), set
+   by the tokens on #notesPage in styles.css. If a custom page photo is
+   set in Customize it shows here too, using the --user-bg / --bg-*
+   vars tweaks.js sets on <body>. Fonts follow Customize automatically. */
 function syncBackdrop() {
   const page = $('notesPage');
   if (!page) return;
-  const solid = (c) => c && c !== 'transparent' && !/rgba\(\s*0,\s*0,\s*0,\s*0\s*\)/.test(c);
-  const b = getComputedStyle(document.body), h = getComputedStyle(document.documentElement);
-  page.style.backgroundImage = b.backgroundImage !== 'none' ? b.backgroundImage : 'none';
-  page.style.backgroundColor = solid(b.backgroundColor) ? b.backgroundColor : (solid(h.backgroundColor) ? h.backgroundColor : '');
+  // Colors come from the black/white tokens in styles.css (#notesPage); only the photo is copied.
   page.classList.toggle('has-bg', document.body.getAttribute('data-has-bg') === '1');
 }
 function watchBackdrop() {
