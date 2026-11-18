@@ -275,7 +275,10 @@ function applyMode() {
   const btn = document.getElementById('hdrModeBtn');
   if (btn) { btn.setAttribute('aria-pressed', String(dark)); btn.title = dark ? 'Switch to light mode' : 'Switch to dark mode'; btn.setAttribute('aria-label', btn.title); }
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute('content', dark ? '#15131c' : '#0d0b09');
+  // status bar color = the color the page starts with at the top (Sky: navy, Forest: pale green)
+  const th = document.documentElement.getAttribute('data-theme');
+  const barColor = th === 'sky' ? (dark ? '#0e1220' : '#2f3d56') : th === 'forest' ? (dark ? '#0f1612' : '#e6eee3') : (dark ? '#15131c' : '#0d0b09');
+  if (meta) meta.setAttribute('content', barColor);
 }
 function setMode(m) {
   try { localStorage.setItem(MODE_KEY, m); } catch (_) {}

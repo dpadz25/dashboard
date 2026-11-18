@@ -120,6 +120,20 @@ function renderBgPanel(forceOpen) {
   };
 }
 
+/* The browser's status bar / toolbar color follows <meta name="theme-color">. Match Notes while it is open. */
+let prevBar = null;
+function setBarColor(on) {
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (!meta) return;
+  if (on) {
+    if (prevBar === null) prevBar = meta.getAttribute('content');
+    const dark = document.documentElement.classList.contains('x-dark') || /^(amber|dusk)$/.test(document.documentElement.getAttribute('data-theme') || '');
+    meta.setAttribute('content', dark ? '#000000' : '#ffffff');
+  } else if (prevBar !== null) {
+    meta.setAttribute('content', prevBar); prevBar = null;
+  }
+}
+
 /* ── OPEN / CLOSE ────────────────────────────────────────────── */
 function open(id) {
   const page = $('notesPage');
@@ -129,6 +143,7 @@ function open(id) {
   activeId = (id && notes.some((n) => n.id === id)) ? id : (notes[0] && notes[0].id) || null;
   renderList();
   loadEditor();
+  setBarColor(true);
   syncBackdrop();
   if (window.dashStore && window.dashStore.ready) window.dashStore.ready.then(syncBackdrop, () => {});
   page.classList.add('open');
@@ -137,6 +152,7 @@ function open(id) {
 }
 function close() {
   flush();
+  setBarColor(false);
   const page = $('notesPage');
   if (page) page.classList.remove('open');
   document.body.classList.remove('library-open', 'notes-open');

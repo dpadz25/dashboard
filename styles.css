@@ -6255,3 +6255,15 @@ body.notes-open .tweak-fab { z-index: 801; }
 
 /* the floating quick-add "+" would sit on top of the editor, so hide it while Notes is open */
 body.notes-open .x-fab { display: none !important; }
+
+/* ── PAGE EDGE COLOR (iPhone status bar / top overscroll) ───────────────
+   Safari tints the area behind the status bar, and shows the page's outer color when you pull past the
+   top, using the <html> background. The Sky theme had it set to the BOTTOM of its gradient (orange), which
+   showed up as an orange hue at the top. Use the color the page actually starts with instead. */
+html[data-theme="sky"] { background: #2f3d56; }
+html.x-dark[data-theme="sky"] { background: #0e1220; }
+/* the Notes page is plain white (light) or black (dark), so its page edge matches */
+html:has(body.notes-open), body.notes-open { background: #ffffff !important; }
+html.x-dark:has(body.notes-open), html.x-dark body.notes-open,
+html[data-theme="amber"]:has(body.notes-open), html[data-theme="amber"] body.notes-open,
+html[data-theme="dusk"]:has(body.notes-open), html[data-theme="dusk"] body.notes-open { background: #000000 !important; }
