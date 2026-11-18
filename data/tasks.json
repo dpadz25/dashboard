@@ -1,7 +1,7 @@
 [
   {
-    "id": "he52mptm",
-    "title": "cancel with idarmy and reschedule",
+    "id": "okmhklta",
+    "title": "Psychodynamic reading or gift of therapy",
     "dueDate": "2026-11-17",
     "category": "General",
     "type": "assignment",
@@ -20,8 +20,8 @@
     "repeat": "weekly"
   },
   {
-    "id": "okmhklta",
-    "title": "Psychodynamic reading or gift of therapy",
+    "id": "he52mptm",
+    "title": "cancel with idarmy and reschedule",
     "dueDate": "2026-11-17",
     "category": "General",
     "type": "assignment",
@@ -45,6 +45,16 @@
     "dueDate": "2026-11-19",
     "category": "Dev. Psych",
     "type": "exam",
+    "priority": false,
+    "completed": false,
+    "repeat": ""
+  },
+  {
+    "id": "vfhdl5ry",
+    "title": "Dream reading!",
+    "dueDate": "2026-11-23",
+    "category": "General",
+    "type": "assignment",
     "priority": false,
     "completed": false,
     "repeat": ""
@@ -78,16 +88,6 @@
     "priority": false,
     "completed": false,
     "repeat": "weekly"
-  },
-  {
-    "id": "vfhdl5ry",
-    "title": "Dream reading!",
-    "dueDate": "2026-11-23",
-    "category": "General",
-    "type": "assignment",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
   },
   {
     "id": "08qkqaax",
