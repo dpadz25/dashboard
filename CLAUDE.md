@@ -91,7 +91,7 @@ Plain HTML/CSS/JS, no build step.
   heights, per-tab agenda heights
 - Device-local (NOT in SYNCED_KEYS, on purpose): `stickers`,
   `notifyDeviceId`, `railState` ('open'|'collapsed', side rail pin/collapse, set by the toggle in
-  extras.js; unset follows the theme default), `weatherCache`, `cardBg::*` metadata, `customIcons`, `peopleView` (due-only filter)
+  extras.js; unset follows the theme default), `weatherCache`, `notesBgSettings` (the Notes page's own photo settings; the photo itself is IndexedDB key `notesBg`, separate from the dashboard's `pageBg`), `cardBg::*` metadata, `customIcons`, `peopleView` (due-only filter)
 
 ## Push notifications (PWA web push)
 - Client: `notify.js` (Tweaks → Task Notifications) registers `sw.js`,

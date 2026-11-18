@@ -6094,9 +6094,8 @@ body.library-open { overflow: hidden; }
 /* ═══════════════════════════════════════════════════════════════
    NOTES — full-page Apple Notes style view (notes.js)
    Uses .library-page / .library-inner / .library-head for the chrome.
-   The backdrop follows Customize: notes.js copies the body's theme
-   background, and the photo layer reuses the --user-bg / --bg-* vars
-   tweaks.js sets on <body>. Every piece of text sits on a theme card
+   Black and white by default. The photo is Notes' own (--nbg-* vars), set
+   from the photo button on this page, not the dashboard's. Every piece of text sits on a theme card
    (not on the backdrop), so it stays readable on any photo or theme.
    ═══════════════════════════════════════════════════════════════ */
 /* Black and white by default: white in light mode, black in dark mode (html.x-dark, set by polish.js) */
@@ -6119,15 +6118,36 @@ html[data-theme="dusk"] #notesPage {
   color-scheme: dark;
 }
 #notesPage .btn-add { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+/* Notes has its OWN photo (notes.js sets --nbg-* on #notesPage); the dashboard's page photo is not used here. */
 #notesPage.has-bg::before {
   content: ''; position: fixed; inset: 0; z-index: 0; pointer-events: none;
-  background: var(--user-bg, none) var(--bg-pos-x, 50%) var(--bg-pos-y, 50%) / cover no-repeat;
-  transform: scale(var(--bg-zoom, 1)); transform-origin: var(--bg-pos-x, 50%) var(--bg-pos-y, 50%);
+  background: var(--nbg-url, none) var(--nbg-x, 50%) var(--nbg-y, 50%) / cover no-repeat;
+  transform: scale(var(--nbg-zoom, 1)); transform-origin: var(--nbg-x, 50%) var(--nbg-y, 50%);
 }
 #notesPage.has-bg::after {
   content: ''; position: fixed; inset: 0; z-index: 0; pointer-events: none;
-  background: rgba(var(--bg-rgb), var(--bg-overlay, 0.55));
+  background: rgba(var(--bg-rgb), var(--nbg-alpha, 0.4));
 }
+.notes-bg-panel {
+  position: absolute; z-index: 5; top: 5rem; right: 1.25rem; width: min(320px, calc(100% - 2.5rem));
+  padding: 0.8rem 0.9rem;
+  display: flex; flex-direction: column; gap: 0.55rem;
+  background: var(--card); color: var(--text);
+  border: 1px solid var(--border2); border-radius: var(--r);
+  box-shadow: 0 14px 40px rgba(0,0,0,0.28);
+}
+.notes-bg-panel[hidden] { display: none; }
+.notes-bg-head { display: flex; flex-direction: column; gap: 0.1rem; font-size: 0.8rem; }
+.notes-bg-head span, .notes-bg-hint { font-size: 0.7rem; color: var(--muted); }
+.notes-bg-btns { display: flex; gap: 0.4rem; }
+.notes-bg-btn {
+  flex: 1; font: 700 0.72rem var(--font-b); padding: 0.5rem 0.6rem; cursor: pointer;
+  background: var(--surface2); color: var(--text); border: 1px solid var(--border2); border-radius: var(--r-sm, 8px);
+}
+.notes-bg-btn:hover { border-color: var(--accent); }
+.notes-bg-row { display: grid; grid-template-columns: 1fr auto; gap: 0.15rem 0.5rem; font-size: 0.7rem; color: var(--text-s); }
+.notes-bg-row input { grid-column: 1 / -1; width: 100%; accent-color: var(--accent); }
+.notes-bg-val { color: var(--muted); }
 body.notes-open .tweaks-panel { z-index: 800; }
 body.notes-open .tweak-fab { z-index: 801; }
 

@@ -30,21 +30,94 @@ function preview(n) {
 }
 
 /* ── BACKDROP ────────────────────────────────────────────────────
-   Notes defaults to plain white (light mode) or black (dark mode), set
-   by the tokens on #notesPage in styles.css. If a custom page photo is
-   set in Customize it shows here too, using the --user-bg / --bg-*
-   vars tweaks.js sets on <body>. Fonts follow Customize automatically. */
+   Notes is white (light mode) or black (dark mode) by default, from the
+   tokens on #notesPage in styles.css. It can have its OWN photo, separate
+   from the dashboard's page photo: the image lives in the image store
+   under 'notesBg' (device-local, like all photos) and its settings in
+   localStorage 'notesBgSettings' (device-local on purpose, not synced). */
+const BG_KEY = 'notesBg', SET_KEY = 'notesBgSettings';
+const BG_DEFAULTS = { strength: 60, zoom: 100, x: 50, y: 50 };
+function bgSettings() {
+  let v = null; try { v = JSON.parse(localStorage.getItem(SET_KEY) || 'null'); } catch (_) {}
+  return Object.assign({}, BG_DEFAULTS, v || {});
+}
+function saveBgSettings(v) { try { localStorage.setItem(SET_KEY, JSON.stringify(v)); } catch (_) {} }
+
 function syncBackdrop() {
   const page = $('notesPage');
   if (!page) return;
-  // Colors come from the black/white tokens in styles.css (#notesPage); only the photo is copied.
-  page.classList.toggle('has-bg', document.body.getAttribute('data-has-bg') === '1');
+  const data = window.dashStore && window.dashStore.getCached(BG_KEY);
+  const st = bgSettings();
+  if (data) {
+    const url = window.dashImg && window.dashImg.cssUrl ? window.dashImg.cssUrl(BG_KEY, data) : data;
+    page.style.setProperty('--nbg-url', 'url("' + url + '")');
+    page.style.setProperty('--nbg-alpha', (1 - st.strength / 100).toFixed(2));
+    page.style.setProperty('--nbg-zoom', (st.zoom / 100).toFixed(3));
+    page.style.setProperty('--nbg-x', st.x + '%');
+    page.style.setProperty('--nbg-y', st.y + '%');
+  } else {
+    ['--nbg-url', '--nbg-alpha', '--nbg-zoom', '--nbg-x', '--nbg-y'].forEach((k) => page.style.removeProperty(k));
+  }
+  page.classList.toggle('has-bg', !!data);
 }
-function watchBackdrop() {
-  const run = () => { if (document.body.classList.contains('notes-open')) { syncBackdrop(); setTimeout(syncBackdrop, 350); } };
-  const mo = new MutationObserver(run);
-  mo.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'data-theme', 'style'] });
-  mo.observe(document.body, { attributes: true, attributeFilter: ['data-has-bg', 'style'] });
+
+function pickPhoto() {
+  if (!window.dashImg || !window.dashImg.compressImage) return;
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*,.heic,.heif,.avif';
+  input.onchange = (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    window.dashImg.compressImage(file, 4200, (dataUrl) => {
+      window.dashStore.set(BG_KEY, dataUrl);
+      syncBackdrop(); renderBgPanel(true);
+    });
+  };
+  input.click();
+}
+function removePhoto() {
+  window.dashStore.del(BG_KEY);
+  if (window.dashImg && window.dashImg.cssUrl) window.dashImg.cssUrl(BG_KEY, null);
+  syncBackdrop(); renderBgPanel(true);
+}
+function setBg(key, val) {
+  const st = bgSettings(); st[key] = +val; saveBgSettings(st); syncBackdrop();
+}
+function resetBgPosition() {
+  const st = bgSettings(); st.zoom = BG_DEFAULTS.zoom; st.x = BG_DEFAULTS.x; st.y = BG_DEFAULTS.y;
+  saveBgSettings(st); syncBackdrop(); renderBgPanel(true);
+}
+
+// Small panel under the header: this page's own photo and its sliders.
+function renderBgPanel(forceOpen) {
+  const panel = $('notesBgPanel');
+  if (!panel) return;
+  if (forceOpen !== true) panel.hidden = !panel.hidden;
+  else panel.hidden = false;
+  if (panel.hidden) return;
+  const has = !!(window.dashStore && window.dashStore.getCached(BG_KEY));
+  const st = bgSettings();
+  const slider = (key, label, min, max, step) => `
+    <label class="notes-bg-row"><span>${label}</span><span class="notes-bg-val" data-v="${key}">${st[key]}%</span>
+      <input type="range" min="${min}" max="${max}" step="${step || 1}" value="${st[key]}" data-bg="${key}"/></label>`;
+  panel.innerHTML = `
+    <div class="notes-bg-head"><b>Notes background</b><span>Separate from your dashboard photo</span></div>
+    <div class="notes-bg-btns">
+      <button type="button" class="notes-bg-btn" data-bgact="upload">${has ? 'Replace photo' : 'Upload photo'}</button>
+      ${has ? '<button type="button" class="notes-bg-btn" data-bgact="remove">Remove</button>' : ''}
+    </div>
+    ${has ? slider('strength', 'Photo strength', 0, 95) + slider('zoom', 'Zoom', 100, 400, 5) + slider('x', 'Position X', 0, 100) + slider('y', 'Position Y', 0, 100)
+        + '<button type="button" class="notes-bg-btn" data-bgact="reset">Reset position</button>' : '<div class="notes-bg-hint">Without a photo this page is plain white in light mode and black in dark mode.</div>'}`;
+  panel.oninput = (e) => {
+    const r = e.target.closest('[data-bg]'); if (!r) return;
+    setBg(r.dataset.bg, r.value);
+    const v = panel.querySelector('[data-v="' + r.dataset.bg + '"]'); if (v) v.textContent = r.value + '%';
+  };
+  panel.onclick = (e) => {
+    const b = e.target.closest('[data-bgact]'); if (!b) return;
+    ({ upload: pickPhoto, remove: removePhoto, reset: resetBgPosition })[b.dataset.bgact]();
+  };
 }
 
 /* ── OPEN / CLOSE ────────────────────────────────────────────── */
@@ -57,6 +130,7 @@ function open(id) {
   renderList();
   loadEditor();
   syncBackdrop();
+  if (window.dashStore && window.dashStore.ready) window.dashStore.ready.then(syncBackdrop, () => {});
   page.classList.add('open');
   document.body.classList.add('library-open', 'notes-open');
   page.classList.toggle('show-editor', !!id);
@@ -78,11 +152,15 @@ function buildShell(page) {
         </button>
         <div class="library-title">Notes</div>
         <input class="t-input library-search" id="notesSearch" type="search" placeholder="Search notes" autocomplete="off"/>
-        <button class="icon-btn notes-custom" type="button" data-act="custom" title="Customize (themes, fonts, background)" aria-label="Customize">
+        <button class="icon-btn notes-photo" type="button" data-act="photo" title="Notes background photo" aria-label="Notes background photo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="m21 16-5-5-8 8"/></svg>
+        </button>
+        <button class="icon-btn notes-custom" type="button" data-act="custom" title="Customize (fonts and more)" aria-label="Customize">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg>
         </button>
         <button class="btn-add notes-new" type="button" data-act="new">+ New note</button>
       </div>
+      <div class="notes-bg-panel" id="notesBgPanel" hidden></div>
       <div class="notes-layout">
         <div class="notes-list" id="notesList"></div>
         <div class="notes-pane" id="notesPane">
@@ -118,6 +196,7 @@ function buildShell(page) {
     else if (act === 'del') remove();
     else if (act === 'list') page.classList.remove('show-editor');
     else if (act === 'custom' && window.tweaks) window.tweaks.open();
+    else if (act === 'photo') renderBgPanel();
   };
   query = '';
 }
@@ -192,6 +271,5 @@ document.addEventListener('keydown', (e) => {
 });
 window.addEventListener('pagehide', flush);
 
-watchBackdrop();
 window.notes = { open, close };
 })();
