@@ -1,28 +1,8 @@
 [
   {
-    "id": "okmhklta",
-    "title": "Psychodynamic reading or gift of therapy",
-    "dueDate": "2026-11-17",
-    "category": "General",
-    "type": "assignment",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "z720s2hp",
-    "title": "Session with J 4:30 email him",
-    "dueDate": "2026-11-17",
-    "category": "Practicum",
-    "type": "discussion",
-    "priority": false,
-    "completed": false,
-    "repeat": "weekly"
-  },
-  {
-    "id": "he52mptm",
-    "title": "cancel with idarmy and reschedule",
-    "dueDate": "2026-11-17",
+    "id": "abo37ozp",
+    "title": "read up on DBT for Idarmy and Jayden and maybe CBT",
+    "dueDate": "2026-11-20",
     "category": "General",
     "type": "assignment",
     "priority": false,
@@ -32,7 +12,7 @@
   {
     "id": "qofw8nxj",
     "title": "EV Project, Part III Draft",
-    "dueDate": "2026-11-18",
+    "dueDate": "2026-11-20",
     "category": "Assessment 1",
     "type": "project",
     "priority": false,
@@ -40,31 +20,11 @@
     "repeat": ""
   },
   {
-    "id": "aumt3m38",
-    "title": "Exam II",
-    "dueDate": "2026-11-19",
-    "category": "Dev. Psych",
-    "type": "exam",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "vfhdl5ry",
-    "title": "Dream reading!",
-    "dueDate": "2026-11-23",
+    "id": "okmhklta",
+    "title": "Psychodynamic reading or gift of therapy",
+    "dueDate": "2026-11-20",
     "category": "General",
     "type": "assignment",
-    "priority": false,
-    "completed": false,
-    "repeat": ""
-  },
-  {
-    "id": "gjwqmwof",
-    "title": "Read Ch. 12",
-    "dueDate": "2026-11-23",
-    "category": "Assessment 1",
-    "type": "reading",
     "priority": false,
     "completed": false,
     "repeat": ""
@@ -90,14 +50,24 @@
     "repeat": "weekly"
   },
   {
-    "id": "08qkqaax",
-    "title": "Module 12 quiz (Treatment planning)",
-    "dueDate": "2026-11-24",
-    "category": "clinical practicum 1",
-    "type": "quiz",
+    "id": "vfhdl5ry",
+    "title": "Dream reading! chapter 2 and 3",
+    "dueDate": "2026-11-23",
+    "category": "General",
+    "type": "assignment",
     "priority": false,
     "completed": false,
     "repeat": ""
+  },
+  {
+    "id": "z720s2hp",
+    "title": "Session with J 4:30 email him",
+    "dueDate": "2026-11-24",
+    "category": "Practicum",
+    "type": "discussion",
+    "priority": false,
+    "completed": false,
+    "repeat": "weekly"
   },
   {
     "id": "kcy9wc5w",
